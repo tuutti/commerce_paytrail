@@ -168,7 +168,7 @@ function commerce_paytrail_redirect_form($form, &$form_state, $order, $payment_m
 
   // Add embed JS if wanted.
   if (!empty($payment_method['settings']['advanced']['embed'])) {
-    drupal_add_js("https://payment.verkkomaksut.fi/js/sv-widget.min.js", "external");
+    drupal_add_js("https://payment.paytrail.com/js/sv-widget.min.js", "external");
     drupal_add_js("
       jQuery(document).ready(function() {
         SV.widget.initWithForm('commerce-paytrail-redirect-form',{});
@@ -430,7 +430,7 @@ function _commerce_paytrail_get_setting($setting_name) {
   switch ($setting_name) {
     // Service host.
     case 'service_host':
-      $setting = 'https://payment.verkkomaksut.fi/';
+      $setting = 'https://payment.paytrail.com/';
       break;
 
     // Merchant ID.
