@@ -334,7 +334,7 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
 
   $form_elements += array(
     'ORDER_NUMBER' => $order->order_id,
-    'REFERENCE_NUMBER' => '', // @todo Add refno here once implemented.
+    'REFERENCE_NUMBER' => '',
     'ORDER_DESCRIPTION' => '',
     'CURRENCY' => 'EUR', // Only EUR is accepted for Finnish banks and credit cards.
     'RETURN_ADDRESS' => $return_success,
@@ -373,17 +373,36 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
       'ITEMS' => count($order_wrapper->commerce_line_items->value()),
     );
 
-    // Append each line item to form elements
+    // Append each line item to form elements.
     foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
       $element_tmp = array(
+        // Use line item label by default.
         'ITEM_TITLE' => $line_item_wrapper->line_item_label->value(),
         'ITEM_NO' => '',
         'ITEM_AMOUNT' => round($line_item_wrapper->quantity->value()),
         'ITEM_PRICE' => number_format($line_item_wrapper->commerce_unit_price->amount->value() / 100, 2, '.', ''),
         'ITEM_TAX' => commerce_paytrail_calculate_item_tax($line_item_wrapper->commerce_unit_price->value()),
         'ITEM_DISCOUNT' => '0', // @todo Integrate with some discount module.
-        'ITEM_TYPE' => '1', // @todo Implement line item types (1=product, 2=shipping fees, 3=handling fees).
+        // Default to product (1=product, 2=shipping fees, 3=handling fees).
+        'ITEM_TYPE' => '1',
       );
+
+      // Attempt to save human readable product label.
+      if ($line_item_wrapper->__isset('commerce_product')) {
+        $product = $line_item_wrapper->commerce_product->value();
+
+        $element_tmp = array_merge($element_tmp, array(
+          'ITEM_TITLE' => $product->title,
+          'ITEM_NO' => $product->product_id,
+        ));
+      }
+      // Attempt to save shipping details (requires commerce_shipping).
+      if ($line_item_wrapper->__isset('commerce_shipping_service')) {
+        $element_tmp = array_merge($element_tmp, array(
+          'ITEM_NO' => substr($line_item_wrapper->commerce_shipping_service->value(), 0, 16),
+          'ITEM_TYPE' => 2,
+        ));
+      }
       foreach ($element_tmp as $key => $value) {
         $form_elements[$key . '[' . $delta . ']'] = $value;
       }
