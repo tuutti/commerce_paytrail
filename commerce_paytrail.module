@@ -19,6 +19,7 @@ define('PAYTRAIL_DEFAULT_TYPE', 'S1');
 define('PAYTRAIL_DEFAULT_RETURN_SUCCESS', 'checkout/!order_id/payment/return/!payment_redirect_key/success');
 define('PAYTRAIL_DEFAULT_RETURN_CANCEL', 'checkout/!order_id/payment/return/!payment_redirect_key/cancel');
 define('PAYTRAIL_DEFAULT_RETURN_NOTIFY', 'checkout/!order_id/payment/return/!payment_redirect_key/notify');
+define('PAYTRAIL_DEFAULT_VISIBLE_METHODS', '');
 define('PAYTRAIL_DEFAULT_EMBED', 'embed');
 
 /**
@@ -115,6 +116,14 @@ function commerce_paytrail_settings_form($settings = NULL) {
     '#title' => t('Return address (notify)'),
     '#description' => t('<strong>Available variables:</strong> !order_id, !payment_redirect_key<br /><strong>Default value:</strong> <em>checkout/!order_id/payment/return/!payment_redirect_key/notify</em>'),
     '#default_value' => !empty($settings['advanced']['return_notify']) ? $settings['advanced']['return_notify'] : PAYTRAIL_DEFAULT_RETURN_NOTIFY,
+  );
+
+  $form['advanced']['visible_methods'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Visible payment methods'),
+    '#description' => t('List of payment methods that are to be shown on the payment page. If left empty all available payment methods shown. Payment method values are to be listed <strong>separated with comma</strong>. Available payment method values can be checked from <a href="@url">the online documentation</a>.',
+      array('@url' => 'http://docs.paytrail.com/en/ch05s04.html')),
+    '#default_value' => !empty($settings['advanced']['visible_methods']) ? $settings['advanced']['visible_methods'] : PAYTRAIL_DEFAULT_VISIBLE_METHODS,
   );
 
   $form['advanced']['embed'] = array(
@@ -336,7 +345,7 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     'CULTURE' => _commerce_paytrail_get_setting('culture'),
     'PRESELECTED_METHOD' => '',
     'MODE' => '', // Default is 1. We want to use defaults.
-    'VISIBLE_METHODS' => '', // This has not yet been implemented by Paytrail.
+    'VISIBLE_METHODS' => _commerce_paytrail_get_setting('visible_methods'),
     'GROUP' => '', // This has not yet been implemented by Paytrail.
   );
 
@@ -466,6 +475,11 @@ function _commerce_paytrail_get_setting($setting_name) {
     // Return notify.
     case 'return_notify':
       $setting = !empty($payment_method['settings']['advanced']['return_notify']) ? $payment_method['settings']['advanced']['return_notify'] : PAYTRAIL_DEFAULT_RETURN_NOTIFY;
+      break;
+
+    // Visible methods.
+    case 'visible_methods':
+      $setting = !empty($payment_method['settings']['advanced']['visible_methods']) ? $payment_method['settings']['advanced']['visible_methods'] : PAYTRAIL_DEFAULT_VISIBLE_METHODS;
       break;
   }
 
