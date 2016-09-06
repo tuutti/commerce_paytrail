@@ -380,7 +380,7 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
         'ITEM_NO' => '',
         'ITEM_AMOUNT' => round($line_item_wrapper->quantity->value()),
         'ITEM_PRICE' => number_format($line_item_wrapper->commerce_unit_price->amount->value() / 100, 2, '.', ''),
-        'ITEM_TAX' => '0.00', // @todo Check how to get VAT percent for each line item.
+        'ITEM_TAX' => commerce_paytrail_calculate_item_tax($line_item_wrapper->commerce_unit_price->value()),
         'ITEM_DISCOUNT' => '0', // @todo Integrate with some discount module.
         'ITEM_TYPE' => '1', // @todo Implement line item types (1=product, 2=shipping fees, 3=handling fees).
       );
@@ -422,6 +422,30 @@ function commerce_paytrail_transaction($payment_method, $order, $charge) {
   commerce_payment_transaction_save($transaction);
 
   return $transaction;
+}
+
+/**
+ * Calculate vat/tax for single line item.
+ *
+ * @param array $price
+ *   Price array.
+ *
+ * @return float
+ *   Tax rate.
+ */
+function commerce_paytrail_calculate_item_tax(array $price) {
+  $tax_rate = 0.00;
+
+  if (!module_exists('commerce_tax')) {
+    return $tax_rate;
+  }
+  foreach ($price['data']['components'] as $component) {
+    if (!isset($component['price']['data']['tax_rate']) || empty($component['included'])) {
+      continue;
+    }
+    $tax_rate = $component['price']['data']['tax_rate']['rate'] * 100;
+  }
+  return $tax_rate;
 }
 
 /**
