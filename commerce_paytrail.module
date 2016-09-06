@@ -390,7 +390,8 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     }
   }
 
-  // Calculate hash for authcode.
+  drupal_alter('commerce_paytrail_payment', $form_elements);
+
   // @todo Take charset into consideration, hash output might vary.
   $merchant_hash = _commerce_paytrail_get_setting('merchant_hash');
   $form_elements['AUTHCODE'] = strtoupper(md5($merchant_hash . '|' . implode('|', $form_elements)));
