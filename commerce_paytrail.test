@@ -26,7 +26,6 @@ class CommercePaytrailTest extends CommerceBaseTestCase {
    */
   public function setUp() {
     $modules = parent::setUpHelper('all', array(
-      'rules',
       'commerce_paytrail',
       'commerce_paytrail_test',
     ));
@@ -38,7 +37,7 @@ class CommercePaytrailTest extends CommerceBaseTestCase {
 
     // The rule that sends a mail after checkout completion should be disabled
     // as it returns an error caused by how mail messages are stored.
-    $rules_config = rules_config_load('commerce_checkout_order_email');
+    $rules_config = entity_load_single('rules_config', 'commerce_checkout_order_email');
     $rules_config->active = FALSE;
     $rules_config->save();
   }
