@@ -4,3 +4,4 @@ dependencies[] = commerce
 dependencies[] = commerce_payment
 package = Commerce (contrib)
 core = 7.x
+files[] = commerce_paytrail.test
