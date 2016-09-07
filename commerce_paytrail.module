@@ -264,7 +264,7 @@ function commerce_paytrail_redirect_form_validate($order, $payment_method) {
     $checksum = commerce_paytrail_return_checksum($response);
 
     // Check checksum validity.
-    if ($checksum != $response['RETURN_AUTHCODE']) {
+    if (empty($response['RETURN_AUTHCODE']) || $checksum != $response['RETURN_AUTHCODE']) {
       drupal_set_message(t('Validation failed (security hash mismatch). Please contact store administration if the problem persists.'), 'error');
       $failure = TRUE;
     }
