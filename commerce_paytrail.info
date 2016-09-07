@@ -1,10 +1,12 @@
 name = Commerce Paytrail
 description = Integrates Paytrail payments with Drupal Commerce.
-dependencies[] = entity
-dependencies[] = rules
 dependencies[] = commerce
 dependencies[] = commerce_payment
 dependencies[] = commerce_order
+dependencies[] = entity
+dependencies[] = rules
 package = Commerce (contrib)
 core = 7.x
+
+; Tests
 files[] = commerce_paytrail.test
