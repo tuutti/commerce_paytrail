@@ -248,7 +248,6 @@ function commerce_paytrail_return_checksum(array $response) {
  * Gets called when user comes back from offsite payment.
  */
 function commerce_paytrail_redirect_form_validate($order, $payment_method) {
-  $failure = FALSE;
   // Log validation request.
   watchdog('commerce_paytrail', 'Received callback for redirect validation with $_REQUEST: <pre>!request</pre>', array('!request' => check_plain(print_r($_REQUEST, 1))), WATCHDOG_INFO);
 
@@ -257,6 +256,7 @@ function commerce_paytrail_redirect_form_validate($order, $payment_method) {
     $order->data['commerce_paytrail']['response'] = $_REQUEST;
     commerce_order_save($order);
   }
+
   // Select validation mode based on transaction return status code.
   if (arg(5) == 'success') {
     $response = $order->data['commerce_paytrail']['response'];
@@ -269,21 +269,22 @@ function commerce_paytrail_redirect_form_validate($order, $payment_method) {
       $failure = TRUE;
     }
   }
+
   // If return is cancel.
   elseif (arg(5) == 'cancel') {
     $failure = TRUE;
   }
+
   // If return status is unknown.
   else {
     $failure = TRUE;
   }
 
   // If any errors were detected, set payment status to failure and terminate.
-  if ($failure) {
+  if (isset($failure)) {
     $transaction = commerce_payment_transaction_load($order->data['commerce_paytrail']['transaction']->transaction_id);
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
     commerce_payment_transaction_save($transaction);
-
     return FALSE;
   }
 
@@ -513,7 +514,7 @@ function _commerce_paytrail_get_setting($setting_name) {
 
     // Culture.
     case 'culture':
-      if (isset($payment_method['settings']['culture']) && $payment_method['settings']['culture'] == 'automatic') {
+      if ($payment_method['settings']['culture'] == 'automatic') {
         global $language;
 
         $lang_mapping = array(
@@ -594,7 +595,6 @@ function commerce_paytrail_notify_save($order_id) {
 function commerce_paytrail_notify_error($message, $arguments = array()) {
   watchdog('commerce_paytrail', $message, $arguments);
   drupal_add_http_header('Status', '500 Internal Server Error');
-  echo $message;
   drupal_exit();
 }
 
@@ -626,7 +626,10 @@ function commerce_paytrail_notify_check($order_id, $payment_redirect_key) {
 
   // Check checksum validity.
   if (empty($response['RETURN_AUTHCODE']) || $checksum !== $response['RETURN_AUTHCODE']) {
-    return commerce_paytrail_notify_error('Notify failed: checksum mismatch');
+    return commerce_paytrail_notify_error('Notify failed: checksum mismatch (@checksum, @return_auth)', array(
+      '@checksum' => $checksum,
+      '@return_auth' => $response['RETURN_AUTHCODE'],
+    ));
   }
   if (!commerce_paytrail_notify_save($order->order_id, $response)) {
     return commerce_paytrail_notify_error('Notify failed: failed to save transaction.');
