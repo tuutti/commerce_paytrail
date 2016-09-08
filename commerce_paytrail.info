@@ -9,6 +9,7 @@ dependencies[] = commerce_order
 dependencies[] = commerce_line_item
 dependencies[] = commerce_checkout
 dependencies[] = commerce_product_reference
+dependencies[] = commerce_product_pricing
 dependencies[] = commerce_price
 dependencies[] = entity
 dependencies[] = rules
@@ -17,4 +18,5 @@ dependencies[] = rules
 files[] = commerce_paytrail.test
 
 test_dependencies[] = addressfield
-test_dependencies[] = commerce_shipping
+test_dependencies[] = commerce_payment_ui
+test_dependencies[] = commerce_order_ui

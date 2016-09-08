@@ -213,6 +213,7 @@ function commerce_paytrail_redirect_form($form, &$form_state, $order, $payment_m
     '#type' => 'submit',
     '#value' => t('Submit Order'),
     '#weight' => 10,
+    '#suffix' => l(t('Cancel'), 'checkout/' . $order->order_id . '/payment/back/' . $order->data['payment_redirect_key'], array('absolute' => TRUE)),
   );
 
   return $form;
