@@ -25,11 +25,10 @@ class CommercePaytrailTest extends CommerceBaseTestCase {
    * Implementation of setUp().
    */
   public function setUp() {
-    $modules = parent::setUpHelper('all', array(
-      'rules',
-      'commerce_paytrail',
-      'commerce_paytrail_test',
-    ));
+    $modules = parent::setUpHelper('all');
+    $modules[] = 'commerce_paytrail';
+    $modules[] = 'commerce_paytrail_test';
+
     parent::setUp($modules);
 
     // User creation for different operations.
