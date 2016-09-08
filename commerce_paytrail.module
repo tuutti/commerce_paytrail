@@ -6,6 +6,7 @@
  *
  * @todo Implement usage of PENDING_ADDRESS.
  */
+
 /**
  * Define constants.
  *
@@ -56,10 +57,13 @@ function commerce_paytrail_commerce_payment_method_info() {
 /**
  * Payment method callback; return the settings form for a payment method.
  *
- * @param $settings
+ * @param array $settings
  *   An array of the current settings.
+ *
+ * @return array
+ *   Settings form.
  */
-function commerce_paytrail_settings_form($settings = NULL) {
+function commerce_paytrail_settings_form($settings = array()) {
   $form = array();
 
   $form['merchant_id'] = array(
@@ -146,7 +150,6 @@ function commerce_paytrail_settings_form($settings = NULL) {
     '#default_value' => !empty($settings['advanced']['embed']) ? $settings['advanced']['embed'] : PAYTRAIL_DEFAULT_EMBED,
   );
 
-
   return $form;
 }
 
@@ -167,6 +170,17 @@ function commerce_paytrail_submit_form($payment_method, $pane_values, $checkout_
 
 /**
  * Payment method callback; submission callback for the payment submission form.
+ *
+ * @param array $payment_method
+ *   The payment method instance object used to charge this payment.
+ * @param array $pane_form
+ *   Checkout pane form array.
+ * @param array $pane_values
+ *   Checkout pane values.
+ * @param object $order
+ *   The order object the payment applies to.
+ * @param array $charge
+ *   An array indicating the amount and currency code to charge.
  */
 function commerce_paytrail_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
   $order->data['commerce_paytrail'] = $pane_values;
@@ -177,6 +191,18 @@ function commerce_paytrail_submit_form_submit($payment_method, $pane_form, $pane
 
 /**
  * Payment method callback; generation callback for the payment redirect form.
+ *
+ * @param array $form
+ *   The form array.
+ * @param array $form_state
+ *   The form state array.
+ * @param object $order
+ *   The order object the payment applies to.
+ * @param array $payment_method
+ *   The payment method instance object used to charge this payment.
+ *
+ * @return array
+ *   The redirect form.
  */
 function commerce_paytrail_redirect_form($form, &$form_state, $order, $payment_method) {
   if (empty($payment_method['settings']['merchant_id'])) {
@@ -247,6 +273,14 @@ function commerce_paytrail_return_checksum(array $response) {
  * Payment method callback; validation callback for redirected payments.
  *
  * Gets called when user comes back from offsite payment.
+ *
+ * @param object $order
+ *   The order object the payment applies to.
+ * @param array $payment_method
+ *   The payment method instance object used to charge this payment.
+ *
+ * @return bool
+ *   TRUE if valid, FALSE if validation failed.
  */
 function commerce_paytrail_redirect_form_validate($order, $payment_method) {
   $failure = FALSE;
@@ -294,6 +328,11 @@ function commerce_paytrail_redirect_form_validate($order, $payment_method) {
 
 /**
  * Payment method callback; submission callback for redirected payments.
+ *
+ * @param object $order
+ *   The order object the payment applies to.
+ * @param array $payment_method
+ *   The payment method instance object used to charge this payment.
  */
 function commerce_paytrail_redirect_form_submit($order, $payment_method) {
 
@@ -310,9 +349,12 @@ function commerce_paytrail_redirect_form_submit($order, $payment_method) {
  * Helper function to build a transaction.
  *
  * @param object $order
- *   The order object.
+ *   The order object the payment applies to.
  * @param array $payment_method
- *   The payment method array.
+ *   The payment method instance object used to charge this payment.
+ *
+ * @return array
+ *   Form elements array.
  */
 function _commerce_paytrail_build_transaction($order, $payment_method) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
@@ -334,11 +376,12 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     '!payment_redirect_key' => $order->data['payment_redirect_key'],
   );
 
-  // Generate return URLs
+  // Generate return URLs.
   $modes = array('success', 'cancel', 'notify');
   foreach ($modes as $mode) {
     $path = _commerce_paytrail_get_setting("return_$mode");
-    $path_parts = preg_split('/\?|\&/', $path); // Extract GET parameters, if any
+    // Extract GET parameters, if any.
+    $path_parts = preg_split('/\?|\&/', $path);
     $get_params = array();
     $count = count($path_parts);
     for ($i = 1; $i < $count; $i++) {
@@ -352,17 +395,20 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     'ORDER_NUMBER' => $order->order_id,
     'REFERENCE_NUMBER' => '',
     'ORDER_DESCRIPTION' => '',
-    'CURRENCY' => 'EUR', // Only EUR is accepted for Finnish banks and credit cards.
+    // Only EUR is accepted for Finnish banks and credit cards.
+    'CURRENCY' => 'EUR',
     'RETURN_ADDRESS' => $return_success,
     'CANCEL_ADDRESS' => $return_cancel,
     'PENDING_ADDRESS' => '',
-    'NOTIFY_ADDRESS' => $return_notify, // @todo Handle notifications.
+    'NOTIFY_ADDRESS' => $return_notify,
     'TYPE' => _commerce_paytrail_get_setting('type'),
     'CULTURE' => _commerce_paytrail_get_setting('culture'),
     'PRESELECTED_METHOD' => '',
-    'MODE' => '', // Default is 1. We want to use defaults.
+    // Default is 1. We want to use defaults.
+    'MODE' => '',
     'VISIBLE_METHODS' => _commerce_paytrail_get_setting('visible_methods'),
-    'GROUP' => '', // This has not yet been implemented by Paytrail.
+    // This has not yet been implemented by Paytrail.
+    'GROUP' => '',
   );
 
   // E1 fields.
@@ -375,7 +421,8 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     // $phone = $order_wrapper->commerce_customer_billing->field_customer_phone->value();
 
     $form_elements += array(
-      'CONTACT_TELNO' => '', // TELNO needed for Klarna, add custom field.
+      // TELNO needed for Klarna, add custom field.
+      'CONTACT_TELNO' => '',
       'CONTACT_CELLNO' => '',
       'CONTACT_EMAIL' => substr($order->mail, 0, 255),
       'CONTACT_FIRSTNAME' => substr($billing_address['first_name'], 0, 64),
@@ -385,7 +432,8 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
       'CONTACT_ADDR_ZIP' => substr($billing_address['postal_code'], 0, 16),
       'CONTACT_ADDR_CITY' => substr($billing_address['locality'], 0, 64),
       'CONTACT_ADDR_COUNTRY' => substr($billing_address['country'], 0, 2),
-      'INCLUDE_VAT' => '1', // @todo Check commerce settings.
+      // @todo Check commerce settings.
+      'INCLUDE_VAT' => '1',
       'ITEMS' => count($order_wrapper->commerce_line_items->value()),
     );
 
@@ -398,7 +446,8 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
         'ITEM_AMOUNT' => round($line_item_wrapper->quantity->value()),
         'ITEM_PRICE' => number_format($line_item_wrapper->commerce_unit_price->amount->value() / 100, 2, '.', ''),
         'ITEM_TAX' => commerce_paytrail_calculate_item_tax($line_item_wrapper->commerce_unit_price->value()),
-        'ITEM_DISCOUNT' => '0', // @todo Integrate with some discount module.
+        // @todo Integrate with some discount module.
+        'ITEM_DISCOUNT' => '0',
         // Default to product (1=product, 2=shipping fees, 3=handling fees).
         'ITEM_TYPE' => '1',
       );
