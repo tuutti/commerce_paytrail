@@ -452,7 +452,7 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     'CULTURE' => _commerce_paytrail_get_setting('culture'),
     'PRESELECTED_METHOD' => '',
     'MODE' => _commerce_paytrail_get_setting('mode'),
-    'VISIBLE_METHODS' => _commerce_paytrail_get_setting('visible_methods'),
+    'VISIBLE_METHODS' => implode(',', array_keys(_commerce_paytrail_get_setting('visible_methods'))),
     // This has not yet been implemented by Paytrail.
     'GROUP' => '',
   );
@@ -648,7 +648,11 @@ function commerce_paytrail_calculate_item_tax(array $price) {
  *   The value of the specified setting.
  */
 function _commerce_paytrail_get_setting($setting_name) {
-  $payment_method = commerce_payment_method_instance_load('commerce_paytrail|commerce_payment_commerce_paytrail');
+  $payment_method = &drupal_static(__FUNCTION__);
+
+  if (!$payment_method) {
+    $payment_method = commerce_payment_method_instance_load('commerce_paytrail|commerce_payment_commerce_paytrail');
+  }
   $setting = FALSE;
 
   switch ($setting_name) {
@@ -711,9 +715,7 @@ function _commerce_paytrail_get_setting($setting_name) {
 
     // Visible methods.
     case 'visible_methods':
-      if (!empty($payment_method['settings']['advanced']['visible_methods'])) {
-        $setting = implode(',', array_keys($payment_method['settings']['advanced']['visible_methods']));
-      }
+      $setting = !empty($payment_method['settings']['advanced']['visible_methods']) ? $payment_method['settings']['advanced']['visible_methods'] : PAYTRAIL_DEFAULT_VISIBLE_METHODS;
       break;
 
   }
