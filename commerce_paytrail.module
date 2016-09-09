@@ -19,7 +19,6 @@ define('PAYTRAIL_DEFAULT_TYPE', 'S1');
 define('PAYTRAIL_DEFAULT_RETURN_SUCCESS', 'checkout/!order_id/payment/return/!payment_redirect_key/success');
 define('PAYTRAIL_DEFAULT_RETURN_CANCEL', 'checkout/!order_id/payment/return/!payment_redirect_key/cancel');
 define('PAYTRAIL_DEFAULT_RETURN_NOTIFY', 'commerce_paytrail_notify/!order_id/!payment_redirect_key');
-define('PAYTRAIL_DEFAULT_VISIBLE_METHODS', '');
 define('PAYTRAIL_DEFAULT_EMBED', 'embed');
 define('PAYTRAIL_DEFAULT_MODE', 1);
 define('PAYTRAIL_BYPASS_MODE', 2);
@@ -187,6 +186,9 @@ function commerce_paytrail_settings_form($settings = array()) {
  *   Submit form.
  */
 function commerce_paytrail_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+  if (_commerce_paytrail_get_setting('mode') == PAYTRAIL_DEFAULT_MODE) {
+    return array();
+  }
   $enabled_methods = _commerce_paytrail_get_setting('visible_methods');
   $methods = commerce_paytrail_get_payment_methods();
 
@@ -715,7 +717,7 @@ function _commerce_paytrail_get_setting($setting_name) {
 
     // Visible methods.
     case 'visible_methods':
-      $setting = !empty($payment_method['settings']['advanced']['visible_methods']) ? $payment_method['settings']['advanced']['visible_methods'] : PAYTRAIL_DEFAULT_VISIBLE_METHODS;
+      $setting = !empty($payment_method['settings']['advanced']['visible_methods']) ? $payment_method['settings']['advanced']['visible_methods'] : array();
       break;
 
   }
