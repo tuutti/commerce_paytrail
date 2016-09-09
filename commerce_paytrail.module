@@ -187,7 +187,7 @@ function commerce_paytrail_settings_form($settings = array()) {
  *   Submit form.
  */
 function commerce_paytrail_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
-  $enabled_methods = $payment_method['settings']['advanced']['visible_methods'];
+  $enabled_methods = _commerce_paytrail_get_setting('visible_methods');
   $methods = commerce_paytrail_get_payment_methods();
 
   // Remove disabled payment methods.
