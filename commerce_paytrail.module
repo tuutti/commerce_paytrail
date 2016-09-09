@@ -21,6 +21,8 @@ define('PAYTRAIL_DEFAULT_RETURN_CANCEL', 'checkout/!order_id/payment/return/!pay
 define('PAYTRAIL_DEFAULT_RETURN_NOTIFY', 'commerce_paytrail_notify/!order_id/!payment_redirect_key');
 define('PAYTRAIL_DEFAULT_VISIBLE_METHODS', '');
 define('PAYTRAIL_DEFAULT_EMBED', 'embed');
+define('PAYTRAIL_DEFAULT_MODE', 1);
+define('PAYTRAIL_BYPASS_MODE', 2);
 
 /**
  * Implements hook_menu().
@@ -114,6 +116,20 @@ function commerce_paytrail_settings_form($settings = array()) {
     '#collapsed' => TRUE,
   );
 
+  // The payment method page bypass is an additional paid feature.
+  $form['advanced']['mode'] = array(
+    '#type' => 'select',
+    '#title' => t('Mode'),
+    '#description' => t('Setting this to anything other than normal requires an additional Paytrail services. See @link', array(
+      '@link' => 'http://support.paytrail.com/hc/en-us/articles/201911337-Payment-page-bypass',
+    )),
+    '#options' => array(
+      PAYTRAIL_DEFAULT_MODE => t('Normal service'),
+      PAYTRAIL_BYPASS_MODE => t('Bypass payment method selection page'),
+    ),
+    '#default_value' => !empty($settings['advanced']['mode']) ? $settings['advanced']['mode'] : PAYTRAIL_DEFAULT_MODE,
+  );
+
   $form['advanced']['return_success'] = array(
     '#type' => 'textfield',
     '#title' => t('Return address (success)'),
@@ -136,11 +152,13 @@ function commerce_paytrail_settings_form($settings = array()) {
   );
 
   $form['advanced']['visible_methods'] = array(
-    '#type' => 'textfield',
+    '#type' => 'select',
     '#title' => t('Visible payment methods'),
-    '#description' => t('List of payment methods that are to be shown on the payment page. If left empty all available payment methods shown. Payment method values are to be listed <strong>separated with comma</strong>. Available payment method values can be checked from <a href="@url">the online documentation</a>.',
+    '#description' => t('List of payment methods that are to be shown on the payment page. If left empty all available payment methods shown.',
       array('@url' => 'http://docs.paytrail.com/en/ch05s04.html')),
-    '#default_value' => !empty($settings['advanced']['visible_methods']) ? $settings['advanced']['visible_methods'] : PAYTRAIL_DEFAULT_VISIBLE_METHODS,
+    '#options' => commerce_paytrail_get_payment_methods(),
+    '#multiple' => TRUE,
+    '#default_value' => !empty($settings['advanced']['visible_methods']) ? $settings['advanced']['visible_methods'] : NULL,
   );
 
   $form['advanced']['embed'] = array(
@@ -155,14 +173,37 @@ function commerce_paytrail_settings_form($settings = array()) {
 
 /**
  * Payment method callback; generation callback for the payment submission form.
+ *
+ * @param array $payment_method
+ *   The payment method instance object used to charge this payment.
+ * @param array $pane_values
+ *   Checkout pane values.
+ * @param array $checkout_pane
+ *   Checkout pane form array.
+ * @param object $order
+ *   The order object the payment applies to.
+ *
+ * @return array
+ *   Submit form.
  */
 function commerce_paytrail_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
-  $form = array();
+  $enabled_methods = $payment_method['settings']['advanced']['visible_methods'];
+  $methods = commerce_paytrail_get_payment_methods();
 
-  // @todo This avoids a notice message about undefined payment_details index. We need to find better solution for that.
-  $form['empty'] = array(
-    '#type' => 'hidden',
-    '#default_value' => '',
+  // Remove disabled payment methods.
+  if (!empty($enabled_methods)) {
+    foreach ($methods as $key => $value) {
+      if (isset($enabled_methods[$key])) {
+        continue;
+      }
+      unset($methods[$key]);
+    }
+  }
+  $form['method'] = array(
+    '#required' => TRUE,
+    '#type' => 'radios',
+    '#options' => $methods,
+    '#default_value' => isset($order->data['commerce_paytrail']['method']) ? $order->data['commerce_paytrail']['method'] : NULL,
   );
 
   return $form;
@@ -184,6 +225,10 @@ function commerce_paytrail_submit_form($payment_method, $pane_values, $checkout_
  */
 function commerce_paytrail_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
   $order->data['commerce_paytrail'] = $pane_values;
+
+  if (!empty($pane_values['method'])) {
+    $order->data['commerce_paytrail']['method'] = intval($pane_values['method']);
+  }
   $transaction = commerce_paytrail_transaction($payment_method, $order, $charge);
   // Save the transaction in the order to use later in commerce_paytrail_redirect_form_submit().
   $order->data['commerce_paytrail']['transaction'] = $transaction;
@@ -205,17 +250,19 @@ function commerce_paytrail_submit_form_submit($payment_method, $pane_form, $pane
  *   The redirect form.
  */
 function commerce_paytrail_redirect_form($form, &$form_state, $order, $payment_method) {
+  $settings = $payment_method['settings'];
+
   if (empty($payment_method['settings']['merchant_id'])) {
     drupal_set_message(t('You have not configured Paytrail payments. Using test credentials. !link.', array('!link' => l(t('Add configuration'), 'admin/commerce/config/payment-methods/manage/commerce_payment_commerce_paytrail/edit/3'))));
-    $payment_method['settings']['merchant_id'] = PAYTRAIL_TEST_MERCHANT_ID;
-    $payment_method['settings']['merchant_hash'] = PAYTRAIL_TEST_MERCHANT_HASH;
+    $settings['merchant_id'] = PAYTRAIL_TEST_MERCHANT_ID;
+    $settings['merchant_hash'] = PAYTRAIL_TEST_MERCHANT_HASH;
   }
 
   $form_elements = _commerce_paytrail_build_transaction($order, $payment_method);
   $service_host = _commerce_paytrail_get_setting('service_host');
 
-  // Add embed JS if wanted.
-  if (!empty($payment_method['settings']['advanced']['embed'])) {
+  // Add embed JS if wanted and paytrail bypass payment page is not enabled.
+  if (!empty($settings['advanced']['embed']) && $settings['advanced']['mode'] == PAYTRAIL_DEFAULT_MODE) {
     drupal_add_js("https://payment.paytrail.com/js/sv-widget.min.js", "external");
     drupal_add_js("
       jQuery(document).ready(function() {
@@ -404,13 +451,21 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     'TYPE' => _commerce_paytrail_get_setting('type'),
     'CULTURE' => _commerce_paytrail_get_setting('culture'),
     'PRESELECTED_METHOD' => '',
-    // Default is 1. We want to use defaults.
-    'MODE' => '',
+    'MODE' => _commerce_paytrail_get_setting('mode'),
     'VISIBLE_METHODS' => _commerce_paytrail_get_setting('visible_methods'),
     // This has not yet been implemented by Paytrail.
     'GROUP' => '',
   );
 
+  // Attempt to use preselected method to bypass payment form.
+  if (_commerce_paytrail_get_setting('mode') == PAYTRAIL_BYPASS_MODE) {
+    $method = NULL;
+
+    if (isset($order->data['commerce_paytrail']['method'])) {
+      $method = intval($order->data['commerce_paytrail']['method']);
+    }
+    $form_elements['PRESELECTED_METHOD'] = $method;
+  }
   // E1 fields.
   if ($type == 'E1') {
     // Prepare the billing address for use in the request.
@@ -481,6 +536,57 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
   $form_elements['AUTHCODE'] = strtoupper(md5($merchant_hash . '|' . implode('|', $form_elements)));
 
   return $form_elements;
+}
+
+/**
+ * Get list of available payment methods.
+ *
+ * @param mixed $key
+ *   Fetch single element.
+ *
+ * @return array
+ *   List of payment methods.
+ */
+function commerce_paytrail_get_payment_methods($key = NULL) {
+  $payment_methods = &drupal_static(__FUNCTION__);
+
+  if (!$payment_methods) {
+    // @see http://docs.paytrail.com/en/ch05s04.html#idm166479247552
+    $payment_methods = array(
+      1 => t('Nordea'),
+      2 => t('Osuuspankki'),
+      3 => t('Danske Bank'),
+      5 => t('Ålandsbanken'),
+      6 => t('Handelsbanken'),
+      9 => t('Paypal'),
+      10 => t('S-Pankki'),
+      11 => t('Klarna, Invoice'),
+      12 => t('Klarna, Instalment'),
+      18 => t('Jousto'),
+      19 => t('Collector'),
+      30 => t('Visa'),
+      31 => t('MasterCard'),
+      34 => t('Diners Club'),
+      35 => t('JCB'),
+      36 => t('Paytrail account'),
+      50 => t('Aktia'),
+      51 => t('POP Pankki'),
+      52 => t('Säästöpankki'),
+      53 => t('Visa (Nets)'),
+      54 => t('MasterCard (Nets)'),
+      55 => t('Diners Club (Nets)'),
+      56 => t('American Express (Nets)'),
+      57 => t('Maestro (Nets)'),
+      60 => t('Collector Bank'),
+      61 => t('Oma Säästöpankki'),
+    );
+    // Allow payment methods to be altered by hook_commerce_paytrail_payment_methods_alter().
+    drupal_alter('commerce_paytrail_payment_methods', $payment_methods);
+  }
+  if ($key) {
+    return isset($payment_methods[$key]) ? $payment_methods[$key] : NULL;
+  }
+  return $payment_methods;
 }
 
 /**
@@ -583,6 +689,11 @@ function _commerce_paytrail_get_setting($setting_name) {
       $setting = !empty($payment_method['settings']['type']) ? $payment_method['settings']['type'] : PAYTRAIL_DEFAULT_TYPE;
       break;
 
+    // Mode.
+    case 'mode':
+      $setting = !empty($payment_method['settings']['advanced']['mode']) ? $payment_method['settings']['advanced']['mode'] : PAYTRAIL_DEFAULT_MODE;
+      break;
+
     // Return success.
     case 'return_success':
       $setting = !empty($payment_method['settings']['advanced']['return_success']) ? $payment_method['settings']['advanced']['return_success'] : PAYTRAIL_DEFAULT_RETURN_SUCCESS;
@@ -600,8 +711,11 @@ function _commerce_paytrail_get_setting($setting_name) {
 
     // Visible methods.
     case 'visible_methods':
-      $setting = !empty($payment_method['settings']['advanced']['visible_methods']) ? $payment_method['settings']['advanced']['visible_methods'] : PAYTRAIL_DEFAULT_VISIBLE_METHODS;
+      if (!empty($payment_method['settings']['advanced']['visible_methods'])) {
+        $setting = implode(',', array_keys($payment_method['settings']['advanced']['visible_methods']));
+      }
       break;
+
   }
 
   return $setting;
