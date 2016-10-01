@@ -95,8 +95,18 @@ class PaymentController extends ControllerBase {
     if ($hash !== $request->query->get('RETURN_AUTHCODE')) {
       return $this->errorMessage($this->t('Validation failed (security hash mismatch). Please contact store administration if the problem persists.'));
     }
+    $this->paymentManager->completePayment($payment, PaymentStatus::SUCCESS);
 
-    return ['#markup' => 'dsad'];
+    // Place the order.
+    $transition = $commerce_order->getState()->getWorkflow()->getTransition('place');
+    $commerce_order->getState()->applyTransition($transition);
+    $commerce_order->save();
+
+    // Redirect to complete payment page.
+    return $this->redirect('commerce_checkout.form', [
+      'commerce_order' => $commerce_order->id(),
+      'step' => 'complete',
+    ]);
   }
 
   /**

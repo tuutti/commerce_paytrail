@@ -224,7 +224,7 @@ class Paytrail extends PaymentGatewayBase implements SupportsStoredPaymentMethod
   /**
    * {@inheritdoc}
    */
-  public function createPaymentMethod(PaymentMethodInterface $payment_method, array $payment_details) {
+  public function createPaymentMethod(PaymentMethodInterface $payment_method, array $payment_details = NULL) {
     // Payment method should never be reused.
     $payment_method->setReusable(FALSE);
     $payment_method->save();

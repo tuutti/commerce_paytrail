@@ -232,6 +232,13 @@ class PaymentManager implements PaymentManagerInterface {
 
       return FALSE;
     }
+    elseif ($status === PaymentStatus::SUCCESS) {
+      $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
+      $payment->getState()->applyTransition($transition);
+      $payment->save();
+
+      return TRUE;
+    }
   }
 
   /**
