@@ -250,6 +250,21 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
+   * Calculate return checksum.
+   *
+   * @param string $hash
+   *   Merchant hash.
+   * @param array $values
+   *   Values used to generate mac.
+   *
+   * @return string
+   *   Checksum.
+   */
+  public function generateReturnChecksum($hash, array $values) {
+    return strtoupper(md5(implode('|', $values) . '|' . $hash));
+  }
+
+  /**
    * Get rounded total price.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
