@@ -1,0 +1,22 @@
+commerce_paytrail.initialize:
+  path: '/commerce-paytrail/initialize/{commerce_order}/{payment_redirect_key}'
+  defaults:
+    _controller: '\Drupal\commerce_paytrail\Controller\PaymentController::initialize'
+    _title: 'Initialize'
+  requirements:
+    _custom_access:  '\Drupal\commerce_paytrail\Controller\PaymentController::access'
+    commerce_order: \d+
+  options:
+    no_cache: TRUE
+
+commerce_paytrail.return:
+  path: '/commerce-paytrail/return/{commerce_order}/{payment_redirect_key}/{type}'
+  defaults:
+    _controller: '\Drupal\commerce_paytrail\Controller\PaymentController::returnTo'
+    _title: 'Success'
+  requirements:
+    _custom_access:  '\Drupal\commerce_paytrail\Controller\PaymentController::access'
+    commerce_order: \d+
+  options:
+    no_cache: TRUE
+

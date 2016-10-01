@@ -1,0 +1,5 @@
+services:
+  commerce_paytrail.payment_manager:
+    class: Drupal\commerce_paytrail\PaymentManager
+    arguments: ["@entity_type.manager", "@module_handler"]
+
