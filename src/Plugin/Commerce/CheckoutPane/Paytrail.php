@@ -80,12 +80,18 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
    *   Pane form.
    */
   public function buildPaneForm(array $pane_form, FormStateInterface $form_state, array &$complete_form) {
+    // Create redirect key for current order if one does not exists already.
+    $this->paymentManager->getRedirectKey($this->order);
+
     $payment_gateway = $this->order->payment_gateway->entity;
     $plugin = $payment_gateway->getPlugin();
 
     if (!$plugin instanceof PaytrailGateway) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
+    // Create payment entity.
+    $this->paymentManager->buildPayment($this->order);
+
     $elements = $this->paymentManager->buildTransaction($this->order);
 
     // @todo Better way to do this. At the moment payment must be on separate checkout.

@@ -6,6 +6,7 @@ use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayBase;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPaymentMethodsInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
@@ -24,7 +25,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   },
  * )
  */
-class Paytrail extends PaymentGatewayBase {
+class Paytrail extends PaymentGatewayBase implements SupportsStoredPaymentMethodsInterface {
 
   /**
    * The language manager.
@@ -223,7 +224,7 @@ class Paytrail extends PaymentGatewayBase {
   /**
    * {@inheritdoc}
    */
-  public function createPaymentMethod(PaymentMethodInterface $payment_method, $capture = TRUE) {
+  public function createPaymentMethod(PaymentMethodInterface $payment_method, array $payment_details) {
     // Payment method should never be reused.
     $payment_method->setReusable(FALSE);
     $payment_method->save();

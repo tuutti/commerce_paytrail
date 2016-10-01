@@ -3,6 +3,8 @@
 namespace Drupal\commerce_paytrail;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Entity\Payment;
+use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_price\Price;
 use Drupal\Component\Utility\Crypt;
@@ -60,7 +62,7 @@ class PaymentManager implements PaymentManagerInterface {
   public function getReturnUrl(OrderInterface $order, $type) {
     $arguments = [
       'commerce_order' => $order->id(),
-      'payment_redirect_key' => $this->getRedirectKey($order),
+      'paytrail_redirect_key' => $this->getRedirectKey($order),
       'type' => $type,
     ];
 
@@ -86,8 +88,8 @@ class PaymentManager implements PaymentManagerInterface {
     $data = $order->getData();
 
     // Generate only once.
-    if (!empty($data['redirect_key'])) {
-      return $data['redirect_key'];
+    if (!empty($data['paytrail_redirect_key'])) {
+      return $data['paytrail_redirect_key'];
     }
     $payment_redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), REQUEST_TIME), Settings::getHashSalt());
 
@@ -119,13 +121,13 @@ class PaymentManager implements PaymentManagerInterface {
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
+    // @note. Values must be set in correct order to make sure
+    // authcode is calculated correctly.
+    // @todo Add some kind of validation?
     $values = [
       'MERCHANT_ID' => $plugin->getSetting('merchant_id'),
     ];
-    // Create redirect key for current order if one does not exists already.
-    $this->getRedirectKey($order);
 
-    // @note. These must be set in correct order.
     if ($plugin->getSetting('paytrail_type') === 'S1') {
       $values += [
         'AMOUNT' => $this->getOrderTotal($order)->getNumber(),
@@ -156,6 +158,80 @@ class PaymentManager implements PaymentManagerInterface {
     $values['AUTHCODE'] = $this->generateAuthCode($plugin->getSetting('merchant_hash'), $values);
 
     return $values;
+  }
+
+  /**
+   * Attempt to fetch payment for given order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return bool|\Drupal\commerce_paytrail\PaymentInterface
+   *   Payment object on success, FALSE on failure.
+   */
+  public function getPayment(OrderInterface $order) {
+    /** @var PaymentInterface[] $payments */
+    $payments = $this->entityTypeManager
+      ->getStorage('commerce_payment')
+      ->loadByProperties(['order_id' => $order->id()]);
+
+    if (empty($payments)) {
+      return FALSE;
+    }
+    foreach ($payments as $payment) {
+      if ($payment->bundle() !== 'paytrail' || $payment->getAmount()->compareTo($order->getTotalPrice()) !== 0) {
+        continue;
+      }
+      $paytrail_payment = $payment;
+    }
+    return empty($paytrail_payment) ? FALSE : $paytrail_payment;
+  }
+
+  /**
+   * Create payment entity for given order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The Order.
+   *
+   * @return \Drupal\Core\Entity\EntityInterface|static
+   *   The payment entity.
+   */
+  public function buildPayment(OrderInterface $order) {
+    // Attempt to get existing payment.
+    if ($payment = $this->getPayment($order)) {
+      return $payment;
+    }
+    $payment = Payment::create([
+      'type' => 'paytrail',
+      'payment_method' => $order->payment_method->target_id,
+      'payment_gateway' => $order->payment_gateway->target_id,
+      'order_id' => $order->id(),
+      'amount' => $order->getTotalPrice(),
+      'paytrail_redirect_url' => $this->getRedirectKey($order),
+    ]);
+    $payment->save();
+
+    return $payment;
+  }
+
+  /**
+   * Complete payment.
+   *
+   * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
+   *   The payment.
+   * @param string $status
+   *   Payment status.
+   *
+   * @return bool
+   *   Status of payment.
+   */
+  public function completePayment(PaymentInterface $payment, $status) {
+    // Payment failed. Delete payment.
+    if ($status === PaymentStatus::FAILED) {
+      $payment->delete();
+
+      return FALSE;
+    }
   }
 
   /**
