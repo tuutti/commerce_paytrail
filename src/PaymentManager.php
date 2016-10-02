@@ -138,26 +138,6 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Store preselected method.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param int $selection
-   *   Selection.
-   */
-  public function setPreselectedMethod(OrderInterface $order, $selection) {
-  }
-
-  /**
-   * Get preselected order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   */
-  public function getPreselectedMethod(OrderInterface $order) {
-  }
-
-  /**
    * Build transaction for order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
@@ -176,6 +156,8 @@ class PaymentManager implements PaymentManagerInterface {
     $repository = new TransactionRepository([
       'MERCHANT_ID' => $plugin->getSetting('merchant_id'),
     ]);
+    /** @var \Drupal\commerce_payment\Entity\PaymentMethod $payment_method */
+    $payment_method = $order->payment_method->entity;
 
     $repository->setOrderNumber($order->getOrderNumber())
       ->setReturnAddress('return', $this->getReturnUrl($order, 'return'))
@@ -184,7 +166,8 @@ class PaymentManager implements PaymentManagerInterface {
       ->setReturnAddress('notify', $this->getReturnUrl($order, 'notify'))
       ->setType($plugin->getSetting('paytrail_type'))
       ->setCulture($plugin->getCulture())
-      ->setPreselectedMethod('')
+      // Attempt to use preselected method if available.
+      ->setPreselectedMethod($payment_method->get('preselected_method')->value)
       ->setMode($plugin->getSetting('paytrail_mode'))
       ->setVisibleMethods($plugin->getSetting('visible_methods'));
 

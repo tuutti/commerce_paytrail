@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentMethodType;
 
+use Drupal\commerce\BundleFieldDefinition;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentMethodType\PaymentMethodTypeBase;
 
@@ -21,6 +22,20 @@ class Paytrail extends PaymentMethodTypeBase {
    */
   public function buildLabel(PaymentMethodInterface $payment_method) {
     return $this->t('Paytrail');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildFieldDefinitions() {
+    $fields = parent::buildFieldDefinitions();
+
+    $fields['preselected_method'] = BundleFieldDefinition::create('integer')
+      ->setLabel(t('Preselected method'))
+      ->setDescription(t('The preselected payment method'))
+      ->setSetting('size', 'tiny');
+
+    return $fields;
   }
 
 }

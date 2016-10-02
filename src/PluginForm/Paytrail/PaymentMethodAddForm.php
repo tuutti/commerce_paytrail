@@ -21,15 +21,20 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
     $payment_method = $this->entity;
 
     $form = parent::buildConfigurationForm($form, $form_state);
-    $payment_gateway = $payment_method->getPaymentGateway()->getPlugin();
-
     // Add payment methods if bypass payment page mode is enabled.
-    if ($payment_gateway->getSetting('paytrail_mode') == Paytrail::BYPASS_MODE) {
-      if ($payment_method->bundle() === 'paytrail') {
+    if ($payment_method->bundle() === 'paytrail') {
+      if ($this->plugin->getSetting('paytrail_mode') == Paytrail::BYPASS_MODE) {
         $form['payment_details'] = $this->buildPaytrailForm($form['payment_details'], $form_state);
       }
     }
     return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+    parent::submitConfigurationForm($form, $form_state);
   }
 
   /**
@@ -44,10 +49,9 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
    *   Form array.
    */
   protected function buildPaytrailForm(array $element, FormStateInterface $form_state) {
-    $payment_gateway = $this->entity->getPaymentGateway()->getPlugin();
     // Fetch list of enabled payment methods.
-    $payment_methods = $payment_gateway->getPaymentManager()
-      ->getPaymentMethods($payment_gateway->getSetting('visible_methods'));
+    $payment_methods = $this->plugin->getPaymentManager()
+      ->getPaymentMethods($this->plugin->getSetting('visible_methods'));
 
     $options = array_map(function ($value) {
       return $value->getDisplayLabel();
@@ -56,6 +60,8 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
     $element['preselected_method'] = [
       '#type' => 'radios',
       '#options' => $options,
+      '#required' => TRUE,
+      '#default_value' => $form_state->getValue('preselected_method'),
     ];
     return $element;
   }
