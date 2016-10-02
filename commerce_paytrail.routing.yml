@@ -1,0 +1,11 @@
+commerce_paytrail.return:
+  path: '/commerce-paytrail/return/{commerce_order}/{paytrail_redirect_key}/{type}'
+  defaults:
+    _controller: '\Drupal\commerce_paytrail\Controller\PaymentController::returnTo'
+    _title: 'Return'
+  requirements:
+    _custom_access:  '\Drupal\commerce_paytrail\Controller\PaymentController::access'
+    commerce_order: \d+
+  options:
+    no_cache: TRUE
+
