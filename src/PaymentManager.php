@@ -8,6 +8,7 @@ use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
+use Drupal\commerce_paytrail\Repository\TransactionRepository;
 use Drupal\commerce_price\Price;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Core\Entity\EntityTypeManager;
@@ -171,91 +172,57 @@ class PaymentManager implements PaymentManagerInterface {
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
-    // @note. Values must be set in correct order to make sure authcode is calculated correctly.
-    // @todo Add some kind of validation?
-    $values = [
+    $repository = new TransactionRepository([
       'MERCHANT_ID' => $plugin->getSetting('merchant_id'),
-    ];
+    ]);
+
+    $repository->setOrderNumber($order->getOrderNumber())
+      ->setReturnAddress($this->getReturnUrl($order, 'return'), 'return')
+      ->setReturnAddress($this->getReturnUrl($order, 'cancel'), 'cancel')
+      ->setReturnAddress($this->getReturnUrl($order, 'pending'), 'pending')
+      ->setReturnAddress($this->getReturnUrl($order, 'notify'), 'notify')
+      ->setType($plugin->getSetting('paytrail_type'))
+      ->setCulture($plugin->getCulture())
+      ->setPreselectedMethod('')
+      ->setMode($plugin->getSetting('paytrail_mode'))
+      ->setVisibleMethods($plugin->getSetting('visible_methods'));
 
     if ($plugin->getSetting('paytrail_type') === 'S1') {
-      $values += [
-        'AMOUNT' => $this->getOrderTotal($order)->getNumber(),
-      ];
+      $repository->setAmount($order->getTotalPrice());
     }
-    $values += [
-      'ORDER_NUMBER' => $order->getOrderNumber(),
-      'REFERENCE_NUMBER' => '',
-      'ORDER_DESCRIPTION' => '',
-      // Only EUR is accepted for Finnish banks and credit cards.
-      'CURRENCY' => 'EUR',
-      'RETURN_ADDRESS' => $this->getReturnUrl($order, 'return'),
-      'CANCEL_ADDRESS' => $this->getReturnUrl($order, 'cancel'),
-      'PENDING_ADDRESS' => $this->getReturnUrl($order, 'pending'),
-      'NOTIFY_ADDRESS' => $this->getReturnUrl($order, 'notify'),
-      'TYPE' => $plugin->getSetting('paytrail_type'),
-      'CULTURE' => $plugin->getCulture(),
-      'PRESELECTED_METHOD' => '',
-      'MODE' => $plugin->getSetting('paytrail_mode'),
-      'VISIBLE_METHODS' => implode(',', $plugin->getSetting('visible_methods')),
-      // This has not yet been implemented by Paytrail.
-      'GROUP' => '',
-    ];
-
-    if ($plugin->getSetting('paytrail_type') === 'E1') {
+    else {
       $billing_data = $order->getBillingProfile()->get('address')->first();
 
       // Billing data not found.
       if (!$billing_data instanceof AddressInterface) {
         return FALSE;
       }
-      $names = explode(' ', $billing_data->getGivenName());
-
-      // Lastname is required field by Paytrail, but not by billing profile.
-      // Fallback to double first names.
-      if (empty($names[1])) {
-        $names[1] = reset($names);
-      }
-      list($firstname, $lastname) = $names;
-
-      $values += [
-        'CONTACT_TELLNO' => '',
-        'CONTACT_CELLNO' => '',
-        'CONTACT_EMAIL' => $order->getEmail(),
-        'CONTACT_FIRSTNAME' => substr($firstname, 0, 64),
-        'CONTACT_LASTNAME' => substr($lastname, 0, 64),
-        'CONTACT_COMPANY' => substr($billing_data->getOrganization(), 0, 64),
-        'CONTACT_ADDR_STREET' => substr($billing_data->getAddressLine1(), 0, 128),
-        'CONTACT_ADDR_ZIP' => substr($billing_data->getPostalCode(), 0, 16),
-        'CONTACT_ADDR_CITY' => substr($billing_data->getLocality(), 0, 64),
-        'CONTACT_ADDR_COUNTRY' => $billing_data->getCountryCode(),
+      $repository->setContactTelno('')
+        ->setContactCellno('')
+        ->setContactEmail($order->getEmail())
+        ->setContactName($billing_data->getGivenName())
+        ->setContactCompany($billing_data->getOrganization())
+        ->setContactAddress($billing_data->getAddressLine1())
+        ->setContactZip($billing_data->getPostalCode())
+        ->setContactCity($billing_data->getLocality())
+        ->setContactCountry($billing_data->getCountryCode())
         // @todo Check commerce settings.
-        'INCLUDE_VAT' => '1',
-        'ITEMS' => count($order->getItems()),
-      ];
+        ->setIncludeVat(1)
+        ->setItems(count($order->getItems()));
 
       foreach ($order->getItems() as $delta => $item) {
-        $temp_value = [
-          'ITEM_TITLE' => $item->getTitle(),
-          'ITEM_NO' => '',
-          'ITEM_AMOUNT' => round($item->getQuantity()),
-          'ITEM_PRICE' => number_format($item->getTotalPrice()->getNumber(), 2, '.', ''),
-          // @todo Implement this once commerce_tax is implemented again.
-          'ITEM_TAX' => 0,
-          // @todo Implement this.
-          'ITEM_DISCOUNT' => 0,
-          // Default to product (1=product, 2=shipping fees, 3=handling fees).
-          // @todo Implement this.
-          'ITEM_TYPE' => 1,
-        ];
-        foreach ($temp_value as $key => $value) {
-          $values[$key . '[' . $delta . ']'] = $value;
-        }
+        // @todo Implement: Taxes when commerce_tax is implemneted again.
+        // @todo Implement discount and item type handling.
+        $repository->setProduct($item->getTitle(), $item->getQuantity(), $item->getTotalPrice());
       }
     }
     $order_clone = clone $order;
     // Allow elements to be altered.
-    $this->moduleHandler->alter('commerce_paytrail_payment', $values, $order_clone, $plugin);
+    // @todo replace with dispatchable event?
+    $this->moduleHandler->alter('commerce_paytrail_payment', $repository, $order_clone, $plugin);
 
+    // Build repository array.
+    $values = $repository->build();
     $values['AUTHCODE'] = $this->generateAuthCode($plugin->getSetting('merchant_hash'), $values);
 
     return $values;
@@ -384,24 +351,6 @@ class PaymentManager implements PaymentManagerInterface {
    */
   public function generateReturnChecksum($hash, array $values) {
     return strtoupper(md5(implode('|', $values) . '|' . $hash));
-  }
-
-  /**
-   * Get rounded total price.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Drupal\commerce_price\Price
-   *   Total price object.
-   */
-  public function getOrderTotal(OrderInterface $order) {
-    $order_total = $order->getTotalPrice();
-    $currency_code = $order_total->getCurrencyCode();
-
-    $rounded = number_format($order_total->getNumber(), 2, '.', '');
-
-    return new Price($rounded, $currency_code);
   }
 
 }
