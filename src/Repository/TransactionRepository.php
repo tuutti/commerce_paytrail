@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_paytrail\Repository;
 
+use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_price\Price;
 
 /**
@@ -387,12 +388,8 @@ class TransactionRepository {
   /**
    * Set product.
    *
-   * @param string $title
-   *   Product title.
-   * @param int $quantity
-   *   Product quantity.
-   * @param \Drupal\commerce_price\Price $price
-   *   Product price.
+   * @param \Drupal\commerce_order\Entity\OrderItemInterface $item
+   *   The order item object.
    * @param int $discount
    *   Discount amount.
    * @param int $type
@@ -404,12 +401,12 @@ class TransactionRepository {
    *
    * @return $this
    */
-  public function setProduct($title, $quantity, Price $price, $discount = 0, $type = self::ITEM_PRODUCT, $number = '', $tax_percent = 0.00) {
+  public function setProduct(OrderItemInterface $item, $discount = 0, $type = self::ITEM_PRODUCT, $number = '', $tax_percent = 0.00) {
     $this->products[] = [
-      'ITEM_TITLE' => $title,
+      'ITEM_TITLE' => $item->getTitle(),
       'ITEM_NO' => $number,
-      'ITEM_AMOUNT' => round($quantity),
-      'ITEM_PRICE' => number_format($price->getNumber(), 2, '.', ''),
+      'ITEM_AMOUNT' => round($item->getQuantity()),
+      'ITEM_PRICE' => number_format($item->getTotalPrice()->getNumber(), 2, '.', ''),
       'ITEM_TAX' => $tax_percent,
       'ITEM_DISCOUNT' => $discount,
       'ITEM_TYPE' => $type,

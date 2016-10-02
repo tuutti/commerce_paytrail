@@ -213,7 +213,7 @@ class PaymentManager implements PaymentManagerInterface {
       foreach ($order->getItems() as $delta => $item) {
         // @todo Implement: Taxes when commerce_tax is implemneted again.
         // @todo Implement discount and item type handling.
-        $repository->setProduct($item->getTitle(), $item->getQuantity(), $item->getTotalPrice());
+        $repository->setProduct($item);
       }
     }
     $order_clone = clone $order;
