@@ -7,6 +7,7 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_price\Price;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Core\Entity\EntityTypeManager;
@@ -37,16 +38,44 @@ class PaymentManager implements PaymentManagerInterface {
   protected $moduleHandler;
 
   /**
+   * The payment method repository.
+   *
+   * @var \Drupal\commerce_paytrail\Repository\MethodRepository
+   */
+  protected $repository;
+
+  /**
    * Constructor.
    *
    * @param \Drupal\Core\Entity\EntityTypeManager $entity_type_manager
    *   The entity type manager service.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler service.
+   * @param \Drupal\commerce_paytrail\Repository\MethodRepository $repository
+   *   The payment method repository.
    */
-  public function __construct(EntityTypeManager $entity_type_manager, ModuleHandlerInterface $module_handler) {
+  public function __construct(EntityTypeManager $entity_type_manager, ModuleHandlerInterface $module_handler, MethodRepository $repository) {
     $this->entityTypeManager = $entity_type_manager;
     $this->moduleHandler = $module_handler;
+    $this->repository = $repository;
+  }
+
+  /**
+   * Get available payment methods.
+   *
+   * @param array $enabled
+   *   List of enabled payment methods.
+   *
+   * @return array|mixed
+   *   List of available payment methods.
+   */
+  public function getPaymentMethods(array $enabled = []) {
+    $methods = $this->repository->getMethods();
+
+    if (empty($enabled)) {
+      return $methods;
+    }
+    return array_intersect_key($enabled, $methods);
   }
 
   /**
@@ -104,6 +133,26 @@ class PaymentManager implements PaymentManagerInterface {
     $order->save();
 
     return $payment_redirect_key;
+  }
+
+  /**
+   * Store preselected method.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param int $selection
+   *   Selection.
+   */
+  public function setPreselectedMethod(OrderInterface $order, $selection) {
+  }
+
+  /**
+   * Get preselected order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   */
+  public function getPreselectedMethod(OrderInterface $order) {
   }
 
   /**

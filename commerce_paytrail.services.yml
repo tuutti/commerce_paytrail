@@ -1,5 +1,8 @@
 services:
+  commerce_paytrail.method_repository:
+    class: Drupal\commerce_paytrail\Repository\MethodRepository
+    arguments: ["@event_dispatcher"]
   commerce_paytrail.payment_manager:
     class: Drupal\commerce_paytrail\PaymentManager
-    arguments: ["@entity_type.manager", "@module_handler"]
+    arguments: ["@entity_type.manager", "@module_handler", "@commerce_paytrail.method_repository"]
 

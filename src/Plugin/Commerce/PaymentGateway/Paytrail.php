@@ -7,6 +7,7 @@ use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayBase;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPaymentMethodsInterface;
+use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
@@ -34,6 +35,13 @@ class Paytrail extends PaymentGatewayBase implements SupportsStoredPaymentMethod
    */
   protected $languageManager;
 
+  /**
+   * The payment manager.
+   *
+   * @var \Drupal\commerce_paytrail\PaymentManagerInterface
+   */
+  protected $paymentManager;
+
   const HOST = 'https://payment.paytrail.com';
   const DEFAULT_MODE = 1;
   const BYPASS_MODE = 2;
@@ -55,11 +63,14 @@ class Paytrail extends PaymentGatewayBase implements SupportsStoredPaymentMethod
    *   The payment method type manager.
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
+   * @param \Drupal\commerce_paytrail\PaymentManagerInterface $payment_manager
+   *   The payment manager.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, LanguageManagerInterface $language_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, LanguageManagerInterface $language_manager, PaymentManagerInterface $payment_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager);
 
     $this->languageManager = $language_manager;
+    $this->paymentManager = $payment_manager;
   }
 
   /**
@@ -73,7 +84,8 @@ class Paytrail extends PaymentGatewayBase implements SupportsStoredPaymentMethod
       $container->get('entity_type.manager'),
       $container->get('plugin.manager.commerce_payment_type'),
       $container->get('plugin.manager.commerce_payment_method_type'),
-      $container->get('language_manager')
+      $container->get('language_manager'),
+      $container->get('commerce_paytrail.payment_manager')
     );
   }
 
@@ -181,11 +193,17 @@ class Paytrail extends PaymentGatewayBase implements SupportsStoredPaymentMethod
       '#default_value' => $this->configuration['paytrail_mode'],
     ];
 
+    $payment_methods = array_map(function ($value) {
+      return $value->getLabel();
+    }, $this->paymentManager->getPaymentMethods());
+
     $form['visible_methods'] = [
       '#type' => 'select',
+      '#multiple' => TRUE,
       '#title' => $this->t('Visible payment methods'),
       '#description' => $this->t('List of payment methods that are to be shown on the payment page. If left empty all available payment methods shown.'),
-      '#options' => [],
+      '#options' => $payment_methods,
+      '#default_value' => $this->configuration['visible_methods'],
     ];
 
     return $form;
