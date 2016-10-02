@@ -230,6 +230,20 @@ class Paytrail extends PaymentGatewayBase implements SupportsStoredPaymentMethod
   }
 
   /**
+   * Get payment manager.
+   *
+   * This is used in Drupal\commerce_paytrail\PluginForm\Paytrail\PaymentMethodAddForm.
+   *
+   * @todo Check if there is any way to inject this directly into PluginForm.
+   *
+   * @return \Drupal\commerce_paytrail\PaymentManagerInterface
+   *   The payment manager.
+   */
+  public function getPaymentManager() {
+    return $this->paymentManager;
+  }
+
+  /**
    * Get payment host url.
    *
    * @return string

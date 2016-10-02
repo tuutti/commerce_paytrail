@@ -2,7 +2,7 @@
 
 namespace Drupal\commerce_paytrail\Repository;
 
-use Drupal\commerce_paytrail\Events\PaytrailEvents;
+use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;

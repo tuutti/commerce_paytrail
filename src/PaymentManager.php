@@ -77,7 +77,7 @@ class PaymentManager implements PaymentManagerInterface {
     if (empty($enabled)) {
       return $methods;
     }
-    return array_intersect_key($enabled, $methods);
+    return array_intersect_key($methods, array_flip($enabled));
   }
 
   /**

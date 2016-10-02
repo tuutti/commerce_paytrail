@@ -3,6 +3,8 @@
 namespace Drupal\commerce_paytrail\PluginForm\Paytrail;
 
 use Drupal\commerce_payment\PluginForm\PaymentMethodAddForm as BasePaymentMethodAddForm;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Class PaymentMethodAddForm.
@@ -10,5 +12,52 @@ use Drupal\commerce_payment\PluginForm\PaymentMethodAddForm as BasePaymentMethod
  * @package Drupal\commerce_paytrail\PluginForm\Paytrail
  */
 class PaymentMethodAddForm extends BasePaymentMethodAddForm {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+    /** @var \Drupal\commerce_payment\Entity\PaymentMethodInterface $payment_method */
+    $payment_method = $this->entity;
+
+    $form = parent::buildConfigurationForm($form, $form_state);
+    $payment_gateway = $payment_method->getPaymentGateway()->getPlugin();
+
+    // Add payment methods if bypass payment page mode is enabled.
+    if ($payment_gateway->getSetting('paytrail_mode') == Paytrail::BYPASS_MODE) {
+      if ($payment_method->bundle() === 'paytrail') {
+        $form['payment_details'] = $this->buildPaytrailForm($form['payment_details'], $form_state);
+      }
+    }
+    return $form;
+  }
+
+  /**
+   * Build preselected method form for Paytrail.
+   *
+   * @param array $element
+   *   Form element.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state object.
+   *
+   * @return array
+   *   Form array.
+   */
+  protected function buildPaytrailForm(array $element, FormStateInterface $form_state) {
+    $payment_gateway = $this->entity->getPaymentGateway()->getPlugin();
+    // Fetch list of enabled payment methods.
+    $payment_methods = $payment_gateway->getPaymentManager()
+      ->getPaymentMethods($payment_gateway->getSetting('visible_methods'));
+
+    $options = array_map(function ($value) {
+      return $value->getDisplayLabel();
+    }, $payment_methods);
+
+    $element['preselected_method'] = [
+      '#type' => 'radios',
+      '#options' => $options,
+    ];
+    return $element;
+  }
 
 }
