@@ -80,8 +80,7 @@ class PaymentController extends ControllerBase {
         'step' => NULL,
       ]);
     }
-    elseif ($type === 'notify') {
-    }
+    // Handle return and notify.
     $hash_values = [];
     foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
       if (!$value = $request->query->get($key)) {
@@ -95,13 +94,10 @@ class PaymentController extends ControllerBase {
     if ($hash !== $request->query->get('RETURN_AUTHCODE')) {
       return $this->errorMessage($this->t('Validation failed (security hash mismatch). Please contact store administration if the problem persists.'));
     }
-    $this->paymentManager->completePayment($payment, PaymentStatus::SUCCESS);
-
-    // Place the order.
-    $transition = $commerce_order->getState()->getWorkflow()->getTransition('place');
-    $commerce_order->getState()->applyTransition($transition);
-    $commerce_order->save();
-
+    // Complete order after succesful payment.
+    if ($this->paymentManager->completePayment($payment, PaymentStatus::SUCCESS)) {
+      $this->paymentManager->completeOrder($commerce_order);
+    }
     // Redirect to complete payment page.
     return $this->redirect('commerce_checkout.form', [
       'commerce_order' => $commerce_order->id(),

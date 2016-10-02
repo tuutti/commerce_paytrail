@@ -92,8 +92,10 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
     // Create payment entity.
     $this->paymentManager->buildPayment($this->order);
 
-    $elements = $this->paymentManager->buildTransaction($this->order);
-
+    if (!$elements = $this->paymentManager->buildTransaction($this->order)) {
+      // @todo Handle error.
+      return $pane_form;
+    }
     // @todo Better way to do this. At the moment payment must be on separate checkout.
     $complete_form['#action'] = $plugin->getHostUrl();
 

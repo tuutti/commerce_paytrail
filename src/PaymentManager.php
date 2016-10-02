@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_paytrail;
 
+use Drupal\address\AddressInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
@@ -111,8 +112,8 @@ class PaymentManager implements PaymentManagerInterface {
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   Order.
    *
-   * @return array
-   *   Elements to build transaction from.
+   * @return array|bool
+   *   FALSE on validation failure or transaction array.
    */
   public function buildTransaction(OrderInterface $order) {
     $payment_gateway = $order->payment_gateway->entity;
@@ -121,8 +122,7 @@ class PaymentManager implements PaymentManagerInterface {
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
-    // @note. Values must be set in correct order to make sure
-    // authcode is calculated correctly.
+    // @note. Values must be set in correct order to make sure authcode is calculated correctly.
     // @todo Add some kind of validation?
     $values = [
       'MERCHANT_ID' => $plugin->getSetting('merchant_id'),
@@ -151,6 +151,58 @@ class PaymentManager implements PaymentManagerInterface {
       // This has not yet been implemented by Paytrail.
       'GROUP' => '',
     ];
+
+    if ($plugin->getSetting('paytrail_type') === 'E1') {
+      $billing_data = $order->getBillingProfile()->get('address')->first();
+
+      // Billing data not found.
+      if (!$billing_data instanceof AddressInterface) {
+        return FALSE;
+      }
+      $names = explode(' ', $billing_data->getGivenName());
+
+      // Lastname is required field by Paytrail, but not by billing profile.
+      // Fallback to double first names.
+      if (empty($names[1])) {
+        $names[1] = reset($names);
+      }
+      list($firstname, $lastname) = $names;
+
+      $values += [
+        'CONTACT_TELLNO' => '',
+        'CONTACT_CELLNO' => '',
+        'CONTACT_EMAIL' => $order->getEmail(),
+        'CONTACT_FIRSTNAME' => substr($firstname, 0, 64),
+        'CONTACT_LASTNAME' => substr($lastname, 0, 64),
+        'CONTACT_COMPANY' => substr($billing_data->getOrganization(), 0, 64),
+        'CONTACT_ADDR_STREET' => substr($billing_data->getAddressLine1(), 0, 128),
+        'CONTACT_ADDR_ZIP' => substr($billing_data->getPostalCode(), 0, 16),
+        'CONTACT_ADDR_CITY' => substr($billing_data->getLocality(), 0, 64),
+        'CONTACT_ADDR_COUNTRY' => $billing_data->getCountryCode(),
+        // @todo Check commerce settings.
+        'INCLUDE_VAT' => '1',
+        'ITEMS' => count($order->getItems()),
+      ];
+
+      foreach ($order->getItems() as $delta => $item) {
+        $temp_value = [
+          'ITEM_TITLE' => $item->getTitle(),
+          'ITEM_NO' => '',
+          'ITEM_AMOUNT' => round($item->getQuantity()),
+          'ITEM_PRICE' => number_format($item->getTotalPrice()->getNumber(), 2, '.', ''),
+          // @todo Implement this once commerce_tax is implemented again.
+          'ITEM_TAX' => 0,
+          // @todo Implement this.
+          'ITEM_DISCOUNT' => 0,
+          // Default to product (1=product, 2=shipping fees, 3=handling fees).
+          // @todo Implement this.
+          'ITEM_TYPE' => 1,
+        ];
+        foreach ($temp_value as $key => $value) {
+          $values[$key . '[' . $delta . ']'] = $value;
+        }
+      }
+    }
     $order_clone = clone $order;
     // Allow elements to be altered.
     $this->moduleHandler->alter('commerce_paytrail_payment', $values, $order_clone, $plugin);
@@ -239,6 +291,20 @@ class PaymentManager implements PaymentManagerInterface {
 
       return TRUE;
     }
+  }
+
+  /**
+   * Complete commerce order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   */
+  public function completeOrder(OrderInterface $order) {
+    // Place the order.
+    $transition = $order->getState()->getWorkflow()->getTransition('place');
+    $order->getState()->applyTransition($transition);
+    $order->set('checkout_step', 'complete');
+    $order->save();
   }
 
   /**
