@@ -158,14 +158,14 @@ class TransactionRepository {
   /**
    * Set return address.
    *
-   * @param string $address
-   *   Return address.
    * @param string $type
    *   The return address type.
+   * @param string $address
+   *   Return address.
    *
    * @return $this
    */
-  public function setReturnAddress($address, $type) {
+  public function setReturnAddress($type, $address) {
     return $this->set(strtoupper($type) . '_ADDRESS', $address);
   }
 

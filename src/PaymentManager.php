@@ -6,15 +6,16 @@ use Drupal\address\AddressInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
+use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;
-use Drupal\commerce_price\Price;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Core\Entity\EntityTypeManager;
-use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 /**
@@ -32,11 +33,11 @@ class PaymentManager implements PaymentManagerInterface {
   protected $entityTypeManager;
 
   /**
-   * The module handler service.
+   * The event dispatcher.
    *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
    */
-  protected $moduleHandler;
+  protected $eventDispatcher;
 
   /**
    * The payment method repository.
@@ -50,14 +51,14 @@ class PaymentManager implements PaymentManagerInterface {
    *
    * @param \Drupal\Core\Entity\EntityTypeManager $entity_type_manager
    *   The entity type manager service.
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
-   *   The module handler service.
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   *   The event dispatcher.
    * @param \Drupal\commerce_paytrail\Repository\MethodRepository $repository
    *   The payment method repository.
    */
-  public function __construct(EntityTypeManager $entity_type_manager, ModuleHandlerInterface $module_handler, MethodRepository $repository) {
+  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, MethodRepository $repository) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->moduleHandler = $module_handler;
+    $this->eventDispatcher = $event_dispatcher;
     $this->repository = $repository;
   }
 
@@ -177,10 +178,10 @@ class PaymentManager implements PaymentManagerInterface {
     ]);
 
     $repository->setOrderNumber($order->getOrderNumber())
-      ->setReturnAddress($this->getReturnUrl($order, 'return'), 'return')
-      ->setReturnAddress($this->getReturnUrl($order, 'cancel'), 'cancel')
-      ->setReturnAddress($this->getReturnUrl($order, 'pending'), 'pending')
-      ->setReturnAddress($this->getReturnUrl($order, 'notify'), 'notify')
+      ->setReturnAddress('return', $this->getReturnUrl($order, 'return'))
+      ->setReturnAddress('cancel', $this->getReturnUrl($order, 'cancel'))
+      ->setReturnAddress('pending', $this->getReturnUrl($order, 'pending'))
+      ->setReturnAddress('notify', $this->getReturnUrl($order, 'notify'))
       ->setType($plugin->getSetting('paytrail_type'))
       ->setCulture($plugin->getCulture())
       ->setPreselectedMethod('')
@@ -218,11 +219,13 @@ class PaymentManager implements PaymentManagerInterface {
     }
     $order_clone = clone $order;
     // Allow elements to be altered.
-    // @todo replace with dispatchable event?
-    $this->moduleHandler->alter('commerce_paytrail_payment', $repository, $order_clone, $plugin);
-
+    $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, new GenericEvent(NULL, [
+      'plugin' => $plugin,
+      'order' => $order_clone,
+      'transaction_repository' => $repository,
+    ]));
     // Build repository array.
-    $values = $repository->build();
+    $values = $event->getArgument('transaction_repository')->build();
     $values['AUTHCODE'] = $this->generateAuthCode($plugin->getSetting('merchant_hash'), $values);
 
     return $values;

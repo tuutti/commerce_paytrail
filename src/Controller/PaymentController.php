@@ -110,8 +110,7 @@ class PaymentController extends ControllerBase {
     // Complete order after succesful payment.
     if ($this->paymentManager->completePayment($payment, PaymentStatus::SUCCESS)) {
       // @todo This is repeating the logic from commerce_checkout.
-      // Implement better way to do this once commerce provides
-      // api for this.
+      // Implement better way to do this once commerce provides api for this.
       $this->paymentManager->completeOrder($commerce_order);
 
       // Notify other modules.

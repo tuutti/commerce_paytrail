@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_paytrail\Repository;
 
+use Drupal\commerce_paytrail\Events\PaytrailEvents;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -71,7 +72,7 @@ class MethodRepository {
       }
     }
     // @todo Replace with custom event?
-    $event = $this->eventDispatcher->dispatch('commerce_paytrail.method_repository', new GenericEvent($available_methods));
+    $event = $this->eventDispatcher->dispatch(PaytrailEvents::PAYMENT_REPO_ALTER, new GenericEvent($available_methods));
     $methods = $event->getSubject();
 
     return $methods;
