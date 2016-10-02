@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_paytrail\Controller;
 
+use Drupal\commerce_checkout\Event\CheckoutEvents;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\PaymentStatus;
@@ -9,6 +10,7 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -26,13 +28,23 @@ class PaymentController extends ControllerBase {
   protected $paymentManager;
 
   /**
+   * The event dispatcher.
+   *
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   */
+  protected $eventDispatcher;
+
+  /**
    * PaymentController constructor.
    *
    * @param \Drupal\commerce_paytrail\PaymentManagerInterface $payment_manager
    *   The payment manager.
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   *   The event dispatcher.
    */
-  public function __construct(PaymentManagerInterface $payment_manager) {
+  public function __construct(PaymentManagerInterface $payment_manager, EventDispatcherInterface $event_dispatcher) {
     $this->paymentManager = $payment_manager;
+    $this->eventDispatcher = $event_dispatcher;
   }
 
   /**
@@ -40,7 +52,8 @@ class PaymentController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('commerce_paytrail.payment_manager')
+      $container->get('commerce_paytrail.payment_manager'),
+      $container->get('event_dispatcher')
     );
   }
 
@@ -96,12 +109,18 @@ class PaymentController extends ControllerBase {
     }
     // Complete order after succesful payment.
     if ($this->paymentManager->completePayment($payment, PaymentStatus::SUCCESS)) {
+      // @todo This is repeating the logic from commerce_checkout.
+      // Implement better way to do this once commerce provides
+      // api for this.
       $this->paymentManager->completeOrder($commerce_order);
+
+      // Notify other modules.
+      $event = new CheckoutCompleteEvent($commerce_order);
+      $this->eventDispatcher->dispatch(CheckoutEvents::CHECKOUT_COMPLETE, $event);
     }
-    // Redirect to complete payment page.
+    // Redirect to complete order page.
     return $this->redirect('commerce_checkout.form', [
       'commerce_order' => $commerce_order->id(),
-      'step' => 'complete',
     ]);
   }
 
