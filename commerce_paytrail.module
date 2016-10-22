@@ -186,26 +186,20 @@ function commerce_paytrail_settings_form($settings = array()) {
  *   Submit form.
  */
 function commerce_paytrail_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
-  if (_commerce_paytrail_get_setting('mode') == PAYTRAIL_DEFAULT_MODE) {
+  if (_commerce_paytrail_get_setting('mode', $payment_method) == PAYTRAIL_DEFAULT_MODE) {
     return array();
   }
-  $enabled_methods = _commerce_paytrail_get_setting('visible_methods');
-  $methods = commerce_paytrail_get_payment_methods();
+  $enabled_methods = _commerce_paytrail_get_setting('visible_methods', $payment_method);
+  $methods = array_intersect_key(commerce_paytrail_get_payment_methods(), $enabled_methods);
 
-  // Remove disabled payment methods.
-  if (!empty($enabled_methods)) {
-    foreach ($methods as $key => $value) {
-      if (isset($enabled_methods[$key])) {
-        continue;
-      }
-      unset($methods[$key]);
-    }
-  }
+  $selected = isset($order->data['commerce_paytrail']['method']) ? $order->data['commerce_paytrail']['method'] : NULL;
+
   $form['method'] = array(
     '#required' => TRUE,
     '#type' => 'radios',
     '#options' => $methods,
-    '#default_value' => isset($order->data['commerce_paytrail']['method']) ? $order->data['commerce_paytrail']['method'] : NULL,
+    // Make sure selected payment method is still available.
+    '#default_value' => isset($enabled_methods[$selected]) ? $enabled_methods[$selected] : NULL,
   );
 
   return $form;
@@ -261,7 +255,7 @@ function commerce_paytrail_redirect_form($form, &$form_state, $order, $payment_m
   }
 
   $form_elements = _commerce_paytrail_build_transaction($order, $payment_method);
-  $service_host = _commerce_paytrail_get_setting('service_host');
+  $service_host = _commerce_paytrail_get_setting('service_host', $payment_method);
 
   // Add embed JS if wanted and paytrail bypass payment page is not enabled.
   if (!empty($settings['advanced']['embed']) && $settings['advanced']['mode'] == PAYTRAIL_DEFAULT_MODE) {
@@ -299,13 +293,15 @@ function commerce_paytrail_redirect_form($form, &$form_state, $order, $payment_m
  *
  * @param array $response
  *   Array of url arguments.
+ * @param string $merchant_hash
+ *   The merchant hash.
  *
  * @return null|string
  *   Hashed checksum.
  */
-function commerce_paytrail_return_checksum(array $response) {
+function commerce_paytrail_return_checksum(array $response, $merchant_hash) {
   if (!isset($response['ORDER_NUMBER'], $response['TIMESTAMP'], $response['PAID'], $response['METHOD'])) {
-    return;
+    return NULL;
   }
   // Generate checksum with md5, convert to uppercase.
   $checksum_string = format_string('@order|@timestamp|@paid|@method|@merchant_hash', array(
@@ -313,7 +309,7 @@ function commerce_paytrail_return_checksum(array $response) {
     '@timestamp' => $response['TIMESTAMP'],
     '@paid' => $response['PAID'],
     '@method' => $response['METHOD'],
-    '@merchant_hash' => _commerce_paytrail_get_setting('merchant_hash'),
+    '@merchant_hash' => $merchant_hash,
   ));
   return drupal_strtoupper(md5($checksum_string));
 }
@@ -345,7 +341,7 @@ function commerce_paytrail_redirect_form_validate($order, $payment_method) {
   if (arg(5) == 'success') {
     $response = $order->data['commerce_paytrail']['response'];
 
-    $checksum = commerce_paytrail_return_checksum($response);
+    $checksum = commerce_paytrail_return_checksum($response, _commerce_paytrail_get_setting('merchant_hash', $payment_method));
 
     // Check checksum validity.
     if (empty($response['RETURN_AUTHCODE']) || $checksum != $response['RETURN_AUTHCODE']) {
@@ -387,7 +383,8 @@ function commerce_paytrail_redirect_form_submit($order, $payment_method) {
 
   $return_type = arg(5);
   if ($return_type == 'success') {
-    // Payment successful at Paytrail, set transaction status to 'verified' to initiate order delivery.
+    // Payment successful at Paytrail, set transaction status to 'verified'
+    // to initiate order delivery.
     $transaction = commerce_payment_transaction_load($order->data['commerce_paytrail']['transaction']->transaction_id);
     $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
     commerce_payment_transaction_save($transaction);
@@ -407,11 +404,11 @@ function commerce_paytrail_redirect_form_submit($order, $payment_method) {
  */
 function _commerce_paytrail_build_transaction($order, $payment_method) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $type = _commerce_paytrail_get_setting('type');
+  $type = _commerce_paytrail_get_setting('type', $payment_method);
 
   // Build required transaction form elements in array.
   $form_elements = array();
-  $form_elements['MERCHANT_ID'] = _commerce_paytrail_get_setting('merchant_id');
+  $form_elements['MERCHANT_ID'] = _commerce_paytrail_get_setting('merchant_id', $payment_method);
 
   // S1 fields.
   if ($type == 'S1') {
@@ -428,7 +425,7 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
   // Generate return URLs.
   $modes = array('success', 'cancel', 'notify');
   foreach ($modes as $mode) {
-    $path = _commerce_paytrail_get_setting("return_$mode");
+    $path = _commerce_paytrail_get_setting("return_$mode", $payment_method);
     // Extract GET parameters, if any.
     $path_parts = preg_split('/\?|\&/', $path);
     $get_params = array();
@@ -450,17 +447,17 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
     'CANCEL_ADDRESS' => $return_cancel,
     'PENDING_ADDRESS' => '',
     'NOTIFY_ADDRESS' => $return_notify,
-    'TYPE' => _commerce_paytrail_get_setting('type'),
-    'CULTURE' => _commerce_paytrail_get_setting('culture'),
+    'TYPE' => _commerce_paytrail_get_setting('type', $payment_method),
+    'CULTURE' => _commerce_paytrail_get_setting('culture', $payment_method),
     'PRESELECTED_METHOD' => '',
-    'MODE' => _commerce_paytrail_get_setting('mode'),
-    'VISIBLE_METHODS' => implode(',', array_keys(_commerce_paytrail_get_setting('visible_methods'))),
+    'MODE' => _commerce_paytrail_get_setting('mode', $payment_method),
+    'VISIBLE_METHODS' => implode(',', array_keys(_commerce_paytrail_get_setting('visible_methods', $payment_method))),
     // This has not yet been implemented by Paytrail.
     'GROUP' => '',
   );
 
   // Attempt to use preselected method to bypass payment form.
-  if (_commerce_paytrail_get_setting('mode') == PAYTRAIL_BYPASS_MODE) {
+  if (_commerce_paytrail_get_setting('mode', $payment_method) == PAYTRAIL_BYPASS_MODE) {
     $method = NULL;
 
     if (isset($order->data['commerce_paytrail']['method'])) {
@@ -470,13 +467,15 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
   }
   // E1 fields.
   if ($type == 'E1') {
+    if (!$order_wrapper->__isset('commerce_customer_billing')) {
+      drupal_set_message(t('Missing required commerce_customer_billing field.'), 'error');
+    }
     // Prepare the billing address for use in the request.
     $billing_address = $order_wrapper->commerce_customer_billing->commerce_customer_address->value();
 
     // Add additional fields like this:
     // Assumption: Field machine name is 'field_customer_phone'.
     // $phone = $order_wrapper->commerce_customer_billing->field_customer_phone->value();
-
     $form_elements += array(
       // TELNO needed for Klarna, add custom field.
       'CONTACT_TELNO' => '',
@@ -534,7 +533,7 @@ function _commerce_paytrail_build_transaction($order, $payment_method) {
   drupal_alter('commerce_paytrail_payment', $form_elements);
 
   // @todo Take charset into consideration, hash output might vary.
-  $merchant_hash = _commerce_paytrail_get_setting('merchant_hash');
+  $merchant_hash = _commerce_paytrail_get_setting('merchant_hash', $payment_method);
   $form_elements['AUTHCODE'] = strtoupper(md5($merchant_hash . '|' . implode('|', $form_elements)));
 
   return $form_elements;
@@ -645,16 +644,13 @@ function commerce_paytrail_calculate_item_tax(array $price) {
  *
  * @param string $setting_name
  *   The name of the setting.
+ * @param array $payment_method
+ *   The payment method array.
  *
  * @return string
  *   The value of the specified setting.
  */
-function _commerce_paytrail_get_setting($setting_name) {
-  $payment_method = &drupal_static(__FUNCTION__);
-
-  if (!$payment_method) {
-    $payment_method = commerce_payment_method_instance_load('commerce_paytrail|commerce_payment_commerce_paytrail');
-  }
+function _commerce_paytrail_get_setting($setting_name, $payment_method = NULL) {
   $setting = FALSE;
 
   switch ($setting_name) {
@@ -752,6 +748,22 @@ function commerce_paytrail_notify_save($order_id) {
 }
 
 /**
+ * Gets payment method for given order.
+ *
+ * @param object $order
+ *   The commerce order.
+ *
+ * @return mixed
+ *   Payment method if found or null.
+ */
+function commerce_paytrail_get_payment_method_for_order($order) {
+  $transaction = commerce_payment_transaction_load($order->data['commerce_paytrail']['transaction']->transaction_id);
+  $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
+
+  return $payment_method ? $payment_method : NULL;
+}
+
+/**
  * Return 500 error code and log to watchdog.
  *
  * @param string $message
@@ -778,26 +790,31 @@ function commerce_paytrail_notify_check($order_id, $payment_redirect_key) {
   $response = $_REQUEST;
   // Validate url arguments.
   if (!isset($response['ORDER_NUMBER'], $response['TIMESTAMP'], $response['PAID'], $response['METHOD'])) {
-    return commerce_paytrail_notify_error('Notify failed: missing required url parameter.');
+    commerce_paytrail_notify_error('Notify failed: missing required url parameter.');
   }
   // Make sure order exists.
   if (!$order = commerce_order_load($order_id)) {
-    return commerce_paytrail_notify_error('Notify failed: order not found (@id).', array(
+    commerce_paytrail_notify_error('Notify failed: order not found (@id).', array(
       '@id' => $order_id,
     ));
   }
   // Validate redirect key.
   if (empty($order->data['payment_redirect_key']) || $order->data['payment_redirect_key'] !== $payment_redirect_key) {
-    return commerce_paytrail_notify_error('Notify failed: redirect key mismatch.');
+    commerce_paytrail_notify_error('Notify failed: redirect key mismatch.');
   }
-  $checksum = commerce_paytrail_return_checksum($response);
+  $payment_method = commerce_paytrail_get_payment_method_for_order($order);
+
+  if (!$payment_method) {
+    commerce_paytrail_notify_error('Payment method not found.');
+  }
+  $checksum = commerce_paytrail_return_checksum($response, _commerce_paytrail_get_setting('merchant_hash', $payment_method));
 
   // Check checksum validity.
   if (empty($response['RETURN_AUTHCODE']) || $checksum !== $response['RETURN_AUTHCODE']) {
-    return commerce_paytrail_notify_error('Notify failed: checksum mismatch');
+    commerce_paytrail_notify_error('Notify failed: checksum mismatch');
   }
-  if (!commerce_paytrail_notify_save($order->order_id, $response)) {
-    return commerce_paytrail_notify_error('Notify failed: failed to save transaction.');
+  if (!commerce_paytrail_notify_save($order->order_id)) {
+    commerce_paytrail_notify_error('Notify failed: failed to save transaction.');
   }
   drupal_exit();
 }

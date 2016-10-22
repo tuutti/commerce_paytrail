@@ -88,7 +88,8 @@ class CommercePaytrailTest extends CommerceBaseTestCase {
       'PAID' => 1,
       'METHOD' => 2,
     );
-    $authcode = commerce_paytrail_return_checksum($query);
+    $payment_method = commerce_paytrail_get_payment_method_for_order($order);
+    $authcode = commerce_paytrail_return_checksum($query, _commerce_paytrail_get_setting('merchant_hash', $payment_method));
     $query['RETURN_AUTHCODE'] = $authcode;
 
     return $query;
