@@ -96,7 +96,9 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
       // @todo Handle error.
       return $pane_form;
     }
-    // @todo Better way to do this. At the moment payment must be on separate checkout.
+    // @todo Better way to do this. At the moment this pane must be on separate
+    // checkout page, because the 'next' button will always redirect
+    // to Paytrail.
     $complete_form['#action'] = $plugin->getHostUrl();
 
     foreach ($elements as $key => $value) {

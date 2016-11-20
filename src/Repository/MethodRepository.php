@@ -2,10 +2,9 @@
 
 namespace Drupal\commerce_paytrail\Repository;
 
+use Drupal\commerce_paytrail\Event\PaymentRepositoryEvent;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
-use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
  * Class Methods.
@@ -13,8 +12,6 @@ use Symfony\Component\EventDispatcher\GenericEvent;
  * @package Drupal\commerce_paytrail\Repository
  */
 class MethodRepository {
-
-  use StringTranslationTrait;
 
   /**
    * The event dispatcher.
@@ -71,9 +68,9 @@ class MethodRepository {
         $available_methods[$id] = new Method($id, $label, $display_label);
       }
     }
-    // @todo Replace with custom event?
-    $event = $this->eventDispatcher->dispatch(PaytrailEvents::PAYMENT_REPO_ALTER, new GenericEvent($available_methods));
-    $methods = $event->getSubject();
+    /** @var PaymentRepositoryEvent $event */
+    $event = $this->eventDispatcher->dispatch(PaytrailEvents::PAYMENT_REPO_ALTER, new PaymentRepositoryEvent($available_methods));
+    $methods = $event->getPaymentMethods();
 
     return $methods;
   }

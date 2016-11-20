@@ -4,7 +4,6 @@ namespace Drupal\commerce_paytrail\Controller;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
-use Drupal\commerce_paytrail\PaymentStatus;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Controller\ControllerBase;
@@ -84,7 +83,7 @@ class PaymentController extends ControllerBase {
       return $this->errorMessage($this->t('No payment found for this order.'));
     }
     if ($type === 'cancel') {
-      $this->paymentManager->completePayment($payment, PaymentStatus::FAILED);
+      $this->paymentManager->completePayment($payment, 'cancel');
 
       return $this->redirect('commerce_checkout.form', [
         'commerce_order' => $commerce_order->id(),
@@ -118,7 +117,7 @@ class PaymentController extends ControllerBase {
       return $this->errorMessage($this->t('Validation failed (security hash mismatch). Please contact store administration if the problem persists.'));
     }
     // Complete order after succesful payment.
-    if ($this->paymentManager->completePayment($payment, PaymentStatus::SUCCESS)) {
+    if ($this->paymentManager->completePayment($payment, 'success')) {
       // @todo This is repeating the logic from commerce_checkout.
       // Implement better way to do this once commerce provides api for this.
       $this->paymentManager->completeOrder($commerce_order);

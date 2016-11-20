@@ -12,12 +12,23 @@ use Drupal\commerce_price\Price;
  */
 class TransactionRepository {
 
+  /**
+   * Ignore value is used to ignore values from mac calculation.
+   *
+   * @var string
+   */
   const IGNORE_VALUE = -1;
+
   const ITEM_PRODUCT = 1;
   const ITEM_SHIPPING = 2;
   const ITEM_HANDING = 3;
 
 
+  /**
+   * Correct order for every possible value.
+   *
+   * @var array
+   */
   protected $values = [
     'MERCHANT_ID' => '',
     'AMOUNT' => self::IGNORE_VALUE,

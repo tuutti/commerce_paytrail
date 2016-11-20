@@ -7,6 +7,7 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
+use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;
@@ -15,7 +16,6 @@ use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 /**
@@ -44,7 +44,7 @@ class PaymentManager implements PaymentManagerInterface {
    *
    * @var \Drupal\commerce_paytrail\Repository\MethodRepository
    */
-  protected $repository;
+  protected $methodRepository;
 
   /**
    * Constructor.
@@ -53,13 +53,13 @@ class PaymentManager implements PaymentManagerInterface {
    *   The entity type manager service.
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
    *   The event dispatcher.
-   * @param \Drupal\commerce_paytrail\Repository\MethodRepository $repository
+   * @param \Drupal\commerce_paytrail\Repository\MethodRepository $method_repository
    *   The payment method repository.
    */
-  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, MethodRepository $repository) {
+  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, MethodRepository $method_repository) {
     $this->entityTypeManager = $entity_type_manager;
     $this->eventDispatcher = $event_dispatcher;
-    $this->repository = $repository;
+    $this->methodRepository = $method_repository;
   }
 
   /**
@@ -72,7 +72,7 @@ class PaymentManager implements PaymentManagerInterface {
    *   List of available payment methods.
    */
   public function getPaymentMethods(array $enabled = []) {
-    $methods = $this->repository->getMethods();
+    $methods = $this->methodRepository->getMethods();
 
     if (empty($enabled)) {
       return $methods;
@@ -140,6 +140,7 @@ class PaymentManager implements PaymentManagerInterface {
    */
   public function buildTransaction(OrderInterface $order) {
     $payment_gateway = $order->payment_gateway->entity;
+    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin */
     $plugin = $payment_gateway->getPlugin();
 
     if (!$plugin instanceof Paytrail) {
@@ -151,12 +152,12 @@ class PaymentManager implements PaymentManagerInterface {
     /** @var \Drupal\commerce_payment\Entity\PaymentMethod $payment_method */
     $payment_method = $order->payment_method->entity;
 
-    $repository->setOrderNumber($order->getOrderNumber())
-      ->setReturnAddress('return', $this->getReturnUrl($order, 'return'))
-      ->setReturnAddress('cancel', $this->getReturnUrl($order, 'cancel'))
-      ->setReturnAddress('pending', $this->getReturnUrl($order, 'pending'))
-      ->setReturnAddress('notify', $this->getReturnUrl($order, 'notify'))
-      ->setType($plugin->getSetting('paytrail_type'))
+    $repository->setOrderNumber($order->getOrderNumber());
+
+    foreach (['return', 'cancel', 'pending', 'notify'] as $type) {
+      $repository->setReturnAddress($type, $this->getReturnUrl($order, $type));
+    }
+    $repository->setType($plugin->getSetting('paytrail_type'))
       ->setCulture($plugin->getCulture())
       // Attempt to use preselected method if available.
       ->setPreselectedMethod($payment_method->get('preselected_method')->value)
@@ -192,15 +193,13 @@ class PaymentManager implements PaymentManagerInterface {
         $repository->setProduct($item);
       }
     }
-    $order_clone = clone $order;
+    $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
     // Allow elements to be altered.
-    $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, new GenericEvent(NULL, [
-      'plugin' => $plugin,
-      'order' => $order_clone,
-      'transaction_repository' => $repository,
-    ]));
+    /** @var TransactionRepositoryEvent $event */
+    $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, $repository_alter);
     // Build repository array.
-    $values = $event->getArgument('transaction_repository')->build();
+    $values = $event->getTransactionRepository()->build();
+
     $values['AUTHCODE'] = $this->generateAuthCode($plugin->getSetting('merchant_hash'), $values);
 
     return $values;
@@ -266,19 +265,19 @@ class PaymentManager implements PaymentManagerInterface {
    * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
    *   The payment.
    * @param string $status
-   *   Payment status.
+   *   Payment status. Available statuses: cancel, failed, success.
    *
    * @return bool
    *   Status of payment.
    */
   public function completePayment(PaymentInterface $payment, $status) {
     // Payment failed. Delete payment.
-    if ($status === PaymentStatus::FAILED) {
+    if ($status === 'failed' || $status === 'cancel') {
       $payment->delete();
 
       return FALSE;
     }
-    elseif ($status === PaymentStatus::SUCCESS) {
+    elseif ($status === 'success') {
       // @todo Is there any reasons to call this rather than directly updating to 'capture' state?
       $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
       $payment->setAuthorizedTime(REQUEST_TIME);
