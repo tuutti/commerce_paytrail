@@ -2,8 +2,6 @@
 
 namespace Drupal\commerce_paytrail\Controller;
 
-use Drupal\commerce_checkout\Event\CheckoutCompleteEvent;
-use Drupal\commerce_checkout\Event\CheckoutEvents;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\PaymentStatus;
@@ -124,10 +122,6 @@ class PaymentController extends ControllerBase {
       // @todo This is repeating the logic from commerce_checkout.
       // Implement better way to do this once commerce provides api for this.
       $this->paymentManager->completeOrder($commerce_order);
-
-      // Notify other modules.
-      $event = new CheckoutCompleteEvent($commerce_order);
-      $this->eventDispatcher->dispatch(CheckoutEvents::CHECKOUT_COMPLETE, $event);
     }
     // Redirect to complete order page.
     return $this->redirect('commerce_checkout.form', [
@@ -168,7 +162,7 @@ class PaymentController extends ControllerBase {
    */
   public function access(OrderInterface $commerce_order, $paytrail_redirect_key, $type) {
     $redirect_key_match = $this->paymentManager->getRedirectKey($commerce_order) === $paytrail_redirect_key;
-    $owner_match = $this->currentUser()->id() === $commerce_order->getOwnerId();
+    $owner_match = $this->currentUser()->id() === $commerce_order->getCustomerId();
 
     return AccessResult::allowedIf($redirect_key_match && $owner_match);
   }

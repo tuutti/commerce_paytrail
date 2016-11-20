@@ -117,24 +117,16 @@ class PaymentManager implements PaymentManagerInterface {
    *   Payment redirect key.
    */
   public function getRedirectKey(OrderInterface $order) {
-    $data = $order->getData();
-
     // Generate only once.
-    if (!empty($data['paytrail_redirect_key'])) {
-      return $data['paytrail_redirect_key'];
+    if ($redirect_key = $order->getData('paytrail_redirect_key')) {
+      return $redirect_key;
     }
-    $payment_redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), REQUEST_TIME), Settings::getHashSalt());
+    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), REQUEST_TIME), Settings::getHashSalt());
 
-    if (empty($data)) {
-      $data = [];
-    }
-    $data = array_merge($data, [
-      'paytrail_redirect_key' => $payment_redirect_key,
-    ]);
-    $order->setData($data);
+    $order->setData('paytrail_redirect_key', $redirect_key);
     $order->save();
 
-    return $payment_redirect_key;
+    return $redirect_key;
   }
 
   /**
@@ -220,7 +212,7 @@ class PaymentManager implements PaymentManagerInterface {
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    *
-   * @return bool|\Drupal\commerce_paytrail\PaymentInterface
+   * @return bool|\Drupal\commerce_payment\Entity\PaymentInterface
    *   Payment object on success, FALSE on failure.
    */
   public function getPayment(OrderInterface $order) {
@@ -247,7 +239,7 @@ class PaymentManager implements PaymentManagerInterface {
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The Order.
    *
-   * @return \Drupal\Core\Entity\EntityInterface|static
+   * @return \Drupal\Core\Entity\EntityInterface
    *   The payment entity.
    */
   public function buildPayment(OrderInterface $order) {
