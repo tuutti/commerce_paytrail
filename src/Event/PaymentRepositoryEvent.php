@@ -26,7 +26,7 @@ class PaymentRepositoryEvent extends Event {
    *   Array of payment methods.
    */
   public function __construct(array $payment_methods = []) {
-    if (empty($payment_methods)) {
+    if (!empty($payment_methods)) {
       $this->setPaymentMethods($payment_methods);
     }
   }
@@ -44,7 +44,7 @@ class PaymentRepositoryEvent extends Event {
       if (!$method instanceof Method) {
         continue;
       }
-      $this->paymentMethods[$id] = $method;
+      $this->setPaymentMethod($method);
     }
     return $this;
   }
@@ -83,6 +83,21 @@ class PaymentRepositoryEvent extends Event {
    */
   public function getPaymentMethod($id) {
     return isset($this->paymentMethods[$id]) ? $this->paymentMethods[$id] : NULL;
+  }
+
+  /**
+   * Remove payment method by id.
+   *
+   * @param int $id
+   *   The payment id.
+   *
+   * @return $this
+   */
+  public function unsetPaymentMethod($id) {
+    if ($this->getPaymentMethod($id)) {
+      unset($this->paymentMethods[$id]);
+    }
+    return $this;
   }
 
 }

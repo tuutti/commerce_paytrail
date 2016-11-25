@@ -31,9 +31,9 @@ class MethodRepository {
   }
 
   /**
-   * Get list of available payment methods.
+   * Get list of default payment methods.
    */
-  public function getMethods() {
+  public function getDefaultMethods() {
     $methods = [
       1 => ['Nordea' => ''],
       2 => ['Osuuspankki' => ''],
@@ -68,6 +68,17 @@ class MethodRepository {
         $available_methods[$id] = new Method($id, $label, $display_label);
       }
     }
+    return $available_methods;
+  }
+
+  /**
+   * Get list of available payment methods.
+   *
+   * @return array
+   *   List of available payment methods.
+   */
+  public function getMethods() {
+    $available_methods = $this->getDefaultMethods();
     /** @var PaymentRepositoryEvent $event */
     $event = $this->eventDispatcher->dispatch(PaytrailEvents::PAYMENT_REPO_ALTER, new PaymentRepositoryEvent($available_methods));
     $methods = $event->getPaymentMethods();
