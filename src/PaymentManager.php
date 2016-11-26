@@ -12,6 +12,8 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;
 use Drupal\Component\Utility\Crypt;
+use Drupal\Component\Utility\Random;
+use Drupal\Component\Uuid\Php;
 use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
@@ -97,14 +99,9 @@ class PaymentManager implements PaymentManagerInterface {
       'paytrail_redirect_key' => $this->getRedirectKey($order),
       'type' => $type,
     ];
+    $url = new Url('commerce_paytrail.return', $arguments, ['absolute' => TRUE]);
 
-    try {
-      $url = new Url('commerce_paytrail.return', $arguments, ['absolute' => TRUE]);
-      return $url->toString();
-    }
-    catch (RouteNotFoundException $e) {
-      return NULL;
-    }
+    return $url->toString();
   }
 
   /**
@@ -121,12 +118,25 @@ class PaymentManager implements PaymentManagerInterface {
     if ($redirect_key = $order->getData('paytrail_redirect_key')) {
       return $redirect_key;
     }
-    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), REQUEST_TIME), Settings::getHashSalt());
+    $uuid = new Php();
+    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), $this->getTime()), $uuid->generate());
 
     $order->setData('paytrail_redirect_key', $redirect_key);
     $order->save();
 
     return $redirect_key;
+  }
+
+  /**
+   * Gets the current time.
+   *
+   * @todo Replace with time service in 8.3.x.
+   *
+   * @return int
+   *   The current request time.
+   */
+  public function getTime() {
+    return (int) $_SERVER['REQUEST_TIME'];
   }
 
   /**
@@ -248,14 +258,15 @@ class PaymentManager implements PaymentManagerInterface {
     if ($payment = $this->getPayment($order)) {
       return $payment;
     }
-    $payment = Payment::create([
-      'type' => 'paytrail',
-      'payment_method' => $order->payment_method->target_id,
-      'payment_gateway' => $order->payment_gateway->target_id,
-      'order_id' => $order->id(),
-      'amount' => $order->getTotalPrice(),
-      'paytrail_redirect_url' => $this->getRedirectKey($order),
-    ]);
+    $payment = $this->entityTypeManager
+      ->getStorage('commerce_payment')
+      ->create([
+        'type' => 'paytrail',
+        'payment_method' => $order->get('payment_method')->target_id,
+        'payment_gateway' => $order->get('payment_gateway')->target_id,
+        'order_id' => $order->id(),
+        'amount' => $order->getTotalPrice(),
+      ]);
     $payment->save();
 
     return $payment;
