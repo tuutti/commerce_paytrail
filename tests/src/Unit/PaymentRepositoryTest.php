@@ -11,7 +11,6 @@ use Drupal\Tests\UnitTestCase;
  * PaymentRepository unit tests.
  *
  * @group commerce_paytrail
- * @coversDefaultClass \Drupal\commerce_paytrail\Repository\MethodRepository
  */
 class PaymentRepositoryTest extends UnitTestCase {
 
@@ -34,22 +33,9 @@ class PaymentRepositoryTest extends UnitTestCase {
   /**
    * Tests MethodRepository and all its dependencies.
    *
-   * @covers ::getMethods
-   * @covers ::__construct
-   * @covers ::getDefaultMethods
-   * @covers \Drupal\commerce_paytrail\Repository\Method::__construct
-   * @covers \Drupal\commerce_paytrail\Repository\Method::setId
-   * @covers \Drupal\commerce_paytrail\Repository\Method::setDisplayLabel
-   * @covers \Drupal\commerce_paytrail\Repository\Method::setLabel
-   * @covers \Drupal\commerce_paytrail\Repository\Method::getLabel
-   * @covers \Drupal\commerce_paytrail\Repository\Method::getDisplayLabel
-   * @covers \Drupal\commerce_paytrail\Repository\Method::getId
-   * @covers \Drupal\commerce_paytrail\Event\PaymentRepositoryEvent::getPaymentMethods
-   * @covers \Drupal\commerce_paytrail\Event\PaymentRepositoryEvent::getPaymentMethod
-   * @covers \Drupal\commerce_paytrail\Event\PaymentRepositoryEvent::__construct
-   * @covers \Drupal\commerce_paytrail\Event\PaymentRepositoryEvent::setPaymentMethod
-   * @covers \Drupal\commerce_paytrail\Event\PaymentRepositoryEvent::setPaymentMethods
-   * @covers \Drupal\commerce_paytrail\Event\PaymentRepositoryEvent::unsetPaymentMethod
+   * @covers \Drupal\commerce_paytrail\Repository\MethodRepository::
+   * @covers \Drupal\commerce_paytrail\Repository\Method::
+   * @covers \Drupal\commerce_paytrail\Event\PaymentRepositoryEvent::
    */
   public function testGetMethods() {
     $sut = new MethodRepository($this->eventDispatcher);

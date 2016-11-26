@@ -13,7 +13,6 @@ use Drupal\Tests\UnitTestCase;
  * TransactionRepository unit tests.
  *
  * @group commerce_paytrail
- * @coversDefaultClass \Drupal\commerce_paytrail\Repository\TransactionRepository
  */
 class TransactionRepositoryTest extends UnitTestCase {
 
@@ -48,37 +47,7 @@ class TransactionRepositoryTest extends UnitTestCase {
   /**
    * Tests build() method.
    *
-   * @covers ::build
-   * @covers ::set
-   * @covers ::get
-   * @covers ::getBuildOrder
-   * @covers ::build
-   * @covers ::setItems
-   * @covers ::setIncludeVat
-   * @covers ::setContactCountry
-   * @covers ::setContactCity
-   * @covers ::setContactZip
-   * @covers ::setContactAddress
-   * @covers ::setContactCompany
-   * @covers ::setContactName
-   * @covers ::setContactEmail
-   * @covers ::setContactCellno
-   * @covers ::setContactTelno
-   * @covers ::setGroup
-   * @covers ::setVisibleMethods
-   * @covers ::setMode
-   * @covers ::setPreselectedMethod
-   * @covers ::setCulture
-   * @covers ::setType
-   * @covers ::setReturnAddress
-   * @covers ::setCurrency
-   * @covers ::setOrderDescription
-   * @covers ::setReferenceNumber
-   * @covers ::setOrderNumber
-   * @covers ::setAmount
-   * @covers ::setMerchantId
-   * @covers ::setProduct
-   * @covers ::raw
+   * @covers \Drupal\commerce_paytrail\Repository\TransactionRepository::
    * @dataProvider buildDataProvider
    */
   public function testBuild($given, $expected) {
@@ -91,7 +60,7 @@ class TransactionRepositoryTest extends UnitTestCase {
   /**
    * Tests build() exceptions.
    *
-   * @covers ::build
+   * @covers \Drupal\commerce_paytrail\Repository\TransactionRepository::build
    * @dataProvider buildDataProviderExceptions
    */
   public function testBuildExceptions($given, $message) {
@@ -110,10 +79,7 @@ class TransactionRepositoryTest extends UnitTestCase {
   /**
    * Tests TransactionValue.
    *
-   * @covers \Drupal\commerce_paytrail\Repository\TransactionValue::__construct
-   * @covers \Drupal\commerce_paytrail\Repository\TransactionValue::value
-   * @covers \Drupal\commerce_paytrail\Repository\TransactionValue::passRequirements
-   * @covers \Drupal\commerce_paytrail\Repository\TransactionValue::matches
+   * @covers \Drupal\commerce_paytrail\Repository\TransactionValue::
    */
   public function testTransactionValue() {
     $value = new TransactionValue('test', TRUE, 'S1');
