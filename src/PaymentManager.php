@@ -146,18 +146,20 @@ class PaymentManager implements PaymentManagerInterface {
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
-    $repository = new TransactionRepository([
-      'MERCHANT_ID' => $plugin->getSetting('merchant_id'),
-    ]);
+    $repository = new TransactionRepository();
     /** @var \Drupal\commerce_payment\Entity\PaymentMethod $payment_method */
     $payment_method = $order->payment_method->entity;
 
-    $repository->setOrderNumber($order->getOrderNumber());
+    $repository->setOrderNumber($order->getOrderNumber())
+      ->setMerchantId($plugin->getSetting('merchant_id'));
 
     foreach (['return', 'cancel', 'pending', 'notify'] as $type) {
       $repository->setReturnAddress($type, $this->getReturnUrl($order, $type));
     }
     $repository->setType($plugin->getSetting('paytrail_type'))
+      // EUR is only allowed currency by Paytrail.
+      // @todo Handle currency conversion if using other than eur?
+      ->setCurrency('EUR')
       ->setCulture($plugin->getCulture())
       // Attempt to use preselected method if available.
       ->setPreselectedMethod($payment_method->get('preselected_method')->value)
@@ -188,13 +190,13 @@ class PaymentManager implements PaymentManagerInterface {
         ->setItems(count($order->getItems()));
 
       foreach ($order->getItems() as $delta => $item) {
-        // @todo Implement: Taxes when commerce_tax is implemneted again.
+        // @todo Implement taxes when commerce_tax is available.
         // @todo Implement discount and item type handling.
         $repository->setProduct($item);
       }
     }
     $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
-    // Allow elements to be altered.
+    // Allow element values to be altered.
     /** @var TransactionRepositoryEvent $event */
     $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, $repository_alter);
     // Build repository array.

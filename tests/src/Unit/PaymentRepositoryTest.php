@@ -32,7 +32,7 @@ class PaymentRepositoryTest extends UnitTestCase {
   }
 
   /**
-   * Tests getMethods() method.
+   * Tests MethodRepository and all its dependencies.
    *
    * @covers ::getMethods
    * @covers ::__construct
@@ -66,13 +66,13 @@ class PaymentRepositoryTest extends UnitTestCase {
     $this->assertEquals($default_methods, $dispatched_event->getPaymentMethods());
     $this->assertNull($dispatched_event->getPaymentMethod(999));
 
-    $method = new Method(666, 'Test label', 'Test display label');
-    $dispatched_event->setPaymentMethod($method);
-
     // Test dispatched getter.
     $this->assertEquals($dispatched_event->getPaymentMethod(1), $sut->getMethods()[1]);
 
     // Test dispatched setters.
+    $method = new Method(666, 'Test label', 'Test display label');
+    $dispatched_event->setPaymentMethod($method);
+
     $this->assertEquals($dispatched_event->getPaymentMethod(666), $method);
     $this->assertEquals($sut->getMethods()[666], $method);
 
@@ -81,7 +81,7 @@ class PaymentRepositoryTest extends UnitTestCase {
     $dispatched_event->unsetPaymentMethod(1);
     $this->assertTrue(empty($sut->getMethods()[1]));
 
-    // Test method.
+    // Test Method.
     $method2 = new Method();
     $method2->setId(666)
       ->setLabel('Test label')
