@@ -4,19 +4,18 @@ namespace Drupal\commerce_paytrail;
 
 use Drupal\address\AddressInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
+use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;
 use Drupal\Component\Utility\Crypt;
+use Drupal\Component\Uuid\Php;
 use Drupal\Core\Entity\EntityTypeManager;
-use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 /**
  * Class PaymentManager.
@@ -63,13 +62,7 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Get available payment methods.
-   *
-   * @param array $enabled
-   *   List of enabled payment methods.
-   *
-   * @return array|mixed
-   *   List of available payment methods.
+   * {@inheritdoc}
    */
   public function getPaymentMethods(array $enabled = []) {
     $methods = $this->methodRepository->getMethods();
@@ -81,15 +74,7 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Get return url for given type.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   Order.
-   * @param string $type
-   *   Return type.
-   *
-   * @return \Drupal\Core\GeneratedUrl|string
-   *   Return absolute return url.
+   * {@inheritdoc}
    */
   public function getReturnUrl(OrderInterface $order, $type) {
     $arguments = [
@@ -97,31 +82,21 @@ class PaymentManager implements PaymentManagerInterface {
       'paytrail_redirect_key' => $this->getRedirectKey($order),
       'type' => $type,
     ];
+    $url = new Url('commerce_paytrail.return', $arguments, ['absolute' => TRUE]);
 
-    try {
-      $url = new Url('commerce_paytrail.return', $arguments, ['absolute' => TRUE]);
-      return $url->toString();
-    }
-    catch (RouteNotFoundException $e) {
-      return NULL;
-    }
+    return $url->toString();
   }
 
   /**
-   * Get/generate payment redirect key.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   Order.
-   *
-   * @return string
-   *   Payment redirect key.
+   * {@inheritdoc}
    */
   public function getRedirectKey(OrderInterface $order) {
     // Generate only once.
     if ($redirect_key = $order->getData('paytrail_redirect_key')) {
       return $redirect_key;
     }
-    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), REQUEST_TIME), Settings::getHashSalt());
+    $uuid = new Php();
+    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), $this->getTime()), $uuid->generate());
 
     $order->setData('paytrail_redirect_key', $redirect_key);
     $order->save();
@@ -130,34 +105,41 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Build transaction for order.
+   * Gets the current time.
    *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   Order.
+   * @todo Replace with time service in 8.3.x.
    *
-   * @return array|bool
-   *   FALSE on validation failure or transaction array.
+   * @return int
+   *   The current request time.
+   */
+  protected function getTime() {
+    return (int) $_SERVER['REQUEST_TIME'];
+  }
+
+  /**
+   * {@inheritdoc}
    */
   public function buildTransaction(OrderInterface $order) {
-    $payment_gateway = $order->payment_gateway->entity;
+    $payment_gateway = $order->get('payment_gateway')->entity;
     /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin */
     $plugin = $payment_gateway->getPlugin();
 
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
-    $repository = new TransactionRepository([
-      'MERCHANT_ID' => $plugin->getSetting('merchant_id'),
-    ]);
+    $repository = new TransactionRepository();
     /** @var \Drupal\commerce_payment\Entity\PaymentMethod $payment_method */
-    $payment_method = $order->payment_method->entity;
+    $payment_method = $order->get('payment_method')->entity;
 
-    $repository->setOrderNumber($order->getOrderNumber());
+    $repository->setOrderNumber($order->getOrderNumber())
+      ->setMerchantId($plugin->getSetting('merchant_id'));
 
     foreach (['return', 'cancel', 'pending', 'notify'] as $type) {
       $repository->setReturnAddress($type, $this->getReturnUrl($order, $type));
     }
     $repository->setType($plugin->getSetting('paytrail_type'))
+      // EUR is only allowed currency by Paytrail.
+      ->setCurrency('EUR')
       ->setCulture($plugin->getCulture())
       // Attempt to use preselected method if available.
       ->setPreselectedMethod($payment_method->get('preselected_method')->value)
@@ -172,7 +154,7 @@ class PaymentManager implements PaymentManagerInterface {
 
       // Billing data not found.
       if (!$billing_data instanceof AddressInterface) {
-        return FALSE;
+        throw new InvalidBillingException();
       }
       $repository->setContactTelno('')
         ->setContactCellno('')
@@ -188,13 +170,13 @@ class PaymentManager implements PaymentManagerInterface {
         ->setItems(count($order->getItems()));
 
       foreach ($order->getItems() as $delta => $item) {
-        // @todo Implement: Taxes when commerce_tax is implemneted again.
+        // @todo Implement taxes when commerce_tax is available.
         // @todo Implement discount and item type handling.
         $repository->setProduct($item);
       }
     }
     $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
-    // Allow elements to be altered.
+    // Allow element values to be altered.
     /** @var TransactionRepositoryEvent $event */
     $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, $repository_alter);
     // Build repository array.
@@ -206,13 +188,7 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Attempt to fetch payment for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return bool|\Drupal\commerce_payment\Entity\PaymentInterface
-   *   Payment object on success, FALSE on failure.
+   * {@inheritdoc}
    */
   public function getPayment(OrderInterface $order) {
     /** @var PaymentInterface[] $payments */
@@ -233,42 +209,29 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Create payment entity for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The Order.
-   *
-   * @return \Drupal\Core\Entity\EntityInterface
-   *   The payment entity.
+   * {@inheritdoc}
    */
   public function buildPayment(OrderInterface $order) {
     // Attempt to get existing payment.
     if ($payment = $this->getPayment($order)) {
       return $payment;
     }
-    $payment = Payment::create([
-      'type' => 'paytrail',
-      'payment_method' => $order->payment_method->target_id,
-      'payment_gateway' => $order->payment_gateway->target_id,
-      'order_id' => $order->id(),
-      'amount' => $order->getTotalPrice(),
-      'paytrail_redirect_url' => $this->getRedirectKey($order),
-    ]);
+    $payment = $this->entityTypeManager
+      ->getStorage('commerce_payment')
+      ->create([
+        'type' => 'paytrail',
+        'payment_method' => $order->get('payment_method')->target_id,
+        'payment_gateway' => $order->get('payment_gateway')->target_id,
+        'order_id' => $order->id(),
+        'amount' => $order->getTotalPrice(),
+      ]);
     $payment->save();
 
     return $payment;
   }
 
   /**
-   * Complete payment.
-   *
-   * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
-   *   The payment.
-   * @param string $status
-   *   Payment status. Available statuses: cancel, failed, success.
-   *
-   * @return bool
-   *   Status of payment.
+   * {@inheritdoc}
    */
   public function completePayment(PaymentInterface $payment, $status) {
     // Payment failed. Delete payment.
@@ -280,11 +243,11 @@ class PaymentManager implements PaymentManagerInterface {
     elseif ($status === 'success') {
       // @todo Is there any reasons to call this rather than directly updating to 'capture' state?
       $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
-      $payment->setAuthorizedTime(REQUEST_TIME);
+      $payment->setAuthorizedTime($this->getTime());
       $payment->getState()->applyTransition($transition);
       $capture_transition = $payment->getState()->getWorkflow()->getTransition('capture');
       $payment->getState()->applyTransition($capture_transition);
-      $payment->setCapturedTime(REQUEST_TIME);
+      $payment->setCapturedTime($this->getTime());
       $payment->save();
 
       return TRUE;
@@ -292,10 +255,7 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Complete commerce order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
+   * {@inheritdoc}
    */
   public function completeOrder(OrderInterface $order) {
     // Place the order.
@@ -306,30 +266,14 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Calculate authcode for transaction.
-   *
-   * @param string $hash
-   *   Merchant hash.
-   * @param array $values
-   *   Values used to generate mac.
-   *
-   * @return string
-   *   Authcode hash.
+   * {@inheritdoc}
    */
   public function generateAuthCode($hash, array $values) {
     return strtoupper(md5($hash . '|' . implode('|', $values)));
   }
 
   /**
-   * Calculate return checksum.
-   *
-   * @param string $hash
-   *   Merchant hash.
-   * @param array $values
-   *   Values used to generate mac.
-   *
-   * @return string
-   *   Checksum.
+   * {@inheritdoc}
    */
   public function generateReturnChecksum($hash, array $values) {
     return strtoupper(md5(implode('|', $values) . '|' . $hash));

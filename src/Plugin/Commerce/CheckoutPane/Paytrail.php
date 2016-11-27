@@ -5,6 +5,7 @@ namespace Drupal\commerce_paytrail\Plugin\Commerce\CheckoutPane;
 use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowInterface;
 use Drupal\commerce_checkout\Plugin\Commerce\CheckoutPane\CheckoutPaneBase;
 use Drupal\commerce_checkout\Plugin\Commerce\CheckoutPane\CheckoutPaneInterface;
+use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail as PaytrailGateway;
 use Drupal\Core\Form\FormStateInterface;
@@ -83,7 +84,7 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
     // Create redirect key for current order if one does not exists already.
     $this->paymentManager->getRedirectKey($this->order);
 
-    $payment_gateway = $this->order->payment_gateway->entity;
+    $payment_gateway = $this->order->get('payment_gateway')->entity;
     $plugin = $payment_gateway->getPlugin();
 
     if (!$plugin instanceof PaytrailGateway) {
@@ -92,8 +93,18 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
     // Create payment entity.
     $this->paymentManager->buildPayment($this->order);
 
-    if (!$elements = $this->paymentManager->buildTransaction($this->order)) {
-      // @todo Handle error.
+    try {
+      $elements = $this->paymentManager->buildTransaction($this->order);
+    }
+    catch (\InvalidArgumentException $e) {
+      // @todo More informative error message.
+      drupal_set_message($this->t('Unexpected error.'), 'error');
+
+      return $pane_form;
+    }
+    catch (InvalidBillingException $e) {
+      drupal_set_message($this->t('Billing information not found.'), 'error');
+
       return $pane_form;
     }
     // @todo Better way to do this. At the moment this pane must be on separate
@@ -101,6 +112,8 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
     // to Paytrail.
     $complete_form['#action'] = $plugin->getHostUrl();
 
+    // These values must be on $complete_form so they won't get wrapped
+    // inside paytrail[key] = value structure.
     foreach ($elements as $key => $value) {
       $complete_form[$key] = [
         '#type' => 'hidden',

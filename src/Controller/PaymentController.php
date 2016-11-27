@@ -3,6 +3,7 @@
 namespace Drupal\commerce_paytrail\Controller;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\Core\Access\AccessResult;
@@ -71,12 +72,13 @@ class PaymentController extends ControllerBase {
    *   Render array.
    */
   public function returnTo(Request $request, OrderInterface $commerce_order, $paytrail_redirect_key, $type) {
-    $payment_gateway = $commerce_order->payment_gateway->entity;
+    $payment_gateway = $commerce_order->get('payment_gateway')->entity;
     $plugin = $payment_gateway->getPlugin();
 
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
+    /** @var Payment $payment */
     $payment = $this->paymentManager->getPayment($commerce_order);
 
     if (!$payment) {
@@ -95,7 +97,7 @@ class PaymentController extends ControllerBase {
     if ($payment->getState()->value != 'new') {
       drupal_set_message($this->t('Payment has already processed (%state).', [
         '%state' => $payment->getState()->value,
-      ]));
+      ]), 'warning');
       return $this->redirect('commerce_checkout.form', [
         'commerce_order' => $commerce_order->id(),
         // Step will be determined automatically.

@@ -12,70 +12,23 @@ use Drupal\commerce_price\Price;
  */
 class TransactionRepository {
 
-  /**
-   * Ignore value is used to ignore values from mac calculation.
-   *
-   * @var string
-   */
-  const IGNORE_VALUE = -1;
-
   const ITEM_PRODUCT = 1;
   const ITEM_SHIPPING = 2;
   const ITEM_HANDING = 3;
 
-
   /**
-   * Correct order for every possible value.
+   * Array of values to build transaction array.
    *
    * @var array
    */
-  protected $values = [
-    'MERCHANT_ID' => '',
-    'AMOUNT' => self::IGNORE_VALUE,
-    'ORDER_NUMBER' => '',
-    'REFERENCE_NUMBER' => '',
-    'ORDER_DESCRIPTION' => '',
-    'CURRENCY' => 'EUR',
-    'RETURN_ADDRESS' => '',
-    'CANCEL_ADDRESS' => '',
-    'PENDING_ADDRESS' => '',
-    'NOTIFY_ADDRESS' => '',
-    'TYPE' => '',
-    'CULTURE' => '',
-    'PRESELECTED_METHOD' => '',
-    'MODE' => '',
-    'VISIBLE_METHODS' => [],
-    'GROUP' => '',
-    'CONTACT_TELLNO' => self::IGNORE_VALUE,
-    'CONTACT_CELLNO' => self::IGNORE_VALUE,
-    'CONTACT_EMAIL' => self::IGNORE_VALUE,
-    'CONTACT_FIRSTNAME' => self::IGNORE_VALUE,
-    'CONTACT_LASTNAME' => self::IGNORE_VALUE,
-    'CONTACT_COMPANY' => self::IGNORE_VALUE,
-    'CONTACT_ADDR_STREET' => self::IGNORE_VALUE,
-    'CONTACT_ADDR_ZIP' => self::IGNORE_VALUE,
-    'CONTACT_ADDR_CITY' => self::IGNORE_VALUE,
-    'CONTACT_ADDR_COUNTRY' => self::IGNORE_VALUE,
-    'INCLUDE_VAT' => self::IGNORE_VALUE,
-    'ITEMS' => self::IGNORE_VALUE,
-  ];
-
-  protected $products = [];
+  protected $values = [];
 
   /**
-   * TransactionRepository constructor.
+   * Array of products.
    *
-   * @param array $values
-   *   List of values to store.
+   * @var array
    */
-  public function __construct(array $values = []) {
-    foreach ($values as $key => $value) {
-      if (!isset($this->values[$key])) {
-        continue;
-      }
-      $this->set($key, $value);
-    }
-  }
+  protected $products = [];
 
   /**
    * Setter.
@@ -93,6 +46,36 @@ class TransactionRepository {
   }
 
   /**
+   * Gets the raw value.
+   *
+   * @param string $key
+   *   The key to get value with.
+   *
+   * @return mixed
+   *   The value if found, NULL if not.
+   */
+  public function raw($key) {
+    return isset($this->values[$key]) ? $this->values[$key] : NULL;
+  }
+
+  /**
+   * Getter.
+   *
+   * @param string $key
+   *   The key to get value with.
+   * @param string $type
+   *   The Paytrail type.
+   * @param bool $required
+   *   Indicates if the field is required to have a value.
+   *
+   * @return \Drupal\commerce_paytrail\Repository\TransactionValue
+   *   The transaction value object.
+   */
+  protected function get($key, $type = NULL, $required = TRUE) {
+    return new TransactionValue($this->raw($key), $required, $type);
+  }
+
+  /**
    * Set merchant id.
    *
    * @param string $id
@@ -101,7 +84,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setMerchantId($id) {
-    return $this->set('MERCHANT_ID', $id);
+    return $this->set('merchant_id', $id);
   }
 
   /**
@@ -115,7 +98,7 @@ class TransactionRepository {
   public function setAmount(Price $price) {
     $formatted = number_format($price->getNumber(), 2, '.', '');
 
-    return $this->set('AMOUNT', $formatted);
+    return $this->set('amount', $formatted);
   }
 
   /**
@@ -127,7 +110,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setOrderNumber($order_number) {
-    return $this->set('ORDER_NUMBER', $order_number);
+    return $this->set('order_number', $order_number);
   }
 
   /**
@@ -139,7 +122,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setReferenceNumber($reference_number) {
-    return $this->set('REFERENCE_NUMBER', $reference_number);
+    return $this->set('reference_number', $reference_number);
   }
 
   /**
@@ -151,7 +134,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setOrderDescription($description) {
-    return $this->set('ORDER_DESCRIPTION', $description);
+    return $this->set('order_description', $description);
   }
 
   /**
@@ -162,8 +145,8 @@ class TransactionRepository {
    *
    * @return $this
    */
-  public function setCurrency($currency) {
-    return $this->set('CURRENCY', $currency);
+  public function setCurrency($currency = 'EUR') {
+    return $this->set('currency', $currency);
   }
 
   /**
@@ -177,7 +160,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setReturnAddress($type, $address) {
-    return $this->set(strtoupper($type) . '_ADDRESS', $address);
+    return $this->set($type . '_address', $address);
   }
 
   /**
@@ -189,7 +172,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setType($type) {
-    return $this->set('TYPE', $type);
+    return $this->set('type', $type);
   }
 
   /**
@@ -201,7 +184,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setCulture($culture) {
-    return $this->set('CULTURE', $culture);
+    return $this->set('culture', $culture);
   }
 
   /**
@@ -213,7 +196,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setPreselectedMethod($method) {
-    return $this->set('PRESELECTED_METHOD', $method);
+    return $this->set('preselected_method', $method);
   }
 
   /**
@@ -225,7 +208,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setMode($mode) {
-    return $this->set('MODE', $mode);
+    return $this->set('mode', $mode);
   }
 
   /**
@@ -237,7 +220,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setVisibleMethods(array $methods) {
-    return $this->set('VISIBLE_METHODS', implode(',', $methods));
+    return $this->set('visible_methods', implode(',', $methods));
   }
 
   /**
@@ -249,7 +232,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setGroup($group) {
-    return $this->set('GROUP', $group);
+    return $this->set('group', $group);
   }
 
   /**
@@ -261,7 +244,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactTelno($number) {
-    return $this->set('CONTACT_TELLNO', $number);
+    return $this->set('contact_tellno', $number);
   }
 
   /**
@@ -273,7 +256,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactCellno($number) {
-    return $this->set('CONTACT_CELLNO', $number);
+    return $this->set('contact_cellno', $number);
   }
 
   /**
@@ -285,7 +268,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactEmail($email) {
-    return $this->set('CONTACT_EMAIL', $email);
+    return $this->set('contact_email', $email);
   }
 
   /**
@@ -306,8 +289,8 @@ class TransactionRepository {
     }
     list($firstname, $lastname) = $names;
 
-    $this->set('CONTACT_FIRSTNAME', $firstname)
-      ->set('CONTACT_LASTNAME', $lastname);
+    $this->set('contact_firstname', $firstname)
+      ->set('contact_lastname', $lastname);
 
     return $this;
   }
@@ -321,7 +304,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactCompany($company) {
-    return $this->set('CONTACT_COMPANY', $company);
+    return $this->set('contact_company', $company);
   }
 
   /**
@@ -333,7 +316,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactAddress($address) {
-    return $this->set('CONTACT_ADDR_STREET', $address);
+    return $this->set('contact_addr_street', $address);
   }
 
   /**
@@ -345,7 +328,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactZip($zip) {
-    return $this->set('CONTACT_ADDR_ZIP', $zip);
+    return $this->set('contact_addr_zip', $zip);
   }
 
   /**
@@ -357,7 +340,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactCity($city) {
-    return $this->set('CONTACT_ADDR_CITY', $city);
+    return $this->set('contact_addr_city', $city);
   }
 
   /**
@@ -369,7 +352,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setContactCountry($country) {
-    return $this->set('CONTACT_ADDR_COUNTRY', $country);
+    return $this->set('contact_addr_country', $country);
   }
 
   /**
@@ -381,7 +364,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setIncludeVat($status) {
-    return $this->set('INCLUDE_VAT', $status);
+    return $this->set('include_vat', $status);
   }
 
   /**
@@ -393,7 +376,7 @@ class TransactionRepository {
    * @return $this
    */
   public function setItems($items) {
-    return $this->set('ITEMS', (int) $items);
+    return $this->set('items', (int) $items);
   }
 
   /**
@@ -413,16 +396,63 @@ class TransactionRepository {
    * @return $this
    */
   public function setProduct(OrderItemInterface $item, $discount = 0, $type = self::ITEM_PRODUCT, $number = '', $tax_percent = 0.00) {
+    $item_price = $item->getTotalPrice()->getNumber();
+
+    $tax = $tax_percent;
+    // Calculate tax portion of the price.
+    if ($tax_percent > 0) {
+      $tax = $item_price * $tax_percent;
+    }
     $this->products[] = [
-      'ITEM_TITLE' => $item->getTitle(),
-      'ITEM_NO' => $number,
-      'ITEM_AMOUNT' => round($item->getQuantity()),
-      'ITEM_PRICE' => number_format($item->getTotalPrice()->getNumber(), 2, '.', ''),
-      'ITEM_TAX' => $tax_percent,
-      'ITEM_DISCOUNT' => $discount,
-      'ITEM_TYPE' => $type,
+      'item_title' => $item->getTitle(),
+      'item_no' => $number,
+      'item_amount' => round($item->getQuantity()),
+      'item_price' => number_format($item_price, 2, '.', ''),
+      'item_tax' => $tax,
+      'item_discount' => $discount,
+      'item_type' => $type,
     ];
     return $this;
+  }
+
+  /**
+   * Hash calculation requires specific order.
+   *
+   * @return array
+   *   Array of TransactionValue objects.
+   */
+  protected function getBuildOrder() {
+    $build_order = [
+      'merchant_id' => $this->get('merchant_id'),
+      'amount' => $this->get('amount', 'S1'),
+      'order_number' => $this->get('order_number'),
+      'reference_number' => $this->get('reference_number', NULL, FALSE),
+      'order_description' => $this->get('order_description', NULL, FALSE),
+      'currency' => $this->get('currency'),
+      'return_address' => $this->get('return_address'),
+      'cancel_address' => $this->get('cancel_address'),
+      'pending_address' => $this->get('pending_address'),
+      'notify_address' => $this->get('notify_address'),
+      'type' => $this->get('type'),
+      'culture' => $this->get('culture'),
+      'preselected_method' => $this->get('preselected_method', NULL, FALSE),
+      'mode' => $this->get('mode'),
+      'visible_methods' => $this->get('visible_methods', NULL, FALSE),
+      'group' => $this->get('group', NULL, FALSE),
+      'contact_tellno' => $this->get('contact_tellno', 'E1', FALSE),
+      'contact_cellno' => $this->get('contact_cellno', 'E1', FALSE),
+      'contact_email' => $this->get('contact_email', 'E1'),
+      'contact_firstname' => $this->get('contact_firstname', 'E1'),
+      'contact_lastname' => $this->get('contact_lastname', 'E1'),
+      'contact_company' => $this->get('contact_company', 'E1', FALSE),
+      'contact_addr_street' => $this->get('contact_addr_street', 'E1'),
+      'contact_addr_zip' => $this->get('contact_addr_zip', 'E1'),
+      'contact_addr_city' => $this->get('contact_addr_city', 'E1'),
+      'contact_addr_country' => $this->get('contact_addr_country', 'E1'),
+      'include_vat' => $this->get('include_vat', 'E1'),
+      'items' => $this->get('items', 'E1', FALSE),
+    ];
+    return $build_order;
   }
 
   /**
@@ -433,17 +463,28 @@ class TransactionRepository {
    */
   public function build() {
     $values = [];
-    foreach ($this->values as $key => $value) {
-      // Ignore certain values.
-      if ($value === static::IGNORE_VALUE) {
+    /** @var TransactionValue $value */
+    foreach ($this->getBuildOrder() as $key => $value) {
+      // Skip types not required by Paytrail type.
+      if (!$value->matches($this->raw('type'))) {
         continue;
       }
-      $values[$key] = $value;
+      // Check requirements.
+      if (!$value->passRequirements()) {
+        throw new \InvalidArgumentException(sprintf('%s is marked as required and is missing a value.', $key));
+      }
+      $values[strtoupper($key)] = $value->value();
+    }
+    if ($this->get('type') === 'S1') {
+      return $values;
+    }
+    if (count($this->products) != $this->raw('items')) {
+      throw new \InvalidArgumentException('Given item count does not match the actual product count.');
     }
     // Build products list.
     foreach ($this->products as $delta => $product) {
       foreach ($product as $key => $value) {
-        $values[sprintf('%s[%d]', $key, $delta)] = $value;
+        $values[sprintf('%s[%d]', strtoupper($key), $delta)] = $value;
       }
     }
     return $values;
