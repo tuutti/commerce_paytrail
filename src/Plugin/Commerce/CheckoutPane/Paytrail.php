@@ -84,7 +84,7 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
     // Create redirect key for current order if one does not exists already.
     $this->paymentManager->getRedirectKey($this->order);
 
-    $payment_gateway = $this->order->payment_gateway->entity;
+    $payment_gateway = $this->order->get('payment_gateway')->entity;
     $plugin = $payment_gateway->getPlugin();
 
     if (!$plugin instanceof PaytrailGateway) {

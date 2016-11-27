@@ -72,7 +72,7 @@ class PaymentController extends ControllerBase {
    *   Render array.
    */
   public function returnTo(Request $request, OrderInterface $commerce_order, $paytrail_redirect_key, $type) {
-    $payment_gateway = $commerce_order->payment_gateway->entity;
+    $payment_gateway = $commerce_order->get('payment_gateway')->entity;
     $plugin = $payment_gateway->getPlugin();
 
     if (!$plugin instanceof Paytrail) {
