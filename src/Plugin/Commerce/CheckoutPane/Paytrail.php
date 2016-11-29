@@ -6,6 +6,7 @@ use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowInterface;
 use Drupal\commerce_checkout\Plugin\Commerce\CheckoutPane\CheckoutPaneBase;
 use Drupal\commerce_checkout\Plugin\Commerce\CheckoutPane\CheckoutPaneInterface;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
+use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail as PaytrailGateway;
 use Drupal\Core\Form\FormStateInterface;
@@ -96,9 +97,9 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
     try {
       $elements = $this->paymentManager->buildTransaction($this->order);
     }
-    catch (\InvalidArgumentException $e) {
+    catch (InvalidValueException $e) {
       // @todo More informative error message.
-      drupal_set_message($this->t('Unexpected error.'), 'error');
+      drupal_set_message($this->t('Unexpected error: %error', ['%error' => $e->getMessage()]), 'error');
 
       return $pane_form;
     }

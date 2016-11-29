@@ -9,7 +9,9 @@ use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\commerce_paytrail\Repository\EnterpriseTransactionRepository;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
+use Drupal\commerce_paytrail\Repository\SimpleTransactionRepository;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Uuid\Php;
@@ -127,44 +129,24 @@ class PaymentManager implements PaymentManagerInterface {
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
-    $repository = new TransactionRepository();
     /** @var \Drupal\commerce_payment\Entity\PaymentMethod $payment_method */
     $payment_method = $order->get('payment_method')->entity;
+    $type = $plugin->getSetting('paytrail_type');
 
-    $repository->setOrderNumber($order->getOrderNumber())
-      ->setMerchantId($plugin->getSetting('merchant_id'));
+    $repository = $type === 'S1' ? new SimpleTransactionRepository() : new EnterpriseTransactionRepository();
 
-    foreach (['return', 'cancel', 'pending', 'notify'] as $type) {
-      $repository->setReturnAddress($type, $this->getReturnUrl($order, $type));
-    }
-    $repository->setType($plugin->getSetting('paytrail_type'))
-      // EUR is only allowed currency by Paytrail.
-      ->setCurrency('EUR')
-      ->setCulture($plugin->getCulture())
-      // Attempt to use preselected method if available.
-      ->setPreselectedMethod($payment_method->get('preselected_method')->value)
-      ->setMode($plugin->getSetting('paytrail_mode'))
-      ->setVisibleMethods($plugin->getSetting('visible_methods'));
-
-    if ($plugin->getSetting('paytrail_type') === 'S1') {
+    if ($repository instanceof SimpleTransactionRepository) {
       $repository->setAmount($order->getTotalPrice());
     }
     else {
       $billing_data = $order->getBillingProfile()->get('address')->first();
 
-      // Billing data not found.
+      // Billing data is required for this.
       if (!$billing_data instanceof AddressInterface) {
         throw new InvalidBillingException();
       }
-      $repository->setContactTelno('')
-        ->setContactCellno('')
-        ->setContactEmail($order->getEmail())
-        ->setContactName($billing_data->getGivenName())
-        ->setContactCompany($billing_data->getOrganization())
-        ->setContactAddress($billing_data->getAddressLine1())
-        ->setContactZip($billing_data->getPostalCode())
-        ->setContactCity($billing_data->getLocality())
-        ->setContactCountry($billing_data->getCountryCode())
+      $repository->setContactEmail($order->getEmail())
+        ->setBillingProfile($billing_data)
         // @todo Check commerce settings.
         ->setIncludeVat(1)
         ->setItems(count($order->getItems()));
@@ -175,6 +157,20 @@ class PaymentManager implements PaymentManagerInterface {
         $repository->setProduct($item);
       }
     }
+    $repository->setOrderNumber($order->getOrderNumber())
+      ->setReturnAddress($this->getReturnUrl($order, 'return'))
+      ->setCancelAddress($this->getReturnUrl($order, 'cancel'))
+      ->setPendingAddress($this->getReturnUrl($order, 'pending'))
+      ->setNotifyAddress($this->getReturnUrl($order, 'notify'))
+      ->setMerchantId($plugin->getSetting('merchant_id'))
+      // EUR is only allowed currency by Paytrail.
+      ->setCurrency('EUR')
+      ->setCulture($plugin->getCulture())
+      // Attempt to use preselected method if available.
+      ->setPreselectedMethod($payment_method->get('preselected_method')->value)
+      ->setMode($plugin->getSetting('paytrail_mode'))
+      ->setVisibleMethods($plugin->getSetting('visible_methods'));
+
     $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
     // Allow element values to be altered.
     /** @var TransactionRepositoryEvent $event */
