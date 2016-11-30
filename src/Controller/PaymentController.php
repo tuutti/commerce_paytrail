@@ -77,7 +77,7 @@ class PaymentController extends ControllerBase {
     if (!$plugin instanceof Paytrail) {
       throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
     }
-    /** @var Payment $payment */
+    /** @var \Drupal\commerce_payment\Entity\Payment $payment */
     $payment = $this->paymentManager->getPayment($commerce_order);
 
     if (!$payment) {
@@ -95,7 +95,7 @@ class PaymentController extends ControllerBase {
     // Payment has been processed already.
     if ($payment->getState()->value != 'new') {
       drupal_set_message($this->t('Payment has already processed (%state).', [
-        '%state' => $payment->getState()->value,
+        '%state' => $payment->getState()->getValue(),
       ]), 'warning');
       return $this->redirect('commerce_checkout.form', [
         'commerce_order' => $commerce_order->id(),

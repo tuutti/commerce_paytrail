@@ -212,7 +212,7 @@ abstract class TransactionRepository {
   public function setNotifyAddress($address) {
     return $this->set('notify_address', $address, [
       '#required' => TRUE,
-      '#weight' => TRUE,
+      '#weight' => 9,
       '#max_length' => 256,
     ]);
   }
