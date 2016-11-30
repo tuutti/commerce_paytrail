@@ -17,33 +17,23 @@ final class TransactionValue {
   protected $value;
 
   /**
-   * Indicates whether item is required to have value.
+   * The settings array.
    *
-   * @var bool
+   * @var array
    */
-  protected $required;
-
-  /**
-   * The required Paytrail type (S1, E1).
-   *
-   * @var string
-   */
-  protected $type;
+  protected $settings;
 
   /**
    * TransactionValue constructor.
    *
    * @param mixed $value
    *   The value.
-   * @param bool $required
-   *   Whether item is required to have value.
-   * @param string $type
-   *   The required type (S1, E1 or NULL for both).
+   * @param array $settings
+   *   The item settings.
    */
-  public function __construct($value, $required, $type) {
+  public function __construct($value, array $settings = []) {
     $this->value = $value;
-    $this->required = (bool) $required;
-    $this->type = $type;
+    $this->settings = $settings;
   }
 
   /**
@@ -57,29 +47,39 @@ final class TransactionValue {
   }
 
   /**
-   * Whether the value passes requirements.
+   * Gets the given setting.
+   *
+   * @param string $key
+   *   The setting key.
+   *
+   * @return mixed|null
+   *   NULL if given setting not found.
    */
-  public function passRequirements() {
-    if ($this->required) {
-      return !empty($this->value);
-    }
-    return TRUE;
+  protected function getSetting($key) {
+    return isset($this->settings[$key]) ? $this->settings[$key] : NULL;
   }
 
   /**
-   * Check if given type matches.
+   * Get elements weight.
    *
-   * @param string $type
-   *   The type to compare against.
-   *
-   * @return bool
-   *   Whether type matches.
+   * @return int
+   *   The weight.
    */
-  public function matches($type) {
-    if (is_null($this->type)) {
-      return TRUE;
+  public function weight() {
+    return $this->getSetting('#weight') ?: 0;
+  }
+
+  /**
+   * Whether the value passes requirements.
+   */
+  public function passRequirements() {
+    if ($this->getSetting('#required') && empty($this->value)) {
+      return FALSE;
     }
-    return $type == $this->type;
+    if (($length = $this->getSetting('#max_length')) && mb_strlen($this->value()) > $length) {
+      return FALSE;
+    }
+    return TRUE;
   }
 
 }
