@@ -11,6 +11,7 @@ use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail as PaytrailGateway;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -33,6 +34,13 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
   protected $paymentManager;
 
   /**
+   * The logger service.
+   *
+   * @var \Psr\Log\LoggerInterface
+   */
+  protected $logger;
+
+  /**
    * Paytrail constructor.
    *
    * @param array $configuration
@@ -45,11 +53,14 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
    *   The parent checkout flow.
    * @param \Drupal\commerce_paytrail\PaymentManagerInterface $payment_manager
    *   The payment manager service.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, CheckoutFlowInterface $checkout_flow, PaymentManagerInterface $payment_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, CheckoutFlowInterface $checkout_flow, PaymentManagerInterface $payment_manager, LoggerInterface $logger) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $checkout_flow);
 
     $this->paymentManager = $payment_manager;
+    $this->logger = $logger;
   }
 
   /**
@@ -61,7 +72,8 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
       $plugin_id,
       $plugin_definition,
       $checkout_flow,
-      $container->get('commerce_paytrail.payment_manager')
+      $container->get('commerce_paytrail.payment_manager'),
+      $container->get('logger.factory')->get('commerce_paytrail')
     );
   }
 
@@ -98,13 +110,19 @@ class Paytrail extends CheckoutPaneBase implements CheckoutPaneInterface, Contai
       $elements = $this->paymentManager->buildTransaction($this->order);
     }
     catch (InvalidValueException $e) {
-      // @todo More informative error message.
       drupal_set_message($this->t('Unexpected error: %error', ['%error' => $e->getMessage()]), 'error');
 
       return $pane_form;
     }
     catch (InvalidBillingException $e) {
       drupal_set_message($this->t('Billing information not found.'), 'error');
+
+      return $pane_form;
+    }
+    catch (\Exception $e) {
+      $this->logger->error('Unexpected error: ' . $e->getMessage());
+
+      drupal_set_message($this->t('Unexpected error. Please contact store administration if the problem persists.'));
 
       return $pane_form;
     }
