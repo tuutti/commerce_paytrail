@@ -4,7 +4,6 @@ namespace Drupal\Tests\commerce_paytrail\Unit;
 
 use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\EnterpriseTransactionRepository;
 use Drupal\commerce_paytrail\Repository\SimpleTransactionRepository;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;

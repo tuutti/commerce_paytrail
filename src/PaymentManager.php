@@ -12,7 +12,6 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\EnterpriseTransactionRepository;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\SimpleTransactionRepository;
-use Drupal\commerce_paytrail\Repository\TransactionRepository;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Uuid\Php;
 use Drupal\Core\Entity\EntityTypeManager;

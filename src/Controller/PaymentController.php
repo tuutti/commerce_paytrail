@@ -3,7 +3,6 @@
 namespace Drupal\commerce_paytrail\Controller;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\Core\Access\AccessResult;
