@@ -5,6 +5,6 @@
   "license": "GPL-2.0+",
   "minimum-stability": "dev",
   "require": {
-    "commerceguys/intl": "~0.7"
+    "drupal/commerce": "^2"
   }
 }
