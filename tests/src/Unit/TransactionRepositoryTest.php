@@ -3,6 +3,7 @@
 namespace Drupal\Tests\commerce_paytrail\Unit;
 
 use Drupal\commerce_order\Entity\OrderItem;
+use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Repository\EnterpriseTransactionRepository;
 use Drupal\commerce_paytrail\Repository\SimpleTransactionRepository;
@@ -141,8 +142,8 @@ class TransactionRepositoryTest extends UnitTestCase {
           'pending_address' => 'http://localhost/notify',
           'mode' => 2,
           'culture' => 'en_US',
-          'preselected_method' => '',
-          'visible_methods' => [],
+          'preselected_method' => '1',
+          'visible_methods' => ['23', '24'],
           'contact_name' => 'Firstname Lastname',
           'contact_tellno' => '123456',
           'contact_cellno' => '654321',
@@ -170,8 +171,8 @@ class TransactionRepositoryTest extends UnitTestCase {
           'TYPE' => 'E1',
           'MODE' => 2,
           'CULTURE' => 'en_US',
-          'PRESELECTED_METHOD' => '',
-          'VISIBLE_METHODS' => '',
+          'PRESELECTED_METHOD' => '1',
+          'VISIBLE_METHODS' => '23,24',
           'GROUP' => '123',
           'CONTACT_TELLNO' => '123456',
           'CONTACT_CELLNO' => '654321',
@@ -198,6 +199,147 @@ class TransactionRepositoryTest extends UnitTestCase {
   }
 
   /**
+   * Tests build() method.
+   *
+   * @covers \Drupal\commerce_paytrail\Repository\TransactionRepository::
+   * @covers \Drupal\commerce_paytrail\Repository\SimpleTransactionRepository::
+   * @dataProvider buildS1DataProvider
+   */
+  public function testS1Build($given, $expected) {
+    $repo = $this->getRepository(new SimpleTransactionRepository(), $given);
+
+    $response = $repo->build();
+    $this->assertEquals($expected, $response);
+  }
+
+  /**
+   * Data provider for testS1Build().
+   */
+  public function buildS1DataProvider() {
+    return [
+      [
+        // Test that default values gets populated.
+        [
+          'merchant_id' => '123456',
+          'currency' => 'EUR',
+          'amount' => new Price(666, 'USD'),
+          'order_number' => '12345',
+          'return_address' => 'http://localhost/return',
+          'cancel_address' => 'http://localhost/cancel',
+          'notify_address' => 'http://localhost/notify',
+          'pending_address' => 'http://localhost/notify',
+          'mode' => 2,
+          'culture' => 'en_US',
+          'preselected_method' => '',
+          'visible_methods' => [],
+        ],
+        [
+          'MERCHANT_ID' => '123456',
+          'ORDER_NUMBER' => '12345',
+          'AMOUNT' => '666.00',
+          'REFERENCE_NUMBER' => '',
+          'ORDER_DESCRIPTION' => '',
+          'CURRENCY' => 'EUR',
+          'RETURN_ADDRESS' => 'http://localhost/return',
+          'CANCEL_ADDRESS' => 'http://localhost/cancel',
+          'NOTIFY_ADDRESS' => 'http://localhost/notify',
+          'PENDING_ADDRESS' => 'http://localhost/notify',
+          'TYPE' => 'S1',
+          'MODE' => 2,
+          'CULTURE' => 'en_US',
+          'PRESELECTED_METHOD' => '',
+          'VISIBLE_METHODS' => '',
+          'GROUP' => '',
+        ],
+      ],
+      [
+        // Test that all values gets populated and are overridable.
+        [
+          'merchant_id' => '123456',
+          'currency' => 'EUR',
+          'amount' => new Price(666, 'USD'),
+          'order_number' => '12345',
+          'reference_number' => '1234',
+          'order_description' => 'order description',
+          'return_address' => 'http://localhost/return',
+          'cancel_address' => 'http://localhost/cancel',
+          'notify_address' => 'http://localhost/notify',
+          'pending_address' => 'http://localhost/notify',
+          'mode' => 2,
+          'culture' => 'en_US',
+          'preselected_method' => '1',
+          'visible_methods' => ['23', '24'],
+          'group' => 'test group',
+        ],
+        [
+          'MERCHANT_ID' => '123456',
+          'ORDER_NUMBER' => '12345',
+          'AMOUNT' => '666.00',
+          'REFERENCE_NUMBER' => '1234',
+          'ORDER_DESCRIPTION' => 'order description',
+          'CURRENCY' => 'EUR',
+          'RETURN_ADDRESS' => 'http://localhost/return',
+          'CANCEL_ADDRESS' => 'http://localhost/cancel',
+          'NOTIFY_ADDRESS' => 'http://localhost/notify',
+          'PENDING_ADDRESS' => 'http://localhost/notify',
+          'TYPE' => 'S1',
+          'MODE' => 2,
+          'CULTURE' => 'en_US',
+          'PRESELECTED_METHOD' => '1',
+          'VISIBLE_METHODS' => '23,24',
+          'GROUP' => 'test group',
+        ],
+      ],
+    ];
+  }
+
+  /**
+   * Tests invalid data type exception.
+   *
+   * @covers \Drupal\commerce_paytrail\Repository\TransactionRepository::
+   * @covers \Drupal\commerce_paytrail\Repository\SimpleTransactionRepository::
+   * @covers \Drupal\commerce_paytrail\Repository\EnterpriseTransactionRepository::
+   */
+  public function testInvalidDataTypeExceptions() {
+    $repo = new SimpleTransactionRepository();
+
+    try {
+      $repo->build();
+    }
+    catch (InvalidValueException $e) {
+      $this->assertEquals('Invalid data type for amount.', $e->getMessage());
+
+      return;
+    }
+    $this->fail();
+  }
+
+  /**
+   * Tests invalid value exception.
+   *
+   * @covers \Drupal\commerce_paytrail\Repository\TransactionRepository::
+   * @covers \Drupal\commerce_paytrail\Repository\SimpleTransactionRepository::
+   * @covers \Drupal\commerce_paytrail\Repository\EnterpriseTransactionRepository::
+   */
+  public function testInvalidValueExceptions() {
+    $given = $this->buildS1DataProvider()[0][0];
+
+    /** @var SimpleTransactionRepository $repo */
+    $repo = $this->getRepository(new SimpleTransactionRepository(), $given);
+    $repo->setMerchantId(NULL);
+
+    try {
+      $repo->build();
+    }
+    catch (InvalidValueException $e) {
+      $this->assertEquals('Validation failed for merchant_id.', $e->getMessage());
+
+      return;
+    }
+    $this->fail();
+  }
+
+  /**
    * Tests TransactionValue.
    *
    * @covers \Drupal\commerce_paytrail\Repository\TransactionValue::
@@ -217,6 +359,12 @@ class TransactionRepositoryTest extends UnitTestCase {
       '#required' => TRUE,
     ]);
     $this->assertEquals($value->value(), 'Cat');
+
+    $value = new TransactionValue('Cat cat cat cat', [
+      '#required' => TRUE,
+      '#max_length' => 5,
+    ]);
+    $this->assertFalse($value->passRequirements());
   }
 
   /**

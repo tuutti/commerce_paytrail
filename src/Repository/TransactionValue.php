@@ -76,7 +76,7 @@ final class TransactionValue {
     if ($this->getSetting('#required') && empty($this->value)) {
       return FALSE;
     }
-    if (($length = $this->getSetting('#max_length')) && $length > $length) {
+    if (($length = $this->getSetting('#max_length')) && mb_strlen($this->value()) > $length) {
       return FALSE;
     }
     return TRUE;

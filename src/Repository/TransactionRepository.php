@@ -345,7 +345,7 @@ abstract class TransactionRepository {
     foreach ($sorted as $key => $value) {
       // Check requirements.
       if (!$value->passRequirements()) {
-        throw new InvalidValueException(sprintf('%s is marked as required and is missing a value.', $key));
+        throw new InvalidValueException(sprintf('Validation failed for %s.', $key));
       }
       $values[strtoupper($key)] = $value->value();
     }
