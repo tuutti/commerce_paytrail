@@ -289,6 +289,21 @@ class EnterpriseTransactionRepository extends TransactionRepository {
   }
 
   /**
+   * Remove product from the products array.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderItemInterface $item
+   *   The order item object.
+   *
+   * @return $this
+   */
+  public function removeProduct(OrderItemInterface $item) {
+    if (isset($this->products[$item->id()])) {
+      unset($this->products[$item->id()]);
+    }
+    return $this;
+  }
+
+  /**
    * Gets the products list.
    *
    * @return array
