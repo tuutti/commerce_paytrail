@@ -276,7 +276,7 @@ class EnterpriseTransactionRepository extends TransactionRepository {
     if ($tax_percent > 0) {
       $tax = $item_price * $tax_percent;
     }
-    $this->products[] = [
+    $this->products[$item->id()] = [
       'item_title' => $item->getTitle(),
       'item_no' => $number,
       'item_amount' => (int) round($item->getQuantity()),
@@ -286,6 +286,16 @@ class EnterpriseTransactionRepository extends TransactionRepository {
       'item_type' => $type,
     ];
     return $this;
+  }
+
+  /**
+   * Gets the products list.
+   *
+   * @return array
+   *   The list of products.
+   */
+  public function getProducts() {
+    return $this->products;
   }
 
   /**
