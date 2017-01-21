@@ -5,11 +5,11 @@ namespace Drupal\commerce_paytrail\Repository;
 use Drupal\commerce_price\Price;
 
 /**
- * Class SimpleTransactionRepository.
+ * Class S1TransactionRepository.
  *
  * @package Drupal\commerce_paytrail\Repository
  */
-class SimpleTransactionRepository extends TransactionRepository {
+class S1TransactionRepository extends TransactionRepository {
 
   /**
    * {@inheritdoc}

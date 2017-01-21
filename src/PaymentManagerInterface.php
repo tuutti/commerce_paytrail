@@ -1,8 +1,9 @@
 <?php
 
 namespace Drupal\commerce_paytrail;
+
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_payment\Entity\PaymentInterface;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 
 /**
  * Interface PaymentManagerInterface.
@@ -51,54 +52,30 @@ interface PaymentManagerInterface {
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   Order.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $payment_gateway
+   *   The payment gateway.
    *
    * @return array|bool
    *   FALSE on validation failure or transaction array.
    */
-  public function buildTransaction(OrderInterface $order);
+  public function buildTransaction(OrderInterface $order, PaytrailBase $payment_gateway);
 
   /**
-   * Attempt to fetch payment for given order.
+   * Create new payment for given order.
    *
+   * @param string $status
+   *   The transaction state (authorized, capture).
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   *   The payment plugin.
+   * @param array $remote
+   *   The remove values.
    *
-   * @return bool|\Drupal\commerce_payment\Entity\PaymentInterface
-   *   Payment object on success, FALSE on failure.
-   */
-  public function getPayment(OrderInterface $order);
-
-  /**
-   * Create payment entity for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The Order.
-   *
-   * @return \Drupal\Core\Entity\EntityInterface
+   * @return \Drupal\commerce_payment\Entity\PaymentInterface
    *   The payment entity.
    */
-  public function buildPayment(OrderInterface $order);
-
-  /**
-   * Complete payment.
-   *
-   * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
-   *   The payment.
-   * @param string $status
-   *   Payment status. Available statuses: cancel, failed, success.
-   *
-   * @return bool
-   *   Status of payment.
-   */
-  public function completePayment(PaymentInterface $payment, $status);
-
-  /**
-   * Complete commerce order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   */
-  public function completeOrder(OrderInterface $order);
+  public function createPaymentForOrder($status, OrderInterface $order, PaytrailBase $plugin, array $remote);
 
   /**
    * Calculate authcode for transaction.

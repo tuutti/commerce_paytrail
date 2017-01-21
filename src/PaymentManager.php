@@ -4,14 +4,14 @@ namespace Drupal\commerce_paytrail;
 
 use Drupal\address\AddressInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
-use Drupal\commerce_paytrail\Repository\EnterpriseTransactionRepository;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBypassMode;
+use Drupal\commerce_paytrail\Repository\E1TransactionRepository;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
-use Drupal\commerce_paytrail\Repository\SimpleTransactionRepository;
+use Drupal\commerce_paytrail\Repository\S1TransactionRepository;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Uuid\Php;
 use Drupal\Core\Entity\EntityTypeManager;
@@ -77,13 +77,16 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * {@inheritdoc}
    */
-  public function getReturnUrl(OrderInterface $order, $type) {
+  public function getReturnUrl(OrderInterface $order, $type, $step = 'payment') {
     $arguments = [
       'commerce_order' => $order->id(),
-      'paytrail_redirect_key' => $this->getRedirectKey($order),
-      'type' => $type,
+      'step' => $step,
+      'commerce_payment_gateway' => 'paytrail',
     ];
-    $url = new Url('commerce_paytrail.return', $arguments, ['absolute' => TRUE]);
+    $url = new Url($type, $arguments, [
+      'absolute' => TRUE,
+      'query' => ['redirect_key' => $this->getRedirectKey($order)],
+    ]);
 
     return $url->toString();
   }
@@ -120,21 +123,14 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * {@inheritdoc}
    */
-  public function buildTransaction(OrderInterface $order) {
-    $payment_gateway = $order->get('payment_gateway')->entity;
-    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin */
-    $plugin = $payment_gateway->getPlugin();
-
-    if (!$plugin instanceof Paytrail) {
-      throw new \InvalidArgumentException('Payment gateway not instance of Paytrail.');
-    }
+  public function buildTransaction(OrderInterface $order, PaytrailBase $plugin) {
     /** @var \Drupal\commerce_payment\Entity\PaymentMethod $payment_method */
     $payment_method = $order->get('payment_method')->entity;
     $type = $plugin->getSetting('paytrail_type');
 
-    $repository = $type === 'S1' ? new SimpleTransactionRepository() : new EnterpriseTransactionRepository();
+    $repository = $type === 'S1' ? new S1TransactionRepository() : new E1TransactionRepository();
 
-    if ($repository instanceof SimpleTransactionRepository) {
+    if ($repository instanceof S1TransactionRepository) {
       $repository->setAmount($order->getTotalPrice());
     }
     else {
@@ -157,18 +153,23 @@ class PaymentManager implements PaymentManagerInterface {
       }
     }
     $repository->setOrderNumber($order->getOrderNumber())
-      ->setReturnAddress($this->getReturnUrl($order, 'return'))
-      ->setCancelAddress($this->getReturnUrl($order, 'cancel'))
-      ->setPendingAddress($this->getReturnUrl($order, 'pending'))
-      ->setNotifyAddress($this->getReturnUrl($order, 'notify'))
+      ->setReturnAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
+      ->setCancelAddress($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
+      ->setPendingAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
+      ->setNotifyAddress($this->getReturnUrl($order, 'commerce_payment.notify'))
       ->setMerchantId($plugin->getSetting('merchant_id'))
       // EUR is only allowed currency by Paytrail.
       ->setCurrency('EUR')
       ->setCulture($plugin->getCulture())
-      // Attempt to use preselected method if available.
-      ->setPreselectedMethod($payment_method->get('preselected_method')->value)
-      ->setMode($plugin->getSetting('paytrail_mode'))
+      ->setMode($plugin instanceof PaytrailBypassMode ? 2 : 1)
       ->setVisibleMethods($plugin->getSetting('visible_methods'));
+
+    $method = NULL;
+    if ($plugin instanceof PaytrailBypassMode) {
+      $method = $payment_method->get('preselected_method')->value;
+    }
+    // Attempt to use preselected method if available.
+    $repository->setPreselectedMethod($method);
 
     $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
     // Allow element values to be altered.
@@ -185,8 +186,8 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * {@inheritdoc}
    */
-  public function getPayment(OrderInterface $order) {
-    /** @var PaymentInterface[] $payments */
+  protected function getPayment(OrderInterface $order) {
+    /** @var \Drupal\commerce_payment\Entity\PaymentInterface[] $payments */
     $payments = $this->entityTypeManager
       ->getStorage('commerce_payment')
       ->loadByProperties(['order_id' => $order->id()]);
@@ -195,7 +196,7 @@ class PaymentManager implements PaymentManagerInterface {
       return FALSE;
     }
     foreach ($payments as $payment) {
-      if ($payment->bundle() !== 'paytrail' || $payment->getAmount()->compareTo($order->getTotalPrice()) !== 0) {
+      if ($payment->getPaymentGatewayId() !== 'paytrail' || $payment->getAmount()->compareTo($order->getTotalPrice()) !== 0) {
         continue;
       }
       $paytrail_payment = $payment;
@@ -206,58 +207,34 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * {@inheritdoc}
    */
-  public function buildPayment(OrderInterface $order) {
-    // Attempt to get existing payment.
-    if ($payment = $this->getPayment($order)) {
-      return $payment;
-    }
-    $payment = $this->entityTypeManager
-      ->getStorage('commerce_payment')
-      ->create([
-        'type' => 'paytrail',
-        'payment_method' => $order->get('payment_method')->target_id,
-        'payment_gateway' => $order->get('payment_gateway')->target_id,
-        'order_id' => $order->id(),
+  public function createPaymentForOrder($status, OrderInterface $order, PaytrailBase $plugin, array $remote) {
+    $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
+
+    if (!$payment = $this->getPayment($order)) {
+      /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
+      $payment = $payment_storage->create([
         'amount' => $order->getTotalPrice(),
+        'payment_gateway' => 'paytrail',
+        'order_id' => $order->id(),
+        'test' => $plugin->getMode() == 'test',
       ]);
-    $payment->save();
-
-    return $payment;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function completePayment(PaymentInterface $payment, $status) {
-    // Payment failed. Delete payment.
-    if ($status === 'failed' || $status === 'cancel') {
-      $payment->delete();
-
-      return FALSE;
     }
-    elseif ($status === 'success') {
-      // @todo Is there any reasons to call this rather than directly updating to 'capture' state?
+    $payment->setRemoteId($remote['remote_id'])
+      ->setRemoteState($remote['remote_state']);
+
+    if ($status === 'authorized') {
       $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
       $payment->setAuthorizedTime($this->getTime());
       $payment->getState()->applyTransition($transition);
+    }
+    elseif ($status === 'capture') {
       $capture_transition = $payment->getState()->getWorkflow()->getTransition('capture');
       $payment->getState()->applyTransition($capture_transition);
       $payment->setCapturedTime($this->getTime());
-      $payment->save();
-
-      return TRUE;
     }
-  }
+    $payment->save();
 
-  /**
-   * {@inheritdoc}
-   */
-  public function completeOrder(OrderInterface $order) {
-    // Place the order.
-    $transition = $order->getState()->getWorkflow()->getTransition('place');
-    $order->getState()->applyTransition($transition);
-    $order->set('checkout_step', 'complete');
-    $order->save();
+    return $payment;
   }
 
   /**

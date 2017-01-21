@@ -4,7 +4,6 @@ namespace Drupal\Tests\commerce_paytrail\Unit;
 
 use Drupal\commerce_paytrail\PaymentManager;
 use Drupal\commerce_paytrail\Repository\Method;
-use Drupal\commerce_price\Price;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Tests\UnitTestCase;
 
@@ -156,69 +155,6 @@ class PaymentManagerTest extends UnitTestCase {
     // saved to an order.
     $response2 = $this->sut->getRedirectKey($this->order);
     $this->assertEquals($response, $response2);
-  }
-
-  /**
-   * Tests getPayment() method.
-   *
-   * @covers ::getPayment
-   * @dataProvider getPaymentData
-   */
-  public function testGetPayment($storage_return, $bundle, $payment_amount, $total_price, $expected) {
-    $storage = $this->getMockBuilder('\Drupal\commerce_payment\PaymentStorage')
-      ->disableOriginalConstructor()
-      ->getMock();
-
-    $this->entityTypeManager->expects($this->any())
-      ->method('getStorage')
-      ->will($this->returnValue($storage));
-
-    $payment = $this->getMock('\Drupal\commerce_payment\Entity\PaymentInterface');
-
-    if ($storage_return === FALSE) {
-      $storage->expects($this->once())
-        ->method('loadByProperties')
-        ->will($this->returnValue(FALSE));
-    }
-    else {
-      $storage->expects($this->once())
-        ->method('loadByProperties')
-        ->will($this->returnValue([$payment]));
-    }
-    if ($bundle) {
-      $payment->expects($this->once())
-        ->method('bundle')
-        ->will($this->returnValue($bundle));
-    }
-    if ($payment_amount instanceof Price) {
-      $payment->expects($this->once())
-        ->method('getAmount')
-        ->will($this->returnValue($payment_amount));
-    }
-    if ($total_price instanceof Price) {
-      $this->order->expects($this->once())
-        ->method('getTotalPrice')
-        ->will($this->returnValue($total_price));
-    }
-    $this->assertEquals($this->sut->getPayment($this->order), $expected);
-  }
-
-  /**
-   * Data provider for testGetpayment().
-   */
-  public function getPaymentData() {
-    $payment = $this->getMock('\Drupal\commerce_payment\Entity\PaymentInterface');
-
-    return [
-      // Test no payments found.
-      [FALSE, NULL, NULL, NULL, FALSE],
-      // Test invalid bundle.
-      [TRUE, 'invalid_bundle', NULL, NULL, FALSE],
-      // Test not fully paid.
-      [TRUE, 'paytrail', new Price(90, 'USD'), new Price(100, 'USD'), FALSE],
-      // Test working one.
-      [TRUE, 'paytrail', new Price(100, 'USD'), new Price(100, 'USD'), $payment],
-    ];
   }
 
   /**

@@ -50,7 +50,7 @@ class MethodRepository {
       31 => new Method(31, 'MasterCard'),
       34 => new Method(34, 'Diners Club'),
       35 => new Method(35, 'JCB'),
-      36 => new Method(36, 'Paytrail account'),
+      36 => new Method(36, 'PaytrailBase account'),
       50 => new Method(50, 'Aktia'),
       51 => new Method(51, 'POP Pankki'),
       52 => new Method(52, 'Säästöpankki'),

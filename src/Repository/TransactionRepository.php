@@ -293,7 +293,7 @@ abstract class TransactionRepository {
   }
 
   /**
-   * Set group. @note This has not been implemented by Paytrail.
+   * Set group. @note This has not been implemented by PaytrailBase.
    *
    * @param string $group
    *   The group.
@@ -353,7 +353,7 @@ abstract class TransactionRepository {
   }
 
   /**
-   * Get current Paytrail type (E1, S1).
+   * Get current PaytrailBase type (E1, S1).
    *
    * @return string
    *   The type.

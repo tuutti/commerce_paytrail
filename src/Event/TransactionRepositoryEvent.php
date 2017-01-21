@@ -3,7 +3,7 @@
 namespace Drupal\commerce_paytrail\Event;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;
 use Symfony\Component\EventDispatcher\Event;
 
@@ -15,9 +15,9 @@ use Symfony\Component\EventDispatcher\Event;
 class TransactionRepositoryEvent extends Event {
 
   /**
-   * The Paytrail payment plugin.
+   * The PaytrailBase payment plugin.
    *
-   * @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
+   * @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase
    */
   protected $plugin;
 
@@ -38,14 +38,14 @@ class TransactionRepositoryEvent extends Event {
   /**
    * TransactionRepositoryEvent constructor.
    *
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin
-   *   The Paytrail payment plugin.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   *   The PaytrailBase payment plugin.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    * @param \Drupal\commerce_paytrail\Repository\TransactionRepository $repository
    *   The transaction repository.
    */
-  public function __construct(Paytrail $plugin, OrderInterface $order, TransactionRepository $repository) {
+  public function __construct(PaytrailBase $plugin, OrderInterface $order, TransactionRepository $repository) {
     $this->plugin = $plugin;
     $this->order = $order;
     $this->repository = $repository;
@@ -100,7 +100,7 @@ class TransactionRepositoryEvent extends Event {
   /**
    * Get payment plugin.
    *
-   * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
+   * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase
    *   The paytrail payment plugin.
    */
   public function getPlugin() {

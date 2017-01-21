@@ -6,11 +6,11 @@ use Drupal\address\AddressInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 
 /**
- * Class SimpleTransactionRepository.
+ * Class S1TransactionRepository.
  *
  * @package Drupal\commerce_paytrail\Repository
  */
-class EnterpriseTransactionRepository extends TransactionRepository {
+class E1TransactionRepository extends TransactionRepository {
 
   const ITEM_PRODUCT = 1;
   const ITEM_SHIPPING = 2;
@@ -122,7 +122,7 @@ class EnterpriseTransactionRepository extends TransactionRepository {
   public function setContactName($full_name) {
     $names = explode(' ', $full_name);
 
-    // Lastname is required field by Paytrail, but not by billing profile.
+    // Lastname is required field by PaytrailBase, but not by billing profile.
     // Fallback to double first names.
     if (empty($names[1])) {
       $names[1] = reset($names);
@@ -291,14 +291,14 @@ class EnterpriseTransactionRepository extends TransactionRepository {
   /**
    * Remove product from the products array.
    *
-   * @param \Drupal\commerce_order\Entity\OrderItemInterface $item
-   *   The order item object.
+   * @param int $index
+   *   The index.
    *
    * @return $this
    */
-  public function removeProduct(OrderItemInterface $item) {
-    if (isset($this->products[$item->id()])) {
-      unset($this->products[$item->id()]);
+  public function removeProduct($index) {
+    if (isset($this->products[$index])) {
+      unset($this->products[$index]);
     }
     return $this;
   }

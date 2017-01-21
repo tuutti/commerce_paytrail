@@ -11,8 +11,8 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentMethodType\PaymentMethodTypeB
  *
  * @CommercePaymentMethodType(
  *   id = "paytrail",
- *   label = @Translation("Paytrail"),
- *   create_label = @Translation("Paytrail"),
+ *   label = @Translation("PaytrailBase"),
+ *   create_label = @Translation("PaytrailBase"),
  * )
  */
 class Paytrail extends PaymentMethodTypeBase {
@@ -21,7 +21,10 @@ class Paytrail extends PaymentMethodTypeBase {
    * {@inheritdoc}
    */
   public function buildLabel(PaymentMethodInterface $payment_method) {
-    return $this->t('Paytrail');
+    if ($payment_method->isNew()) {
+      return $this->t('PaytrailBase');
+    }
+    return $this->t('Previously submitted PaytrailBase');
   }
 
   /**

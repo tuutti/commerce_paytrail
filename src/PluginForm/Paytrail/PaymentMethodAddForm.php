@@ -3,13 +3,14 @@
 namespace Drupal\commerce_paytrail\PluginForm\Paytrail;
 
 use Drupal\commerce_payment\PluginForm\PaymentMethodAddForm as BasePaymentMethodAddForm;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBypassMode;
+use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Class PaymentMethodAddForm.
  *
- * @package Drupal\commerce_paytrail\PluginForm\Paytrail
+ * @package Drupal\commerce_paytrail\PluginForm\PaytrailBase
  */
 class PaymentMethodAddForm extends BasePaymentMethodAddForm {
 
@@ -22,10 +23,8 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
 
     $form = parent::buildConfigurationForm($form, $form_state);
     // Add payment methods if bypass payment page mode is enabled.
-    if ($payment_method->bundle() === 'paytrail') {
-      if ($this->plugin->getSetting('paytrail_mode') == Paytrail::BYPASS_MODE) {
-        $form['payment_details'] = $this->buildPaytrailForm($form['payment_details'], $form_state);
-      }
+    if ($this->plugin instanceof PaytrailBypassMode) {
+      $form['payment_details'] = $this->buildPaytrailForm($form['payment_details'], $form_state);
     }
     return $form;
   }
@@ -38,7 +37,7 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
   }
 
   /**
-   * Build preselected method form for Paytrail.
+   * Build preselected method form for PaytrailBase.
    *
    * @param array $element
    *   Form element.
@@ -49,11 +48,13 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
    *   Form array.
    */
   protected function buildPaytrailForm(array $element, FormStateInterface $form_state) {
+    /** @var \Drupal\commerce_payment\Entity\PaymentMethodInterface $payment_method */
+    $payment_method = $this->entity;
     // Fetch list of enabled payment methods.
     $payment_methods = $this->plugin->getPaymentManager()
       ->getPaymentMethods($this->plugin->getSetting('visible_methods'));
 
-    $options = array_map(function ($value) {
+    $options = array_map(function (Method $value) {
       return $value->getDisplayLabel();
     }, $payment_methods);
 
