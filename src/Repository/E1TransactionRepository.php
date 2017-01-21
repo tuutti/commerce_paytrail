@@ -276,7 +276,7 @@ class E1TransactionRepository extends TransactionRepository {
     if ($tax_percent > 0) {
       $tax = $item_price * $tax_percent;
     }
-    $this->products[$item->id()] = [
+    $this->products[] = [
       'item_title' => $item->getTitle(),
       'item_no' => $number,
       'item_amount' => (int) round($item->getQuantity()),
