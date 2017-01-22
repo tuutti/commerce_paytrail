@@ -4,6 +4,7 @@ namespace Drupal\commerce_paytrail;
 
 use Drupal\address\AddressInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
@@ -213,6 +214,12 @@ class PaymentManager implements PaymentManagerInterface {
         'test' => $plugin->getMode() == 'test',
       ]);
     }
+    else {
+      // Make sure remote id does not change.
+      if ($remote['remote_id'] !== $payment->getRemoteId()) {
+        throw new PaymentGatewayException('Remote id does not match with previously stored remote id.');
+      }
+    }
     $payment->setRemoteId($remote['remote_id'])
       ->setRemoteState($remote['remote_state']);
 
@@ -222,6 +229,9 @@ class PaymentManager implements PaymentManagerInterface {
       $payment->getState()->applyTransition($transition);
     }
     elseif ($status === 'capture') {
+      if ($payment->getState()->value != 'authorization') {
+        throw new \InvalidArgumentException('Only payments in the "authorization" state can be captured.');
+      }
       $capture_transition = $payment->getState()->getWorkflow()->getTransition('capture');
       $payment->getState()->applyTransition($capture_transition);
       $payment->setCapturedTime($this->getTime());

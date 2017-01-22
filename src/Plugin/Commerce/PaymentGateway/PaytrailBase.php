@@ -3,6 +3,7 @@
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
@@ -149,6 +150,21 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   }
 
   /**
+   * Build payment form.
+   *
+   * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
+   *   The payment.
+   * @param int $preselected
+   *   The preselected payment method.
+   *
+   * @return array|bool
+   *   Payment form values.
+   */
+  public function buildPaymentForm(PaymentInterface $payment, $preselected = NULL) {
+    return $this->paymentManager->buildTransaction($payment->getOrder(), $this, $preselected);
+  }
+
+  /**
    * Get used langcode.
    */
   public function getCulture() {
@@ -261,20 +277,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   }
 
   /**
-   * Get payment manager.
-   *
-   * This is used in Drupal\commerce_paytrail\PluginForm\PaytrailBase\PaymentMethodAddForm.
-   *
-   * @todo Check if there is any way to inject this directly into PluginForm.
-   *
-   * @return \Drupal\commerce_paytrail\PaymentManagerInterface
-   *   The payment manager.
-   */
-  public function getPaymentManager() {
-    return $this->paymentManager;
-  }
-
-  /**
    * Get payment host url.
    *
    * @return string
@@ -299,7 +301,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     $hash_values = [];
     foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
       if (!$value = $request->query->get($key)) {
-        continue;
+        throw new HttpException(Response::HTTP_BAD_REQUEST, sprintf('Validation failed (missing %s)', $key));
       }
       $hash_values[] = $value;
     }
@@ -307,13 +309,23 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
 
     // Check redirect key and checksum validity.
     if (!$redirect_key_match || $hash !== $request->query->get('RETURN_AUTHCODE')) {
-      throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR);
+      throw new HttpException(Response::HTTP_BAD_REQUEST, 'Hash mismatch.');
     }
     // Mark payment as captured.
-    $this->paymentManager->createPaymentForOrder('capture', $order, $this, [
-      'remote_id' => $request->query->get('PAID'),
-      'remote_state' => 'paid',
-    ]);
+    try {
+      $this->paymentManager->createPaymentForOrder('capture', $order, $this, [
+        'remote_id' => $request->query->get('PAID'),
+        'remote_state' => 'paid',
+      ]);
+    }
+    catch (\InvalidArgumentException $e) {
+      // Invalid payment state.
+      throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid payment state.');
+    }
+    catch (PaymentGatewayException $e) {
+      // Transaction id mismatch.
+      throw new HttpException(Response::HTTP_BAD_REQUEST, 'Transaction id mismatch.');
+    }
     parent::onNotify($request);
   }
 
@@ -324,13 +336,15 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     $redirect_key_match = $this->paymentManager->getRedirectKey($order) === $request->query->get('redirect_key');
 
     if (!$redirect_key_match) {
-      throw new PaymentGatewayException('Validation failed (redirect key mismatch).');
+      drupal_set_message($this->t('Validation failed (redirect key mismatch).'), 'error');
+      throw new PaymentGatewayException();
     }
     // Handle return and notify.
     $hash_values = [];
     foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
       if (!$value = $request->query->get($key)) {
-        continue;
+        drupal_set_message($this->t('Validation failed (missing @key)', ['@key' => $key]), 'error');
+        throw new PaymentGatewayException();
       }
       $hash_values[] = $value;
     }
@@ -338,7 +352,8 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
 
     // Check checksum validity.
     if ($hash !== $request->query->get('RETURN_AUTHCODE')) {
-      throw new PaymentGatewayException('Validation failed (security hash mismatch)');
+      drupal_set_message($this->t('Validation failed (security hash mismatch)'), 'error');
+      throw new PaymentGatewayException();
     }
     // Mark payment as authorized. Paytrail will attempt to call notify IPN
     // which will mark payment as captured.
@@ -346,7 +361,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       'remote_id' => $request->query->get('PAID'),
       'remote_state' => 'waiting_confirm',
     ]);
-    drupal_set_message('Payment was processed');
+    drupal_set_message($this->t('Payment was processed.'));
   }
 
 }
