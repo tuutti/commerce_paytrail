@@ -28,7 +28,6 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     $payment = $this->entity;
     /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin */
     $plugin = $payment->getPaymentGateway()->getPlugin();
-    $payment_manager = $plugin->getPaymentManager();
 
     $form['#prefix'] = '<div id="payment-form">';
     $form['#suffix'] = '</div>';
@@ -36,12 +35,14 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     try {
       // Attempt to use preselected method if available.
       $preselected = $form_state->getTemporaryValue('selected_method');
-      $data = $payment_manager->buildTransaction($payment->getOrder(), $plugin, $preselected);
+      $data = $plugin->buildPaymentForm($payment, $preselected);
       $form = $this->buildRedirectForm($form, $form_state, $plugin->getHostUrl(), $data, 'post');
 
       // Select preselected method if using ajax.
       if ($plugin->getSetting('paytrail_mode') == PaytrailBase::BYPASS_MODE) {
         // Disable auto-redirect so user can select payment method.
+        // @todo Check if we can re-add this after user has selected
+        // the payment method.
         $form['#attached'] = array_filter($form['#attached'], function ($value) {
           return reset($value) !== 'commerce_payment/offsite_redirect';
         });
@@ -55,7 +56,7 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
         /** @var \Drupal\commerce_paytrail\Repository\Method $method */
         foreach ($plugin->getVisibleMethods() as $key => $method) {
           $class = [
-            strtolower(Html::cleanCssIdentifier($method->getDisplayLabel())),
+            Html::getId($method->getSafeLabel()),
             'payment-button-' . $key,
             'payment-method-button',
           ];

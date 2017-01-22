@@ -2,6 +2,9 @@
 
 namespace Drupal\commerce_paytrail\Repository;
 
+use Drupal\Component\Utility\Html;
+use Drupal\Component\Utility\Unicode;
+
 /**
  * Class Method.
  *
@@ -114,6 +117,23 @@ class Method {
    */
   public function getDisplayLabel() {
     return $this->displayLabel;
+  }
+
+  /**
+   * Gets machine name.
+   *
+   * @return string
+   *   The machine name.
+   */
+  public function getSafeLabel() {
+    $string = Unicode::strtolower($this->displayLabel);
+
+    // Convert nordic characters to safe characters.
+    return Html::cleanCssIdentifier($string, [
+      'ä' => 'a',
+      'ö' => 'o',
+      'å' => 'o',
+    ]);
   }
 
 }
