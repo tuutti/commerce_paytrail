@@ -123,6 +123,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->assertEquals($arguments['PAID'], $payment->getRemoteId());
     $this->assertEquals('waiting_confirm', $payment->getRemoteState());
 
+    // Test nofitifcation.
     $arguments2 = [
       'ORDER_NUMBER' => 5,
       'TIMESTAMP' => REQUEST_TIME,
@@ -151,6 +152,13 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $hash = ['RETURN_AUTHCODE' => $this->paymentManager->generateReturnChecksum($this->merchant_hash, $arguments2)];
     $this->drupalGet($notify_url, ['query' => $arguments2 + $hash]);
     $this->assertSession()->statusCodeEquals(200);
+
+    // Reset entity cache.
+    /** @var Payment $payment */
+    $payment = entity_load('commerce_payment', 1, TRUE);
+    $this->assertEquals('capture_completed', $payment->getState()->value);
+    $this->assertEquals($arguments2['PAID'], $payment->getRemoteId());
+    $this->assertEquals('paid', $payment->getRemoteState());
   }
 
 }
