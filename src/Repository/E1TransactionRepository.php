@@ -122,7 +122,7 @@ class E1TransactionRepository extends TransactionRepository {
   public function setContactName($full_name) {
     $names = explode(' ', $full_name);
 
-    // Lastname is required field by PaytrailBase, but not by billing profile.
+    // Lastname is required field by Paytrail, but not by billing profile.
     // Fallback to double first names.
     if (empty($names[1])) {
       $names[1] = reset($names);

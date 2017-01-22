@@ -8,6 +8,7 @@ use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
+use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
@@ -18,11 +19,19 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Class PaytrailBase.
+ * Provides the PaytrailBase payment gateway.
  *
- * @package Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway
+ * @CommercePaymentGateway(
+ *   id = "paytrail",
+ *   label = "Paytrail",
+ *   display_label = "Paytrail",
+ *   payment_method_types = {"paytrail"},
+ *   forms = {
+ *     "offsite-payment" = "Drupal\commerce_paytrail\PluginForm\OffsiteRedirect\PaytrailOffsiteForm",
+ *   },
+ * )
  */
-abstract class PaytrailBase extends OffsitePaymentGatewayBase {
+class PaytrailBase extends OffsitePaymentGatewayBase {
 
   /**
    * The language manager.
@@ -38,7 +47,26 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
    */
   protected $paymentManager;
 
+  /**
+   * The paytrail host.
+   *
+   * @var string
+   */
   const HOST = 'https://payment.paytrail.com';
+
+  /**
+   * The normal payment mode.
+   *
+   * @var int
+   */
+  const NORMAL_MODE = 1;
+
+  /**
+   * The payment page bypass mode.
+   *
+   * @var int
+   */
+  const BYPASS_MODE = 2;
 
   /**
    * PaytrailBase constructor.
@@ -92,6 +120,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
       'merchant_id' => '13466',
       'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
       'paytrail_type' => 'S1',
+      'paytrail_mode' => static::NORMAL_MODE,
       'visible_methods' => [],
     ] + parent::defaultConfiguration();
   }
@@ -107,6 +136,16 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
    */
   public function getSetting($key) {
     return isset($this->configuration[$key]) ? $this->configuration[$key] : NULL;
+  }
+
+  /**
+   * Gets the visible payment methods.
+   *
+   * @return array|mixed
+   *   The payment methods.
+   */
+  public function getVisibleMethods() {
+    return $this->paymentManager->getPaymentMethods($this->configuration['visible_methods']);
   }
 
   /**
@@ -172,8 +211,20 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
       ],
       '#default_value' => $this->configuration['culture'],
     ];
+    $form['paytrail_mode'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Mode'),
+      '#description' => $this->t('Setting this to anything other than normal requires an additional Paytrail services. See @link', [
+        '@link' => 'http://support.paytrail.com/hc/en-us/articles/201911337-Payment-page-bypass',
+      ]),
+      '#options' => [
+        static::NORMAL_MODE => $this->t('Normal service'),
+        static::BYPASS_MODE => $this->t('Bypass payment method selection page'),
+      ],
+      '#default_value' => $this->configuration['paytrail_mode'],
+    ];
 
-    $payment_methods = array_map(function ($value) {
+    $payment_methods = array_map(function (Method $value) {
       return $value->getLabel();
     }, $this->paymentManager->getPaymentMethods());
 
@@ -202,6 +253,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
         'merchant_id' => $values['merchant_id'],
         'merchant_hash'  => $values['merchant_hash'],
         'paytrail_type' => $values['paytrail_type'],
+        'paytrail_mode' => $values['paytrail_mode'],
         'visible_methods' => $values['visible_methods'],
         'culture' => $values['culture'],
       ]);

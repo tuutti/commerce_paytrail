@@ -8,7 +8,6 @@ use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBypassMode;
 use Drupal\commerce_paytrail\Repository\E1TransactionRepository;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\S1TransactionRepository;
@@ -123,9 +122,7 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * {@inheritdoc}
    */
-  public function buildTransaction(OrderInterface $order, PaytrailBase $plugin) {
-    /** @var \Drupal\commerce_payment\Entity\PaymentMethod $payment_method */
-    $payment_method = $order->get('payment_method')->entity;
+  public function buildTransaction(OrderInterface $order, PaytrailBase $plugin, $preselected_method = NULL) {
     $type = $plugin->getSetting('paytrail_type');
 
     $repository = $type === 'S1' ? new S1TransactionRepository() : new E1TransactionRepository();
@@ -160,16 +157,13 @@ class PaymentManager implements PaymentManagerInterface {
       ->setMerchantId($plugin->getSetting('merchant_id'))
       // EUR is only allowed currency by Paytrail.
       ->setCurrency('EUR')
+      // Preselected method will be populated with ajax.
+      ->setPreselectedMethod($preselected_method)
       ->setCulture($plugin->getCulture())
-      ->setMode($plugin instanceof PaytrailBypassMode ? 2 : 1)
+      // Use bypass mode if preselected method is available. It should not be
+      // possible to have preselected method without using bypass mode.
+      ->setMode($preselected_method ? PaytrailBase::BYPASS_MODE : PaytrailBase::NORMAL_MODE)
       ->setVisibleMethods($plugin->getSetting('visible_methods'));
-
-    $method = NULL;
-    if ($plugin instanceof PaytrailBypassMode) {
-      $method = $payment_method->get('preselected_method')->value;
-    }
-    // Attempt to use preselected method if available.
-    $repository->setPreselectedMethod($method);
 
     $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
     // Allow element values to be altered.

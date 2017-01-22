@@ -9,7 +9,7 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentType\PaymentDefault;
  *
  * @CommercePaymentType(
  *   id = "paytrail",
- *   label = @Translation("PaytrailBase"),
+ *   label = @Translation("Paytrail"),
  * )
  */
 class Paytrail extends PaymentDefault {}

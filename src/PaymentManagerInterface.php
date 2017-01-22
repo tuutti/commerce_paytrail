@@ -54,11 +54,13 @@ interface PaymentManagerInterface {
    *   Order.
    * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $payment_gateway
    *   The payment gateway.
+   * @param int $preselected_method
+   *   The optional preselected method.
    *
    * @return array|bool
    *   FALSE on validation failure or transaction array.
    */
-  public function buildTransaction(OrderInterface $order, PaytrailBase $payment_gateway);
+  public function buildTransaction(OrderInterface $order, PaytrailBase $payment_gateway, $preselected_method = NULL);
 
   /**
    * Create new payment for given order.
