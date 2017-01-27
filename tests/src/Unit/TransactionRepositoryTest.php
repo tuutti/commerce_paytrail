@@ -80,7 +80,8 @@ class TransactionRepositoryTest extends UnitTestCase {
           'culture' => 'en_US',
           'preselected_method' => '',
           'visible_methods' => [],
-          'contact_name' => 'Firstname Lastname',
+          'contact_name' => 'Firstname',
+          'contact_lastname' => 'Lastname',
           'contact_email' => 'test@email.fi',
           'contact_company' => 'company test',
           'contact_addr_street' => 'Test street',
@@ -144,7 +145,8 @@ class TransactionRepositoryTest extends UnitTestCase {
           'culture' => 'en_US',
           'preselected_method' => '1',
           'visible_methods' => ['23', '24'],
-          'contact_name' => 'Firstname Lastname',
+          'contact_name' => 'Firstname',
+          'contact_lastname' => 'Lastname',
           'contact_tellno' => '123456',
           'contact_cellno' => '654321',
           'contact_email' => 'test@email.fi',
@@ -307,7 +309,7 @@ class TransactionRepositoryTest extends UnitTestCase {
       $repo->build();
     }
     catch (InvalidValueException $e) {
-      $this->assertEquals('Invalid data type for amount.', $e->getMessage());
+      $this->assertEquals('No value or default value found for amount.', $e->getMessage());
 
       return;
     }
@@ -332,7 +334,7 @@ class TransactionRepositoryTest extends UnitTestCase {
       $repo->build();
     }
     catch (InvalidValueException $e) {
-      $this->assertEquals('Validation failed for merchant_id.', $e->getMessage());
+      $this->assertEquals('No value or default value found for merchant_id.', $e->getMessage());
 
       return;
     }
@@ -420,7 +422,8 @@ class TransactionRepositoryTest extends UnitTestCase {
       if (isset($given['contact_cellno'])) {
         $repo->setContactCellno($given['contact_cellno']);
       }
-      $repo->setContactName($given['contact_name'])
+      $repo->setContactFirstname($given['contact_name'])
+        ->setContactLastname($given['contact_lastname'])
         ->setContactEmail($given['contact_email'])
         ->setContactCompany($given['contact_company'])
         ->setContactAddress($given['contact_addr_street'])

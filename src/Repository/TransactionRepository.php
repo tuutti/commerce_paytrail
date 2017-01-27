@@ -25,13 +25,11 @@ abstract class TransactionRepository {
    *   Key.
    * @param mixed $value
    *   Value for key.
-   * @param array $settings
-   *   Settings for element.
    *
    * @return $this
    */
-  public function set($key, $value, array $settings) {
-    $this->values[$key] = new TransactionValue($value, $settings);
+  public function set($key, $value) {
+    $this->values[$key] = $value;
 
     return $this;
   }
@@ -44,21 +42,80 @@ abstract class TransactionRepository {
    */
   protected function getKeys() {
     return [
-      'merchant_id' => '',
-      'order_number' => '',
-      'reference_number' => $this->get('reference_number') ?: $this->setReferenceNumber(''),
-      'order_description' => $this->get('order_description') ?: $this->setOrderDescription(''),
-      'currency' => '',
-      'return_address' => '',
-      'cancel_address' => '',
-      'notify_address' => '',
-      'pending_address' => '',
-      'type' => $this->setType($this->getType()),
-      'mode' => '',
-      'culture' => '',
-      'preselected_method' => '',
-      'visible_methods' => '',
-      'group' => $this->get('group') ?: $this->setGroup(''),
+      'merchant_id' => [
+        '#weight' => 0,
+        '#required' => TRUE,
+        '#max_length' => 11,
+      ],
+      'order_number' => [
+        '#weight' => 2,
+        '#required' => TRUE,
+      ],
+      'reference_number' => [
+        '#weight' => 3,
+        '#required' => FALSE,
+        '#max_length' => 50,
+        '#default_value' => '',
+      ],
+      'order_description' => [
+        '#weight' => 4,
+        '#required' => FALSE,
+        '#max_length' => 65000,
+        '#default_value' => '',
+      ],
+      'currency' => [
+        '#weight' => 5,
+        '#required' => TRUE,
+        '#default_value' => 'EUR',
+      ],
+      'return_address' => [
+        '#weight' => 6,
+        '#required' => TRUE,
+        '#max_length' => 256,
+      ],
+      'cancel_address' => [
+        '#weight' => 7,
+        '#required' => TRUE,
+        '#max_length' => 256,
+      ],
+      'pending_address' => [
+        '#weight' => 8,
+        '#required' => TRUE,
+        '#max_length' => 256,
+      ],
+      'notify_address' => [
+        '#weight' => 9,
+        '#required' => TRUE,
+        '#max_length' => 256,
+      ],
+      'type' => [
+        '#weight' => 15,
+        '#required' => TRUE,
+        '#default_value' => $this->getType(),
+      ],
+      'mode' => [
+        '#weight' => 18,
+        '#required' => TRUE,
+      ],
+      'culture' => [
+        '#weight' => 16,
+        '#required' => TRUE,
+      ],
+      'preselected_method' => [
+        '#weight' => 17,
+        '#required' => FALSE,
+        '#default_value' => '',
+      ],
+      'visible_methods' => [
+        '#weight' => 19,
+        '#required' => FALSE,
+        '#default_value' => '',
+      ],
+      'group' => [
+        '#weight' => 20,
+        '#required' => FALSE,
+        '#default_value' => '',
+      ],
     ];
   }
 
@@ -68,8 +125,8 @@ abstract class TransactionRepository {
    * @param string $key
    *   The key to get value with.
    *
-   * @return \Drupal\commerce_paytrail\Repository\TransactionValue
-   *   The transaction value object.
+   * @return \Drupal\commerce_paytrail\Repository\TransactionValue|bool
+   *   The transaction value object or false if no value is found.
    */
   protected function get($key) {
     return isset($this->values[$key]) ? $this->values[$key] : FALSE;
@@ -84,11 +141,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setMerchantId($id) {
-    return $this->set('merchant_id', $id, [
-      '#weight' => 0,
-      '#required' => TRUE,
-      '#max_length' => 11,
-    ]);
+    return $this->set('merchant_id', $id);
   }
 
   /**
@@ -100,10 +153,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setOrderNumber($order_number) {
-    return $this->set('order_number', $order_number, [
-      '#weight' => 2,
-      '#required' => TRUE,
-    ]);
+    return $this->set('order_number', $order_number);
   }
 
   /**
@@ -115,11 +165,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setReferenceNumber($reference_number) {
-    return $this->set('reference_number', $reference_number, [
-      '#weight' => 3,
-      '#required' => FALSE,
-      '#max_length' => 50,
-    ]);
+    return $this->set('reference_number', $reference_number);
   }
 
   /**
@@ -131,11 +177,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setOrderDescription($description) {
-    return $this->set('order_description', $description, [
-      '#weight' => 4,
-      '#required' => FALSE,
-      '#max_length' => 65000,
-    ]);
+    return $this->set('order_description', $description);
   }
 
   /**
@@ -147,10 +189,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setCurrency($currency = 'EUR') {
-    return $this->set('currency', $currency, [
-      '#required' => TRUE,
-      '#weight' => 5,
-    ]);
+    return $this->set('currency', $currency);
   }
 
   /**
@@ -162,11 +201,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setReturnAddress($address) {
-    return $this->set('return_address', $address, [
-      '#required' => TRUE,
-      '#weight' => 6,
-      '#max_length' => 256,
-    ]);
+    return $this->set('return_address', $address);
   }
 
   /**
@@ -178,11 +213,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setCancelAddress($address) {
-    return $this->set('cancel_address', $address, [
-      '#weight' => 7,
-      '#required' => TRUE,
-      '#max_length' => 256,
-    ]);
+    return $this->set('cancel_address', $address);
   }
 
   /**
@@ -194,11 +225,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setPendingAddress($address) {
-    return $this->set('pending_address', $address, [
-      '#required' => TRUE,
-      '#weight' => 8,
-      '#max_length' => 256,
-    ]);
+    return $this->set('pending_address', $address);
   }
 
   /**
@@ -210,11 +237,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setNotifyAddress($address) {
-    return $this->set('notify_address', $address, [
-      '#required' => TRUE,
-      '#weight' => 9,
-      '#max_length' => 256,
-    ]);
+    return $this->set('notify_address', $address);
   }
 
   /**
@@ -226,10 +249,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setType($type) {
-    return $this->set('type', $type, [
-      '#required' => TRUE,
-      '#weight' => 15,
-    ]);
+    return $this->set('type', $type);
   }
 
   /**
@@ -241,10 +261,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setCulture($culture) {
-    return $this->set('culture', $culture, [
-      '#required' => TRUE,
-      '#weight' => 16,
-    ]);
+    return $this->set('culture', $culture);
   }
 
   /**
@@ -256,10 +273,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setPreselectedMethod($method) {
-    return $this->set('preselected_method', $method, [
-      '#required' => FALSE,
-      '#weight' => 17,
-    ]);
+    return $this->set('preselected_method', $method);
   }
 
   /**
@@ -271,10 +285,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setMode($mode) {
-    return $this->set('mode', $mode, [
-      '#required' => TRUE,
-      '#weight' => 18,
-    ]);
+    return $this->set('mode', $mode);
   }
 
   /**
@@ -286,10 +297,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setVisibleMethods(array $methods) {
-    return $this->set('visible_methods', implode(',', $methods), [
-      '#required' => FALSE,
-      '#weight' => 19,
-    ]);
+    return $this->set('visible_methods', implode(',', $methods));
   }
 
   /**
@@ -301,10 +309,7 @@ abstract class TransactionRepository {
    * @return $this
    */
   public function setGroup($group) {
-    return $this->set('group', $group, [
-      '#required' => FALSE,
-      '#weight' => 20,
-    ]);
+    return $this->set('group', $group);
   }
 
   /**
@@ -313,19 +318,18 @@ abstract class TransactionRepository {
   protected function getSortedValues() {
     $values = [];
 
-    foreach ($this->getKeys() as $key => $default_value) {
+    foreach ($this->getKeys() as $key => $settings) {
       // Attempt to use default value.
       if (!$value = $this->get($key)) {
-        $value = $default_value;
+        // Empty default value must not be NULL.
+        if (!isset($settings['#default_value'])) {
+          throw new InvalidValueException(sprintf('No value or default value found for %s.', $key));
+        }
+        $value = $settings['#default_value'];
       }
-      if (!$value instanceof TransactionValue) {
-        throw new InvalidValueException(sprintf('Invalid data type for %s.', $key));
-      }
-      $values[$key] = $value;
+      $values[$key] = new TransactionValue($value, $settings);
     }
-    uasort($values, function ($a, $b) {
-      /** @var TransactionValue $a */
-      /** @var TransactionValue $b */
+    uasort($values, function (TransactionValue $a, TransactionValue $b) {
       return $a->weight() > $b->weight() ? 1 : -1;
     });
     return $values;
