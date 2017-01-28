@@ -6,6 +6,7 @@ use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\commerce_paytrail\PaymentManager;
 use Drupal\commerce_paytrail\Repository\E1TransactionRepository;
+use Drupal\commerce_paytrail\Repository\PaytrailProduct;
 use Drupal\commerce_paytrail\Repository\S1TransactionRepository;
 use Drupal\commerce_paytrail\Repository\TransactionRepository;
 use Drupal\commerce_paytrail\Repository\TransactionValue;
@@ -394,12 +395,6 @@ class TransactionRepositoryTest extends UnitTestCase {
       '#required' => TRUE,
     ]);
     $this->assertEquals($value->value(), 'Cat');
-
-    $value = new TransactionValue('Cat cat cat cat', [
-      '#required' => TRUE,
-      '#max_length' => 5,
-    ]);
-    $this->assertFalse($value->passRequirements());
   }
 
   /**
@@ -434,7 +429,7 @@ class TransactionRepositoryTest extends UnitTestCase {
         ->setItems($given['items']);
 
       for ($i = 0; $i < $given['products']; $i++) {
-        $repo->setProduct(clone $this->orderItem);
+        $repo->setProduct($i, PaytrailProduct::createWithOrderItem(clone $this->orderItem));
       }
     }
     else {
