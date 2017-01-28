@@ -85,8 +85,8 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     // This should never happen, but lets make sure, because otherwise users can
     // complete the payment process without actually paying anything.
     // @todo is there any way to gracefully exit?
-    // Seems like ::validateConfigurationForm() is only ran for
-    // non-offsite payments.
+    // Seems like ::validateConfigurationForm() or ::validateForm() is never
+    // actually ran.
     throw new \InvalidArgumentException('Invalid form data.');
   }
 
