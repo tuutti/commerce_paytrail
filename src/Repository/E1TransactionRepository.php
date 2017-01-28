@@ -3,7 +3,6 @@
 namespace Drupal\commerce_paytrail\Repository;
 
 use Drupal\address\AddressInterface;
-use Drupal\commerce_order\Entity\OrderItemInterface;
 
 /**
  * Class S1TransactionRepository.
@@ -11,27 +10,6 @@ use Drupal\commerce_order\Entity\OrderItemInterface;
  * @package Drupal\commerce_paytrail\Repository
  */
 class E1TransactionRepository extends TransactionRepository {
-
-  /**
-   * The default item type.
-   *
-   * @var int
-   */
-  const ITEM_PRODUCT = 1;
-
-  /**
-   * The shipping item type.
-   *
-   * @var int
-   */
-  const ITEM_SHIPPING = 2;
-
-  /**
-   * The handling item type.
-   *
-   * @var int
-   */
-  const ITEM_HANDLING = 3;
 
   /**
    * The list of products.
@@ -48,50 +26,41 @@ class E1TransactionRepository extends TransactionRepository {
       'contact_tellno' => [
         '#weight' => 25,
         '#required' => FALSE,
-        '#max_length' => 64,
         '#default_value' => '',
       ],
       'contact_cellno' => [
         '#weight' => 26,
         '#required' => FALSE,
-        '#max_length' => 64,
         '#default_value' => '',
       ],
       'contact_email' => [
         '#weight' => 27,
         '#required' => TRUE,
-        '#max_length' => 255,
       ],
       'contact_firstname' => [
         '#weight' => 28,
         '#required' => TRUE,
-        '#max_length' => 64,
       ],
       'contact_lastname' => [
         '#weight' => 29,
         '#required' => TRUE,
-        '#max_length' => 64,
       ],
       'contact_company' => [
         '#weight' => 30,
         '#required' => FALSE,
-        '#max_length' => 128,
         '#default_value' => '',
       ],
       'contact_addr_street' => [
         '#weight' => 31,
         '#required' => TRUE,
-        '#max_length' => 128,
       ],
       'contact_addr_zip' => [
         '#weight' => 32,
         '#required' => TRUE,
-        '#max_length' => 16,
       ],
       'contact_addr_city' => [
         '#weight' => 33,
         '#required' => TRUE,
-        '#max_length' => 64,
       ],
       'contact_addr_country' => [
         '#weight' => 34,
@@ -274,37 +243,24 @@ class E1TransactionRepository extends TransactionRepository {
   }
 
   /**
-   * Set product.
+   * Sets paytrail product.
    *
-   * @param \Drupal\commerce_order\Entity\OrderItemInterface $item
-   *   The order item object.
-   * @param int $discount
-   *   Discount amount.
-   * @param int $type
-   *   Product type.
-   * @param string $number
-   *   Product number.
-   * @param float $tax_percent
-   *   Tax percentage.
+   * @param int $delta
+   *   The item delta.
+   * @param \Drupal\commerce_paytrail\Repository\PaytrailProduct $product
+   *   The product.
    *
    * @return $this
    */
-  public function setProduct(OrderItemInterface $item, $discount = 0, $type = self::ITEM_PRODUCT, $number = '', $tax_percent = 0.00) {
-    $item_price = $item->getTotalPrice()->getNumber();
-
-    $tax = $tax_percent;
-    // Calculate tax portion of the price.
-    if ($tax_percent > 0) {
-      $tax = $item_price * $tax_percent;
-    }
-    $this->products[] = [
-      'item_title' => $item->getTitle(),
-      'item_no' => $number,
-      'item_amount' => (int) round($item->getQuantity()),
-      'item_price' => number_format($item_price, 2, '.', ''),
-      'item_tax' => number_format($tax, 2, '.', ''),
-      'item_discount' => $discount,
-      'item_type' => $type,
+  public function setProduct($delta, PaytrailProduct $product) {
+    $this->products[$delta] = [
+      'item_title' => $product->getTitle(),
+      'item_no' => $product->getNumber(),
+      'item_amount' => $product->getQuantity(),
+      'item_price' => $product->getPrice(),
+      'item_tax' => $product->getTax(),
+      'item_discount' => $product->getDiscount(),
+      'item_type' => $product->getType(),
     ];
     return $this;
   }

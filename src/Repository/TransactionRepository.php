@@ -45,7 +45,6 @@ abstract class TransactionRepository {
       'merchant_id' => [
         '#weight' => 0,
         '#required' => TRUE,
-        '#max_length' => 11,
       ],
       'order_number' => [
         '#weight' => 2,
@@ -54,13 +53,11 @@ abstract class TransactionRepository {
       'reference_number' => [
         '#weight' => 3,
         '#required' => FALSE,
-        '#max_length' => 50,
         '#default_value' => '',
       ],
       'order_description' => [
         '#weight' => 4,
         '#required' => FALSE,
-        '#max_length' => 65000,
         '#default_value' => '',
       ],
       'currency' => [
@@ -71,22 +68,18 @@ abstract class TransactionRepository {
       'return_address' => [
         '#weight' => 6,
         '#required' => TRUE,
-        '#max_length' => 256,
       ],
       'cancel_address' => [
         '#weight' => 7,
         '#required' => TRUE,
-        '#max_length' => 256,
       ],
       'pending_address' => [
         '#weight' => 8,
         '#required' => TRUE,
-        '#max_length' => 256,
       ],
       'notify_address' => [
         '#weight' => 9,
         '#required' => TRUE,
-        '#max_length' => 256,
       ],
       'type' => [
         '#weight' => 15,

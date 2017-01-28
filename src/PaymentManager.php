@@ -11,6 +11,7 @@ use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\E1TransactionRepository;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
+use Drupal\commerce_paytrail\Repository\PaytrailProduct;
 use Drupal\commerce_paytrail\Repository\S1TransactionRepository;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Uuid\Php;
@@ -147,7 +148,8 @@ class PaymentManager implements PaymentManagerInterface {
       foreach ($order->getItems() as $delta => $item) {
         // @todo Implement taxes when commerce_tax is available.
         // @todo Implement discount and item type handling.
-        $repository->setProduct($item);
+        $product = PaytrailProduct::createWithOrderItem($item);
+        $repository->setProduct($delta, $product);
       }
     }
     $repository->setOrderNumber($order->getOrderNumber())
