@@ -58,14 +58,25 @@ class PaytrailTransactionSubscriber implements EventSubscriberInterface {
       $repository->setOrderDescription('Custom order description')
       ->setOrderNumber('Custom order number');
     }
-    // Here we assume that $repository is instance of \Drupal\commerce_paytrail\Repository\E1TransactionRepository.
+    // Here we assume that $repository is instance of \Drupal\commerce_paytrail\Repository\E1TransactionRepository
+    // (E1 type).
     if (my_special_case_two) {
       $repository->setIncludeVat(1);
 
       $order = $event->getOrder();
       foreach ($order->getItems() as $delta => $item) {
         // @see \Drupal\commerce_paytrail\Repository\PaytrailProduct for available methods.
+        // Append new product in products list (or replace existing one with given delta).
         $repository->setProduct($delta, new PaytrailProduct());
+      }
+
+      if (my_special_case_three) {
+        /** @var \Drupal\commerce_paytrail\Repository\PaytrailProduct $product */
+        foreach ($repository->getProducts() as $delta => $product) {
+          $product->setTitle('Replaced title')
+            ->setTax(0.24);
+          $repository->setProduct($delta, $product);
+        }
       }
     }
   }
@@ -74,7 +85,7 @@ class PaytrailTransactionSubscriber implements EventSubscriberInterface {
    * {@inheritdoc}
    */
   public static function getSubscribedEvents() {
-    $events[Events::PAYMENT_REPO_ALTER][] = ['onRespond'];
+    $events[Events::TRANSACTION_REPO_ALTER][] = ['onRespond'];
     return $events;
   }
 
