@@ -22,8 +22,6 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-    $form = parent::buildConfigurationForm($form, $form_state);
-
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
     $payment = $this->entity;
     /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin */
@@ -38,11 +36,9 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
       $data = $plugin->buildPaymentForm($payment, $preselected);
       $form = $this->buildRedirectForm($form, $form_state, $plugin->getHostUrl(), $data, 'post');
 
-      // Select preselected method if using ajax.
+      // This only works when using bypass the payment page feature.
       if ($plugin->getSetting('paytrail_mode') == PaytrailBase::BYPASS_MODE) {
         // Disable auto-redirect so user can select payment method.
-        // @todo Check if we can re-add this after user has selected
-        // the payment method.
         $form['#attached'] = array_filter($form['#attached'], function ($value) {
           return reset($value) !== 'commerce_payment/offsite_redirect';
         });
@@ -86,7 +82,12 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     catch (\Exception $e) {
       drupal_set_message($this->t('Unexpected error. Please contact store administration if the problem persists.'), 'error');
     }
-    return [];
+    // This should never happen, but lets make sure, because otherwise users can
+    // complete the payment process without actually paying anything.
+    // @todo is there any way to gracefully exit?
+    // Seems like ::validateConfigurationForm() is only ran for
+    // non-offsite payments.
+    throw new \InvalidArgumentException('Invalid form data.');
   }
 
   /**

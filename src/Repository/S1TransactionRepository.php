@@ -15,7 +15,7 @@ class S1TransactionRepository extends TransactionRepository {
    * {@inheritdoc}
    */
   protected function getKeys() {
-    return ['amount' => ''] + parent::getKeys();
+    return ['amount' => ['#weight' => 1, '#required' => TRUE]] + parent::getKeys();
   }
 
   /**
@@ -29,10 +29,7 @@ class S1TransactionRepository extends TransactionRepository {
   public function setAmount(Price $price) {
     $formatted = number_format($price->getNumber(), 2, '.', '');
 
-    return $this->set('amount', $formatted, [
-      '#required' => TRUE,
-      '#weight' => 1,
-    ]);
+    return $this->set('amount', $formatted);
   }
 
   /**

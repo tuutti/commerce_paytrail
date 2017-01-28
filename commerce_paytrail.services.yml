@@ -1,4 +1,7 @@
 services:
+  logger.channel.commerce_paytrail:
+    parent: logger.channel_base
+    arguments: ['commerce_paytrail']
   commerce_paytrail.method_repository:
     class: Drupal\commerce_paytrail\Repository\MethodRepository
     arguments: ["@event_dispatcher"]

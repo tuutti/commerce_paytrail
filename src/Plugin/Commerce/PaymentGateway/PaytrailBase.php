@@ -13,6 +13,7 @@ use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,6 +48,13 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @var \Drupal\commerce_paytrail\PaymentManagerInterface
    */
   protected $paymentManager;
+
+  /**
+   * The logger.
+   *
+   * @var \Psr\Log\LoggerInterface
+   */
+  protected $logger;
 
   /**
    * The paytrail host.
@@ -88,12 +96,15 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *   The language manager.
    * @param \Drupal\commerce_paytrail\PaymentManagerInterface $payment_manager
    *   The payment manager.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, LanguageManagerInterface $language_manager, PaymentManagerInterface $payment_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, LanguageManagerInterface $language_manager, PaymentManagerInterface $payment_manager, LoggerInterface $logger) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager);
 
     $this->languageManager = $language_manager;
     $this->paymentManager = $payment_manager;
+    $this->logger = $logger;
   }
 
   /**
@@ -108,7 +119,8 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       $container->get('plugin.manager.commerce_payment_type'),
       $container->get('plugin.manager.commerce_payment_method_type'),
       $container->get('language_manager'),
-      $container->get('commerce_paytrail.payment_manager')
+      $container->get('commerce_paytrail.payment_manager'),
+      $container->get('logger.channel.commerce_paytrail')
     );
   }
 
@@ -287,13 +299,28 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   }
 
   /**
-   * {@inheritdoc}
+   * IPN callback.
+   *
+   * IPN will be called after succesful paytrail payment. Payment will be
+   * marked as captured if validation succeeded.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request.
+   *
+   * @return \Symfony\Component\HttpFoundation\Response
+   *   The 200 response code if validation succeeded.
    */
   public function onNotify(Request $request) {
     $storage = $this->entityTypeManager->getStorage('commerce_order');
 
     /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
     if (!$order = $storage->load($request->query->get('ORDER_NUMBER'))) {
+      $this->logger
+        ->notice($this->t('Notify callback called for an invalid order @order [@values]', [
+          '@order' => $request->query->get('ORDER_NUMBER'),
+          '@values' => print_r($request->query->all(), TRUE),
+        ]));
+
       throw new NotFoundHttpException();
     }
     $redirect_key_match = $this->paymentManager->getRedirectKey($order) === $request->query->get('redirect_key');
@@ -301,6 +328,13 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     $hash_values = [];
     foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
       if (!$value = $request->query->get($key)) {
+        $this->logger
+          ->notice($this->t('Validation failed (missing @value) for @order [@values]', [
+            '@value' => $key,
+            '@order' => $order->id(),
+            '@values' => print_r($request->query->all(), TRUE),
+          ]));
+
         throw new HttpException(Response::HTTP_BAD_REQUEST, sprintf('Validation failed (missing %s)', $key));
       }
       $hash_values[] = $value;
@@ -309,6 +343,12 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
 
     // Check redirect key and checksum validity.
     if (!$redirect_key_match || $hash !== $request->query->get('RETURN_AUTHCODE')) {
+      $this->logger
+        ->notice($this->t('Hash mismatch for @order [@values]', [
+          '@order' => $order->id(),
+          '@values' => print_r($request->query->all(), TRUE),
+        ]));
+
       throw new HttpException(Response::HTTP_BAD_REQUEST, 'Hash mismatch.');
     }
     // Mark payment as captured.
@@ -320,23 +360,49 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     }
     catch (\InvalidArgumentException $e) {
       // Invalid payment state.
+      $this->logger
+        ->error($this->t('Invalid payment state for @order [@values]', [
+          '@order' => $order->id(),
+          '@values' => print_r($request->query->all(), TRUE),
+        ]));
+
       throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid payment state.');
     }
     catch (PaymentGatewayException $e) {
       // Transaction id mismatch.
+      $this->logger
+        ->error($this->t('Transaction id mismatch for @order [@values]', [
+          '@order' => $order->id(),
+          '@values' => print_r($request->query->all(), TRUE),
+        ]));
+
       throw new HttpException(Response::HTTP_BAD_REQUEST, 'Transaction id mismatch.');
     }
-    parent::onNotify($request);
+    return parent::onNotify($request);
   }
 
   /**
-   * {@inheritdoc}
+   * Validate and store transaction for order.
+   *
+   * Payment will be initially stored as 'authorized' until
+   * paytrail calls the notify ipn.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The commerce order.
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request.
    */
   public function onReturn(OrderInterface $order, Request $request) {
     $redirect_key_match = $this->paymentManager->getRedirectKey($order) === $request->query->get('redirect_key');
 
     if (!$redirect_key_match) {
       drupal_set_message($this->t('Validation failed (redirect key mismatch).'), 'error');
+
+      $this->logger
+        ->critical($this->t('Redirect key mismatch for @order [@values]', [
+          '@order' => $order->id(),
+          '@values' => print_r($request->query->all(), TRUE),
+        ]));
       throw new PaymentGatewayException();
     }
     // Handle return and notify.
@@ -344,6 +410,13 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
       if (!$value = $request->query->get($key)) {
         drupal_set_message($this->t('Validation failed (missing @key)', ['@key' => $key]), 'error');
+
+        $this->logger
+          ->critical($this->t('Validation failed (missing @key) @order [@values]', [
+            '@key' => $key,
+            '@order' => $order->id(),
+            '@values' => print_r($request->query->all(), TRUE),
+          ]));
         throw new PaymentGatewayException();
       }
       $hash_values[] = $value;
@@ -353,6 +426,12 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     // Check checksum validity.
     if ($hash !== $request->query->get('RETURN_AUTHCODE')) {
       drupal_set_message($this->t('Validation failed (security hash mismatch)'), 'error');
+
+      $this->logger
+        ->critical($this->t('Hash validation failed @order [@values]', [
+          '@order' => $order->id(),
+          '@values' => print_r($request->query->all(), TRUE),
+        ]));
       throw new PaymentGatewayException();
     }
     // Mark payment as authorized. Paytrail will attempt to call notify IPN

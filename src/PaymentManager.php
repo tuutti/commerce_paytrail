@@ -156,8 +156,6 @@ class PaymentManager implements PaymentManagerInterface {
       ->setPendingAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
       ->setNotifyAddress($this->getReturnUrl($order, 'commerce_payment.notify'))
       ->setMerchantId($plugin->getSetting('merchant_id'))
-      // EUR is only allowed currency by Paytrail.
-      ->setCurrency('EUR')
       // Preselected method will be populated with ajax.
       ->setPreselectedMethod($preselected_method)
       ->setCulture($plugin->getCulture())

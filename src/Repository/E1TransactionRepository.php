@@ -12,9 +12,26 @@ use Drupal\commerce_order\Entity\OrderItemInterface;
  */
 class E1TransactionRepository extends TransactionRepository {
 
+  /**
+   * The default item type.
+   *
+   * @var int
+   */
   const ITEM_PRODUCT = 1;
+
+  /**
+   * The shipping item type.
+   *
+   * @var int
+   */
   const ITEM_SHIPPING = 2;
-  const ITEM_HANDING = 3;
+
+  /**
+   * The handling item type.
+   *
+   * @var int
+   */
+  const ITEM_HANDLING = 3;
 
   /**
    * The list of products.
@@ -28,18 +45,66 @@ class E1TransactionRepository extends TransactionRepository {
    */
   protected function getKeys() {
     $values = [
-      'contact_tellno' => $this->get('contact_tellno') ?: $this->setContactTelno(''),
-      'contact_cellno' => $this->get('contact_cellno') ?: $this->setContactCellno(''),
-      'contact_email' => '',
-      'contact_firstname' => '',
-      'contact_lastname' => '',
-      'contact_company' => '',
-      'contact_addr_street' => '',
-      'contact_addr_zip' => '',
-      'contact_addr_city' => '',
-      'contact_addr_country' => '',
-      'include_vat' => '',
-      'items' => '',
+      'contact_tellno' => [
+        '#weight' => 25,
+        '#required' => FALSE,
+        '#max_length' => 64,
+        '#default_value' => '',
+      ],
+      'contact_cellno' => [
+        '#weight' => 26,
+        '#required' => FALSE,
+        '#max_length' => 64,
+        '#default_value' => '',
+      ],
+      'contact_email' => [
+        '#weight' => 27,
+        '#required' => TRUE,
+        '#max_length' => 255,
+      ],
+      'contact_firstname' => [
+        '#weight' => 28,
+        '#required' => TRUE,
+        '#max_length' => 64,
+      ],
+      'contact_lastname' => [
+        '#weight' => 29,
+        '#required' => TRUE,
+        '#max_length' => 64,
+      ],
+      'contact_company' => [
+        '#weight' => 30,
+        '#required' => FALSE,
+        '#max_length' => 128,
+        '#default_value' => '',
+      ],
+      'contact_addr_street' => [
+        '#weight' => 31,
+        '#required' => TRUE,
+        '#max_length' => 128,
+      ],
+      'contact_addr_zip' => [
+        '#weight' => 32,
+        '#required' => TRUE,
+        '#max_length' => 16,
+      ],
+      'contact_addr_city' => [
+        '#weight' => 33,
+        '#required' => TRUE,
+        '#max_length' => 64,
+      ],
+      'contact_addr_country' => [
+        '#weight' => 34,
+        '#required' => TRUE,
+      ],
+      'include_vat' => [
+        '#weight' => 35,
+        '#required' => TRUE,
+      ],
+      'items' => [
+        '#weight' => 36,
+        '#required' => TRUE,
+      ],
     ];
     return $values + parent::getKeys();
   }
@@ -53,7 +118,8 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setBillingProfile(AddressInterface $billing_data) {
-    $this->setContactName($billing_data->getGivenName())
+    $this->setContactFirstname($billing_data->getGivenName())
+      ->setContactLastname($billing_data->getFamilyName())
       ->setContactCompany($billing_data->getOrganization())
       ->setContactAddress($billing_data->getAddressLine1())
       ->setContactZip($billing_data->getPostalCode())
@@ -72,11 +138,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactTelno($number) {
-    return $this->set('contact_tellno', $number, [
-      '#required' => FALSE,
-      '#weight' => 25,
-      '#max_length' => 64,
-    ]);
+    return $this->set('contact_tellno', $number);
   }
 
   /**
@@ -88,11 +150,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactCellno($number) {
-    return $this->set('contact_cellno', $number, [
-      '#required' => FALSE,
-      '#weight' => 26,
-      '#max_length' => 64,
-    ]);
+    return $this->set('contact_cellno', $number);
   }
 
   /**
@@ -104,43 +162,31 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactEmail($email) {
-    return $this->set('contact_email', $email, [
-      '#required' => TRUE,
-      '#weight' => 27,
-      '#max_length' => 255,
-    ]);
+    return $this->set('contact_email', $email);
   }
 
   /**
-   * Set fist / lastname.
+   * Sets the first name.
    *
-   * @param string $full_name
-   *   Full name.
+   * @param string $firstname
+   *   First name.
    *
    * @return $this
    */
-  public function setContactName($full_name) {
-    $names = explode(' ', $full_name);
+  public function setContactFirstname($firstname) {
+    return $this->set('contact_firstname', $firstname);
+  }
 
-    // Lastname is required field by Paytrail, but not by billing profile.
-    // Fallback to double first names.
-    if (empty($names[1])) {
-      $names[1] = reset($names);
-    }
-    list($firstname, $lastname) = $names;
-
-    $this->set('contact_firstname', $firstname, [
-      '#required' => TRUE,
-      '#weight' => 28,
-      '#max_length' => 64,
-    ])
-      ->set('contact_lastname', $lastname, [
-        '#required' => TRUE,
-        '#weight' => 29,
-        '#max_length' => 64,
-      ]);
-
-    return $this;
+  /**
+   * Sets the last name.
+   *
+   * @param string $lastname
+   *   Last name.
+   *
+   * @return $this
+   */
+  public function setContactLastname($lastname) {
+    return $this->set('contact_lastname', $lastname);
   }
 
   /**
@@ -152,11 +198,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactCompany($company) {
-    return $this->set('contact_company', $company, [
-      '#required' => FALSE,
-      '#weight' => 30,
-      '#max_length' => 128,
-    ]);
+    return $this->set('contact_company', $company);
   }
 
   /**
@@ -168,11 +210,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactAddress($address) {
-    return $this->set('contact_addr_street', $address, [
-      '#required' => TRUE,
-      '#weight' => 31,
-      '#max_length' => 128,
-    ]);
+    return $this->set('contact_addr_street', $address);
   }
 
   /**
@@ -184,11 +222,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactZip($zip) {
-    return $this->set('contact_addr_zip', $zip, [
-      '#required' => TRUE,
-      '#weight' => 32,
-      '#max_length' => 16,
-    ]);
+    return $this->set('contact_addr_zip', $zip);
   }
 
   /**
@@ -200,11 +234,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactCity($city) {
-    return $this->set('contact_addr_city', $city, [
-      '#required' => TRUE,
-      '#weight' => 33,
-      '#max_length' => 64,
-    ]);
+    return $this->set('contact_addr_city', $city);
   }
 
   /**
@@ -216,10 +246,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setContactCountry($country) {
-    return $this->set('contact_addr_country', $country, [
-      '#required' => TRUE,
-      '#weight' => 34,
-    ]);
+    return $this->set('contact_addr_country', $country);
   }
 
   /**
@@ -231,10 +258,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setIncludeVat($status) {
-    return $this->set('include_vat', $status, [
-      '#required' => TRUE,
-      '#weight' => 35,
-    ]);
+    return $this->set('include_vat', $status);
   }
 
   /**
@@ -246,10 +270,7 @@ class E1TransactionRepository extends TransactionRepository {
    * @return $this
    */
   public function setItems($items) {
-    return $this->set('items', (int) $items, [
-      '#weight' => 36,
-      '#required' => TRUE,
-    ]);
+    return $this->set('items', (int) $items);
   }
 
   /**
@@ -319,7 +340,7 @@ class E1TransactionRepository extends TransactionRepository {
   public function build() {
     $values = parent::build();
 
-    if (count($this->products) != $this->get('items')->value()) {
+    if (count($this->products) != $this->get('items')) {
       throw new \InvalidArgumentException('Given item count does not match the actual product count.');
     }
     // Build products list.
