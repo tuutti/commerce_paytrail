@@ -13,6 +13,7 @@ use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\Core\Logger\RfcLogLevel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +23,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Provides the PaytrailBase payment gateway.
+ *
+ * @todo Implement refunds.
  *
  * @CommercePaymentGateway(
  *   id = "paytrail",
@@ -136,6 +139,20 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       'paytrail_mode' => static::NORMAL_MODE,
       'visible_methods' => [],
     ] + parent::defaultConfiguration();
+  }
+
+  /**
+   * Allow plugin forms to log messages.
+   *
+   * @todo Should they just use \Drupal?
+   *
+   * @param string $message
+   *   The message to log.
+   * @param int $severity
+   *   The severity.
+   */
+  public function log($message, $severity = RfcLogLevel::CRITICAL) {
+    $this->logger->log($severity, $message);
   }
 
   /**
@@ -286,16 +303,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
         'culture' => $values['culture'],
       ]);
     }
-  }
-
-  /**
-   * Get payment host url.
-   *
-   * @return string
-   *   Payment url.
-   */
-  public function getHostUrl() {
-    return static::HOST;
   }
 
   /**

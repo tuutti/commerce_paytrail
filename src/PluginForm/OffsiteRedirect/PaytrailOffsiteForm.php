@@ -3,6 +3,7 @@
 namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
+use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\Component\Utility\Html;
@@ -34,7 +35,7 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
       // Attempt to use preselected method if available.
       $preselected = $form_state->getTemporaryValue('selected_method');
       $data = $plugin->buildPaymentForm($payment, $preselected);
-      $form = $this->buildRedirectForm($form, $form_state, $plugin->getHostUrl(), $data, 'post');
+      $form = $this->buildRedirectForm($form, $form_state, $plugin::HOST, $data, 'post');
 
       // This only works when using bypass the payment page feature.
       if ($plugin->getSetting('paytrail_mode') == PaytrailBase::BYPASS_MODE) {
@@ -76,11 +77,14 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
       }
       return $form;
     }
+    catch (InvalidBillingException $e) {
+      $plugin->log('Invalid billing data: ' . $e->getMessage());
+    }
     catch (InvalidValueException $e) {
-      drupal_set_message($e->getMessage(), 'error');
+      $plugin->log('Field validation failed: ' . $e->getMessage());
     }
     catch (\Exception $e) {
-      drupal_set_message($this->t('Unexpected error. Please contact store administration if the problem persists.'), 'error');
+      $plugin->log(sprintf('Validation failed (%s: %s)', get_class($e), $e->getMessage()));
     }
     // This should never happen, but lets make sure, because otherwise users can
     // complete the payment process without actually paying anything.

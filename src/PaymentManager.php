@@ -137,7 +137,7 @@ class PaymentManager implements PaymentManagerInterface {
 
       // Billing data is required for this.
       if (!$billing_data instanceof AddressInterface) {
-        throw new InvalidBillingException();
+        throw new InvalidBillingException('Invalid billing data for ' . $order->id());
       }
       $repository->setContactEmail($order->getEmail())
         ->setBillingProfile($billing_data)
@@ -172,7 +172,7 @@ class PaymentManager implements PaymentManagerInterface {
     $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, $repository_alter);
     // Build repository array.
     $values = $event->getTransactionRepository()->build();
-
+    // Generate authcode based on values submitted.
     $values['AUTHCODE'] = $this->generateAuthCode($plugin->getSetting('merchant_hash'), $values);
 
     return $values;

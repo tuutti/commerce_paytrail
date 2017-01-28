@@ -268,14 +268,14 @@ class E1TransactionRepository extends TransactionRepository {
   /**
    * Remove product from the products array.
    *
-   * @param int $index
+   * @param int $delta
    *   The index.
    *
    * @return $this
    */
-  public function removeProduct($index) {
-    if (isset($this->products[$index])) {
-      unset($this->products[$index]);
+  public function removeProduct($delta) {
+    if (isset($this->products[$delta])) {
+      unset($this->products[$delta]);
     }
     return $this;
   }

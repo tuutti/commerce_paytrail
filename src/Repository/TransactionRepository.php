@@ -350,7 +350,7 @@ abstract class TransactionRepository {
   }
 
   /**
-   * Get current PaytrailBase type (E1, S1).
+   * Get current Paytrail type (E1, S1).
    *
    * @return string
    *   The type.
