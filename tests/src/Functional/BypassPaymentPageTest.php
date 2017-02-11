@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\Tests\commerce_paytrail\FunctionalJavascript;
+namespace Drupal\Tests\commerce_paytrail\Functional;
 
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
@@ -16,8 +16,8 @@ use Drupal\Tests\commerce\FunctionalJavascript\JavascriptTestTrait;
  */
 class BypassPaymentPageTest extends CommerceBrowserTestBase {
 
-  use JavascriptTestTrait;
   use StoreCreationTrait;
+  use JavascriptTestTrait;
 
   /**
    * {@inheritdoc}
@@ -104,12 +104,12 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
     $this->submitForm([], 'Checkout');
     $this->assertSession()->pageTextContains('Order Summary');
     $this->submitForm([
-      'payment_information[address][0][given_name]' => 'Matti',
-      'payment_information[address][0][family_name]' => 'Meikäläinen',
-      'payment_information[address][0][address_line1]' => 'Fredrikinkatu 34',
-      'payment_information[address][0][organization]' => 'KWD Digital',
-      'payment_information[address][0][locality]' => 'Helsinki',
-      'payment_information[address][0][postal_code]' => '00100',
+      'payment_information[address][0][address][given_name]' => 'Matti',
+      'payment_information[address][0][address][family_name]' => 'Meikäläinen',
+      'payment_information[address][0][address][address_line1]' => 'Fredrikinkatu 34',
+      'payment_information[address][0][address][organization]' => 'KWD Digital',
+      'payment_information[address][0][address][locality]' => 'Helsinki',
+      'payment_information[address][0][address][postal_code]' => '00100',
     ], 'Continue to review');
     $this->assertSession()->pageTextContains('Contact information');
     $this->assertSession()->pageTextContains($this->loggedInUser->getEmail());
@@ -151,11 +151,11 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
     $this->submitForm([], 'Checkout');
     $this->assertSession()->pageTextContains('Order Summary');
     $this->submitForm([
-      'payment_information[address][0][given_name]' => 'Matti',
-      'payment_information[address][0][family_name]' => 'Meikäläinen',
-      'payment_information[address][0][address_line1]' => 'Fredrikinkatu 34',
-      'payment_information[address][0][locality]' => 'Helsinki',
-      'payment_information[address][0][postal_code]' => '00100',
+      'payment_information[address][0][address][given_name]' => 'Matti',
+      'payment_information[address][0][address][family_name]' => 'Meikäläinen',
+      'payment_information[address][0][address][address_line1]' => 'Fredrikinkatu 34',
+      'payment_information[address][0][address][locality]' => 'Helsinki',
+      'payment_information[address][0][address][postal_code]' => '00100',
     ], 'Continue to review');
     $this->assertSession()->pageTextContains('Contact information');
     $this->assertSession()->pageTextContains($this->loggedInUser->getEmail());
