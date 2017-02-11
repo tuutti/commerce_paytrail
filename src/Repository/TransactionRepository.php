@@ -48,7 +48,8 @@ abstract class TransactionRepository {
       ],
       'order_number' => [
         '#weight' => 2,
-        '#required' => TRUE,
+        '#required' => FALSE,
+        '#default_value' => '',
       ],
       'reference_number' => [
         '#weight' => 3,
