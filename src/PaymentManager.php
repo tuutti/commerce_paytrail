@@ -152,7 +152,7 @@ class PaymentManager implements PaymentManagerInterface {
         $repository->setProduct($delta, $product);
       }
     }
-    $repository->setOrderNumber($order->getOrderNumber())
+    $repository->setOrderNumber($order->id())
       ->setReturnAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
       ->setCancelAddress($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
       ->setPendingAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
