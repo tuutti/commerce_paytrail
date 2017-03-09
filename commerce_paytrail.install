@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file
+ * Contains commerce_paytrail installation procedures.
+ */
+
+use Drupal\Core\Database\Database;
+
+/**
+ * Delete old 'preselected_method' values if available.
+ */
+function commerce_paytrail_update_8001() {
+  $connection = Database::getConnection();
+  $schema = $connection->schema();
+
+  if (!$schema->tableExists('commerce_payment_method__preselected_method')) {
+    return;
+  }
+  // Delete all results from preselected_method table as it's no longer used
+  // and having data there will prevent entity table being deleted.
+  $connection->delete('commerce_payment_method__preselected_method')
+    ->execute();
+}
