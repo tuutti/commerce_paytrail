@@ -67,6 +67,20 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   const HOST = 'https://payment.paytrail.com';
 
   /**
+   * The default merchant id used for testing.
+   *
+   * @var string
+   */
+  const MERCHANT_ID = '13466';
+
+  /**
+   * The default merchant hash used for testing.
+   *
+   * @var string
+   */
+  const MERCHANT_HASH = '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ';
+
+  /**
    * The normal payment mode.
    *
    * @var int
@@ -133,12 +147,32 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   public function defaultConfiguration() {
     return [
       'culture' => 'automatic',
-      'merchant_id' => '13466',
-      'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
+      'merchant_id' => static::MERCHANT_ID,
+      'merchant_hash' => static::MERCHANT_HASH,
       'paytrail_type' => 'S1',
       'paytrail_mode' => static::NORMAL_MODE,
       'visible_methods' => [],
     ] + parent::defaultConfiguration();
+  }
+
+  /**
+   * Gets the merchant id.
+   *
+   * @return mixed|string
+   *   The merchant id.
+   */
+  public function getMerchantId() {
+    return $this->getMode() === 'test' ? static::MERCHANT_ID : $this->getSetting('merchant_id');
+  }
+
+  /**
+   * Gets the merchant hash.
+   *
+   * @return mixed|string
+   *   The merchant hash.
+   */
+  public function getMerchantHash() {
+    return $this->getMode() === 'test' ? static::MERCHANT_HASH : $this->getSetting('merchant_hash');
   }
 
   /**

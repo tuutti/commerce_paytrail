@@ -3,6 +3,7 @@
 namespace Drupal\Tests\commerce_paytrail\Unit;
 
 use Drupal\commerce_paytrail\PaymentManager;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Tests\UnitTestCase;

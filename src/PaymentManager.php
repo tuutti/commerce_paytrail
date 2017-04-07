@@ -157,7 +157,7 @@ class PaymentManager implements PaymentManagerInterface {
       ->setCancelAddress($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
       ->setPendingAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
       ->setNotifyAddress($this->getReturnUrl($order, 'commerce_payment.notify'))
-      ->setMerchantId($plugin->getSetting('merchant_id'))
+      ->setMerchantId($plugin->getMerchantId())
       // Preselected method will be populated with ajax.
       ->setPreselectedMethod($preselected_method)
       ->setCulture($plugin->getCulture())
@@ -168,12 +168,12 @@ class PaymentManager implements PaymentManagerInterface {
 
     $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
     // Allow element values to be altered.
-    /** @var TransactionRepositoryEvent $event */
+    /** @var \Drupal\commerce_paytrail\Event\TransactionRepositoryEvent $event */
     $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, $repository_alter);
     // Build repository array.
     $values = $event->getTransactionRepository()->build();
     // Generate authcode based on values submitted.
-    $values['AUTHCODE'] = $this->generateAuthCode($plugin->getSetting('merchant_hash'), $values);
+    $values['AUTHCODE'] = $this->generateAuthCode($plugin->getMerchantHash(), $values);
 
     return $values;
   }
