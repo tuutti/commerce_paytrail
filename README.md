@@ -1,19 +1,19 @@
-#Commerce paytrail
+# Commerce paytrail
 [![Build Status](https://travis-ci.org/tuutti/commerce_paytrail.svg?branch=8.x-1.x)](https://travis-ci.org/tuutti/commerce_paytrail)
 
-##Description
+## Description
 This module integrates [Paytrail](https://www.paytrail.com/en) payment method with Drupal Commerce.
 
-##Installation
+## Installation
 `$ composer require drupal/commerce_paytrail`
 
-##Usage
+## Usage
 
-####How to alter payment methods
+#### How to alter payment methods
 
 Create new event subscriber that responds to \Drupal\commerce_paytrail\Events\PaytrailEvents::PAYMENT_REPO_ALTER.
 
-####How to alter values submitted to the Paytrail
+#### How to alter values submitted to the Paytrail
 
 Create new event subscriber that responds to \Drupal\commerce_paytrail\Events\PaytrailEvents::TRANSACTION_REPO_ALTER.
 
