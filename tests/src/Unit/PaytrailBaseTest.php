@@ -57,18 +57,11 @@ class PaytrailBaseTest extends UnitTestCase {
   protected $logger;
 
   /**
-   * The plugin config.
+   * The paytrail base.
    *
-   * @var array
+   * @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase
    */
-  protected $config;
-
-  /**
-   * The plugin config.
-   *
-   * @var array
-   */
-  protected $plugin;
+  protected $sut;
 
   /**
    * {@inheritdoc}
@@ -87,16 +80,17 @@ class PaytrailBaseTest extends UnitTestCase {
     $this->paytrailPaymentManager = $this->getMock('\Drupal\commerce_paytrail\PaymentManagerInterface');
     $this->logger = $this->getMock('\Psr\Log\LoggerInterface');
 
-    $this->config = [
+    $config = [
       '_entity_id' => 123,
       'payment_type' => 'default',
     ];
-    $this->plugin = [
+    $plugin = [
       'payment_type' => 'default',
       'payment_method_types' => [],
       'forms' => [],
       'modes' => [],
     ];
+    $this->sut = new PaytrailBase($config, '', $plugin, $this->entityTypeManager, $this->paymentTypeManager, $this->paymentMethodTypeManager, $this->languageManager, $this->paytrailPaymentManager, $this->logger);
   }
 
   /**
@@ -104,37 +98,39 @@ class PaytrailBaseTest extends UnitTestCase {
    *
    * @covers ::getMerchantId
    * @covers ::getMerchantHash
+   * @covers ::getSetting
+   * @covers ::__construct
    */
   public function testTestMode() {
-    $sut = new PaytrailBase($this->config, '', $this->plugin, $this->entityTypeManager, $this->paymentTypeManager, $this->paymentMethodTypeManager, $this->languageManager, $this->paytrailPaymentManager, $this->logger);
-    $this->assertEquals(PaytrailBase::MERCHANT_HASH, $sut->getMerchantHash());
+    $this->assertEquals(PaytrailBase::MERCHANT_HASH, $this->sut->getMerchantHash());
 
-    $sut->setConfiguration([
+    $this->sut->setConfiguration([
       'mode' => 'test',
       'merchant_id' => '123',
       'merchant_hash' => '321',
-    ] + $sut->getConfiguration());
+    ] + $this->sut->getConfiguration());
     // Make sure merchant hash and id stays the same when using test mode.
-    $this->assertEquals('test', $sut->getMode());
-    $this->assertEquals(PaytrailBase::MERCHANT_HASH, $sut->getMerchantHash());
-    $this->assertEquals(PaytrailBase::MERCHANT_ID, $sut->getMerchantId());
+    $this->assertEquals('test', $this->sut->getMode());
+    $this->assertEquals(PaytrailBase::MERCHANT_HASH, $this->sut->getMerchantHash());
+    $this->assertEquals(PaytrailBase::MERCHANT_ID, $this->sut->getMerchantId());
 
     // Make sure merchant id does not fallback to the test credentials
     // when using live mode.
-    $sut->setConfiguration(['mode' => 'live'] + $sut->getConfiguration());
-    $this->assertEquals('live', $sut->getMode());
-    $this->assertEquals('321', $sut->getMerchantHash());
-    $this->assertEquals('123', $sut->getMerchantId());
+    $this->sut->setConfiguration(['mode' => 'live'] + $this->sut->getConfiguration());
+    $this->assertEquals('live', $this->sut->getMode());
+    $this->assertEquals('321', $this->sut->getMerchantHash());
+    $this->assertEquals('123', $this->sut->getMerchantId());
   }
 
   /**
    * Make sure culture fallback works.
    *
+   * @covers ::__construct
    * @covers ::getCulture
+   * @covers ::getSetting
    */
   public function testCulture() {
-    $sut = new PaytrailBase($this->config, '', $this->plugin, $this->entityTypeManager, $this->paymentTypeManager, $this->paymentMethodTypeManager, $this->languageManager, $this->paytrailPaymentManager, $this->logger);
-    $this->assertEquals(PaytrailBase::MERCHANT_HASH, $sut->getMerchantHash());
+    $this->assertEquals(PaytrailBase::MERCHANT_HASH, $this->sut->getMerchantHash());
 
     $this->languageManager->expects($this->at(0))
       ->method('getCurrentLanguage')
@@ -149,15 +145,15 @@ class PaytrailBaseTest extends UnitTestCase {
         'id' => 'da',
       ])));
 
-    $sut->setConfiguration(['culture' => 'automatic'] + $sut->getConfiguration());
+    $this->sut->setConfiguration(['culture' => 'automatic'] + $this->sut->getConfiguration());
     // Make sure auto detection works.
-    $this->assertEquals($sut->getCulture(), 'fi_FI');
+    $this->assertEquals($this->sut->getCulture(), 'fi_FI');
     // Make sure auto fallback works when using an unknown language.
-    $this->assertEquals($sut->getCulture(), 'en_US');
+    $this->assertEquals($this->sut->getCulture(), 'en_US');
 
     // Make sure manually set culture works.
-    $sut->setConfiguration(['culture' => 'sv_SE'] + $sut->getConfiguration());
-    $this->assertEquals($sut->getCulture(), 'sv_SE');
+    $this->sut->setConfiguration(['culture' => 'sv_SE'] + $this->sut->getConfiguration());
+    $this->assertEquals($this->sut->getCulture(), 'sv_SE');
   }
 
 }

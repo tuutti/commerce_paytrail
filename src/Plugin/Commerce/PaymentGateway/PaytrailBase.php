@@ -162,7 +162,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *   The merchant id.
    */
   public function getMerchantId() {
-    return $this->getMode() === 'test' ? static::MERCHANT_ID : $this->getSetting('merchant_id');
+    return $this->getMode() == 'test' ? static::MERCHANT_ID : $this->getSetting('merchant_id');
   }
 
   /**
@@ -172,7 +172,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *   The merchant hash.
    */
   public function getMerchantHash() {
-    return $this->getMode() === 'test' ? static::MERCHANT_HASH : $this->getSetting('merchant_hash');
+    return $this->getMode() == 'test' ? static::MERCHANT_HASH : $this->getSetting('merchant_hash');
   }
 
   /**
@@ -380,7 +380,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       }
       $hash_values[] = $value;
     }
-    $hash = $this->paymentManager->generateReturnChecksum($this->getSetting('merchant_hash'), $hash_values);
+    $hash = $this->paymentManager->generateReturnChecksum($this->getMerchantHash(), $hash_values);
 
     // Check redirect key and checksum validity.
     if (!$redirect_key_match || $hash !== $request->query->get('RETURN_AUTHCODE')) {
@@ -462,7 +462,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       }
       $hash_values[] = $value;
     }
-    $hash = $this->paymentManager->generateReturnChecksum($this->getSetting('merchant_hash'), $hash_values);
+    $hash = $this->paymentManager->generateReturnChecksum($this->getMerchantHash(), $hash_values);
 
     // Check checksum validity.
     if ($hash !== $request->query->get('RETURN_AUTHCODE')) {
