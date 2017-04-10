@@ -99,7 +99,7 @@ class PaytrailBaseTest extends UnitTestCase {
    * @covers ::getMerchantId
    * @covers ::getMerchantHash
    * @covers ::getSetting
-   * @covers ::__constructor
+   * @covers ::__construct
    */
   public function testTestMode() {
     $this->assertEquals(PaytrailBase::MERCHANT_HASH, $this->sut->getMerchantHash());
@@ -125,7 +125,7 @@ class PaytrailBaseTest extends UnitTestCase {
   /**
    * Make sure culture fallback works.
    *
-   * @covers ::__constructor
+   * @covers ::__construct
    * @covers ::getCulture
    * @covers ::getSetting
    */
