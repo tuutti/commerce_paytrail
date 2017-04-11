@@ -155,7 +155,9 @@ class ReturnPageTest extends OrderBrowserTestBase {
 
     // Reset entity cache.
     /** @var Payment $payment */
-    $payment = entity_load('commerce_payment', 1, TRUE);
+    $entity_manager = $this->container->get('entity_type.manager');
+    $entity_manager->getStorage('commerce_payment')->resetCache([1]);
+    $payment = $entity_manager->getStorage('commerce_payment')->load(1);
     $this->assertEquals('capture_completed', $payment->getState()->value);
     $this->assertEquals($arguments2['PAID'], $payment->getRemoteId());
     $this->assertEquals('paid', $payment->getRemoteState());
