@@ -156,6 +156,16 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   }
 
   /**
+   * Gets the entity id (plugin id).
+   *
+   * @return string
+   *   The entity id.
+   */
+  public function getEntityId() {
+    return $this->entityId;
+  }
+
+  /**
    * Gets the merchant id.
    *
    * @return mixed|string

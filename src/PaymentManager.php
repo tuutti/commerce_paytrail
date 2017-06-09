@@ -181,7 +181,7 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * {@inheritdoc}
    */
-  protected function getPayment(OrderInterface $order) {
+  protected function getPayment(OrderInterface $order, PaytrailBase $plugin) {
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface[] $payments */
     $payments = $this->entityTypeManager
       ->getStorage('commerce_payment')
@@ -191,7 +191,7 @@ class PaymentManager implements PaymentManagerInterface {
       return FALSE;
     }
     foreach ($payments as $payment) {
-      if ($payment->getPaymentGatewayId() !== 'paytrail' || $payment->getAmount()->compareTo($order->getTotalPrice()) !== 0) {
+      if ($payment->getPaymentGatewayId() !== $plugin->getEntityId() || $payment->getAmount()->compareTo($order->getTotalPrice()) !== 0) {
         continue;
       }
       $paytrail_payment = $payment;
@@ -205,11 +205,11 @@ class PaymentManager implements PaymentManagerInterface {
   public function createPaymentForOrder($status, OrderInterface $order, PaytrailBase $plugin, array $remote) {
     $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
 
-    if (!$payment = $this->getPayment($order)) {
+    if (!$payment = $this->getPayment($order, $plugin)) {
       /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
       $payment = $payment_storage->create([
         'amount' => $order->getTotalPrice(),
-        'payment_gateway' => 'paytrail',
+        'payment_gateway' => $plugin->getEntityId(),
         'order_id' => $order->id(),
         'test' => $plugin->getMode() == 'test',
       ]);
