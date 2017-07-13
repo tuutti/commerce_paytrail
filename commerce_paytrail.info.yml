@@ -6,4 +6,4 @@ package: Commerce (contrib)
 dependencies:
   - commerce:commerce_payment
   - commerce:commerce_price
-  - system (>=8.2.0)
+  - system (>=8.3.0)

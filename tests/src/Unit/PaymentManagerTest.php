@@ -66,6 +66,13 @@ class PaymentManagerTest extends UnitTestCase {
   protected $sut;
 
   /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+  /**
    * {@inheritdoc}
    */
   public function setUp() {
@@ -84,12 +91,14 @@ class PaymentManagerTest extends UnitTestCase {
       ->disableOriginalConstructor()
       ->getMock();
 
+    $this->time = $this->getMock('\Drupal\Component\Datetime\TimeInterface');
+
     $this->urlGenerator = $this->getMock('Drupal\Core\Routing\UrlGeneratorInterface');
     $this->container = new ContainerBuilder();
     $this->container->set('url_generator', $this->urlGenerator);
     \Drupal::setContainer($this->container);
 
-    $this->sut = new PaymentManager($this->entityTypeManager, $this->eventDispatcher, $this->methodRepository);
+    $this->sut = new PaymentManager($this->entityTypeManager, $this->eventDispatcher, $this->methodRepository, $this->time);
   }
 
   /**
@@ -143,7 +152,6 @@ class PaymentManagerTest extends UnitTestCase {
    * Tests getRedirectKey() method.
    *
    * @covers ::getRedirectKey
-   * @covers ::getTime
    */
   public function testGetRedirectKey() {
     $response = $this->sut->getRedirectKey($this->order);

@@ -110,6 +110,8 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *   The payment type manager.
    * @param \Drupal\commerce_payment\PaymentMethodTypeManager $payment_method_type_manager
    *   The payment method type manager.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
    * @param \Drupal\commerce_paytrail\PaymentManagerInterface $payment_manager

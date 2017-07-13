@@ -57,6 +57,13 @@ class PaytrailBaseTest extends UnitTestCase {
   protected $logger;
 
   /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+  /**
    * The paytrail base.
    *
    * @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase
@@ -86,11 +93,14 @@ class PaytrailBaseTest extends UnitTestCase {
     ];
     $plugin = [
       'payment_type' => 'default',
+      'display_label' => 'Paytrail',
       'payment_method_types' => [],
       'forms' => [],
       'modes' => [],
     ];
-    $this->sut = new PaytrailBase($config, '', $plugin, $this->entityTypeManager, $this->paymentTypeManager, $this->paymentMethodTypeManager, $this->languageManager, $this->paytrailPaymentManager, $this->logger);
+    $this->time = $this->getMock('\Drupal\Component\Datetime\TimeInterface');
+
+    $this->sut = new PaytrailBase($config, '', $plugin, $this->entityTypeManager, $this->paymentTypeManager, $this->paymentMethodTypeManager, $this->time, $this->languageManager, $this->paytrailPaymentManager, $this->logger);
   }
 
   /**
