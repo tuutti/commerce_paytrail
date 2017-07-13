@@ -358,7 +358,9 @@ class TransactionRepositoryTest extends UnitTestCase {
     $method_repository = $this->getMockBuilder('\Drupal\commerce_paytrail\Repository\MethodRepository')
       ->disableOriginalConstructor()
       ->getMock();
-    $payment_manager = new PaymentManager($entity_type_manager, $event_dispatcher, $method_repository);
+    $time = $this->getMock('\Drupal\Component\Datetime\TimeInterface');
+
+    $payment_manager = new PaymentManager($entity_type_manager, $event_dispatcher, $method_repository, $time);
 
     list($given,) = $this->buildS1DataProvider()[1];
 

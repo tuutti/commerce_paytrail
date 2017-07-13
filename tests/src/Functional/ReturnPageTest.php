@@ -97,7 +97,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
 
     $arguments = [
       'ORDER_NUMBER' => $order->id(),
-      'TIMESTAMP' => REQUEST_TIME,
+      'TIMESTAMP' => \Drupal::time()->getRequestTime(),
       'PAID' => random_int(12345, 23456),
       'METHOD' => 1,
     ];
@@ -126,7 +126,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     // Test nofitifcation.
     $arguments2 = [
       'ORDER_NUMBER' => 5,
-      'TIMESTAMP' => REQUEST_TIME,
+      'TIMESTAMP' => \Drupal::time()->getRequestTime(),
       'PAID' => '12345',
       'METHOD' => 1,
     ];
@@ -158,7 +158,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $entity_manager = $this->container->get('entity_type.manager');
     $entity_manager->getStorage('commerce_payment')->resetCache([1]);
     $payment = $entity_manager->getStorage('commerce_payment')->load(1);
-    $this->assertEquals('capture_completed', $payment->getState()->value);
+    $this->assertEquals('completed', $payment->getState()->value);
     $this->assertEquals($arguments2['PAID'], $payment->getRemoteId());
     $this->assertEquals('paid', $payment->getRemoteState());
   }

@@ -13,6 +13,7 @@ use Drupal\commerce_paytrail\Repository\E1TransactionRepository;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\PaytrailProduct;
 use Drupal\commerce_paytrail\Repository\S1TransactionRepository;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Uuid\Php;
 use Drupal\Core\Entity\EntityTypeManager;
@@ -48,6 +49,13 @@ class PaymentManager implements PaymentManagerInterface {
   protected $methodRepository;
 
   /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+  /**
    * Constructor.
    *
    * @param \Drupal\Core\Entity\EntityTypeManager $entity_type_manager
@@ -56,11 +64,14 @@ class PaymentManager implements PaymentManagerInterface {
    *   The event dispatcher.
    * @param \Drupal\commerce_paytrail\Repository\MethodRepository $method_repository
    *   The payment method repository.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The current time.
    */
-  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, MethodRepository $method_repository) {
+  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, MethodRepository $method_repository, TimeInterface $time) {
     $this->entityTypeManager = $entity_type_manager;
     $this->eventDispatcher = $event_dispatcher;
     $this->methodRepository = $method_repository;
+    $this->time = $time;
   }
 
   /**
@@ -101,24 +112,12 @@ class PaymentManager implements PaymentManagerInterface {
       return $redirect_key;
     }
     $uuid = new Php();
-    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), $this->getTime()), $uuid->generate());
+    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), $this->time->getRequestTime()), $uuid->generate());
 
     $order->setData('paytrail_redirect_key', $redirect_key);
     $order->save();
 
     return $redirect_key;
-  }
-
-  /**
-   * Gets the current time.
-   *
-   * @todo Replace with time service in 8.3.x.
-   *
-   * @return int
-   *   The current request time.
-   */
-  protected function getTime() {
-    return (int) $_SERVER['REQUEST_TIME'];
   }
 
   /**
@@ -225,7 +224,6 @@ class PaymentManager implements PaymentManagerInterface {
 
     if ($status === 'authorized') {
       $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
-      $payment->setAuthorizedTime($this->getTime());
       $payment->getState()->applyTransition($transition);
     }
     elseif ($status === 'capture') {
@@ -234,7 +232,6 @@ class PaymentManager implements PaymentManagerInterface {
       }
       $capture_transition = $payment->getState()->getWorkflow()->getTransition('capture');
       $payment->getState()->applyTransition($capture_transition);
-      $payment->setCapturedTime($this->getTime());
     }
     $payment->save();
 

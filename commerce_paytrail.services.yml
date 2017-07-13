@@ -7,5 +7,5 @@ services:
     arguments: ["@event_dispatcher"]
   commerce_paytrail.payment_manager:
     class: Drupal\commerce_paytrail\PaymentManager
-    arguments: ["@entity_type.manager", "@event_dispatcher", "@commerce_paytrail.method_repository"]
+    arguments: ["@entity_type.manager", "@event_dispatcher", "@commerce_paytrail.method_repository", "@datetime.time"]
 
