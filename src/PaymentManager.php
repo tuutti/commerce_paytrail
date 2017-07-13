@@ -112,13 +112,11 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * Gets the current time.
    *
-   * @todo Replace with time service in 8.3.x.
-   *
    * @return int
    *   The current request time.
    */
   protected function getTime() {
-    return (int) $_SERVER['REQUEST_TIME'];
+    return \Drupal::time()->getRequestTime();
   }
 
   /**
@@ -225,7 +223,6 @@ class PaymentManager implements PaymentManagerInterface {
 
     if ($status === 'authorized') {
       $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
-      $payment->setAuthorizedTime($this->getTime());
       $payment->getState()->applyTransition($transition);
     }
     elseif ($status === 'capture') {
@@ -234,7 +231,6 @@ class PaymentManager implements PaymentManagerInterface {
       }
       $capture_transition = $payment->getState()->getWorkflow()->getTransition('capture');
       $payment->getState()->applyTransition($capture_transition);
-      $payment->setCapturedTime($this->getTime());
     }
     $payment->save();
 

@@ -10,6 +10,7 @@ use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Repository\Method;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
@@ -116,8 +117,8 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @param \Psr\Log\LoggerInterface $logger
    *   The logger.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, LanguageManagerInterface $language_manager, PaymentManagerInterface $payment_manager, LoggerInterface $logger) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager);
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, TimeInterface $time, LanguageManagerInterface $language_manager, PaymentManagerInterface $payment_manager, LoggerInterface $logger) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager, $time);
 
     $this->languageManager = $language_manager;
     $this->paymentManager = $payment_manager;
@@ -135,6 +136,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       $container->get('entity_type.manager'),
       $container->get('plugin.manager.commerce_payment_type'),
       $container->get('plugin.manager.commerce_payment_method_type'),
+      $container->get('datetime.time'),
       $container->get('language_manager'),
       $container->get('commerce_paytrail.payment_manager'),
       $container->get('logger.channel.commerce_paytrail')
