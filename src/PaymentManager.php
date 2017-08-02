@@ -8,6 +8,8 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
+use Drupal\commerce_paytrail\Exception\RedirectKeyMismatchException;
+use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\E1TransactionRepository;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
@@ -18,6 +20,7 @@ use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Uuid\Php;
 use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Url;
+use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -175,6 +178,38 @@ class PaymentManager implements PaymentManagerInterface {
     $values['AUTHCODE'] = $this->generateAuthCode($plugin->getMerchantHash(), $values);
 
     return $values;
+  }
+
+  /**
+   * Validate and store transaction for order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   *   The payment gateway plugin.
+   * @param \Symfony\Component\HttpFoundation\ParameterBag $values
+   *   The parameters.
+   *
+   * @throws \Drupal\commerce_paytrail\Exception\RedirectKeyMismatchException
+   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
+   */
+  public function onReturn(OrderInterface $order, PaytrailBase $plugin, ParameterBag $values) {
+    $redirect_key_match = $this->getRedirectKey($order) === $values->get('redirect_key');
+
+    if (!$redirect_key_match) {
+      throw new RedirectKeyMismatchException('validation failed (redirect key mismatch).');
+    }
+    $hash = $this->generateReturnChecksum($plugin->getMerchantHash(), $values->get('hash_values'));
+
+    if ($hash !== $values->get('return_authcode')) {
+      throw new SecurityHashMismatchException('Validation failed (security hash mismatch)');
+    }
+    // Mark payment as authorized. Paytrail will attempt to call notify IPN
+    // which will mark payment as captured.
+    $this->createPaymentForOrder('authorized', $order, $plugin, [
+      'remote_id' => $values->get('remote_id'),
+      'remote_state' => 'waiting_confirm',
+    ]);
   }
 
   /**

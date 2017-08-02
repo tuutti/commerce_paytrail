@@ -8,6 +8,8 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
+use Drupal\commerce_paytrail\Exception\RedirectKeyMismatchException;
+use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\Component\Datetime\TimeInterface;
@@ -17,6 +19,7 @@ use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Logger\RfcLogLevel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -448,19 +451,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *   The request.
    */
   public function onReturn(OrderInterface $order, Request $request) {
-    $redirect_key_match = $this->paymentManager->getRedirectKey($order) === $request->query->get('redirect_key');
-
-    if (!$redirect_key_match) {
-      drupal_set_message($this->t('Validation failed (redirect key mismatch).'), 'error');
-
-      $this->logger
-        ->critical($this->t('Redirect key mismatch for @order [@values]', [
-          '@order' => $order->id(),
-          '@values' => print_r($request->query->all(), TRUE),
-        ]));
-      throw new PaymentGatewayException();
-    }
-    // Handle return and notify.
     $hash_values = [];
     foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
       if (!$value = $request->query->get($key)) {
@@ -476,10 +466,27 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       }
       $hash_values[] = $value;
     }
-    $hash = $this->paymentManager->generateReturnChecksum($this->getMerchantHash(), $hash_values);
+    $parameters = new ParameterBag([
+      'redirect_key' => $request->query->get('redirect_key'),
+      'hash_values' => $hash_values,
+      'return_authcode' => $request->query->get('RETURN_AUTHCODE'),
+      'remote_id' => $request->query->get('PAID'),
+    ]);
 
-    // Check checksum validity.
-    if ($hash !== $request->query->get('RETURN_AUTHCODE')) {
+    try {
+      $this->paymentManager->onReturn($order, $this, $parameters);
+    }
+    catch (RedirectKeyMismatchException $e) {
+      drupal_set_message($this->t('validation failed (redirect key mismatch).'), 'error');
+
+      $this->logger
+        ->critical($this->t('Redirect key mismatch for @order [@values]', [
+          '@order' => $order->id(),
+          '@values' => print_r($request->query->all(), TRUE),
+        ]));
+      throw new PaymentGatewayException();
+    }
+    catch (SecurityHashMismatchException $e) {
       drupal_set_message($this->t('Validation failed (security hash mismatch)'), 'error');
 
       $this->logger
@@ -489,12 +496,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
         ]));
       throw new PaymentGatewayException();
     }
-    // Mark payment as authorized. Paytrail will attempt to call notify IPN
-    // which will mark payment as captured.
-    $this->paymentManager->createPaymentForOrder('authorized', $order, $this, [
-      'remote_id' => $request->query->get('PAID'),
-      'remote_state' => 'waiting_confirm',
-    ]);
     drupal_set_message($this->t('Payment was processed.'));
   }
 
