@@ -4,6 +4,7 @@ namespace Drupal\commerce_paytrail;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Symfony\Component\HttpFoundation\ParameterBag;
 
 /**
  * Interface PaymentManagerInterface.
@@ -61,6 +62,18 @@ interface PaymentManagerInterface {
    *   FALSE on validation failure or transaction array.
    */
   public function buildTransaction(OrderInterface $order, PaytrailBase $payment_gateway, $preselected_method = NULL);
+
+  /**
+   * Validate and store transaction for order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   *   The payment gateway plugin.
+   * @param \Symfony\Component\DependencyInjection\ParameterBag\ParameterBag $values
+   *   The parameters.
+   */
+  public function onReturn(OrderInterface $order, PaytrailBase $plugin, ParameterBag $values);
 
   /**
    * Create new payment for given order.
