@@ -70,8 +70,8 @@ interface PaymentManagerInterface {
    *   The order.
    * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
    *   The payment gateway plugin.
-   * @param \Symfony\Component\DependencyInjection\ParameterBag\ParameterBag $values
-   *   The parameters.
+   * @param \Symfony\Component\HttpFoundation\ParameterBag $values
+   *   The return values.
    */
   public function onReturn(OrderInterface $order, PaytrailBase $plugin, ParameterBag $values);
 

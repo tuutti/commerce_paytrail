@@ -124,9 +124,19 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * {@inheritdoc}
+   * Builds the repository object.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   *   The plugin.
+   *
+   * @return \Drupal\commerce_paytrail\Repository\TransactionRepository
+   *   The transaction repository.
+   *
+   * @throws \Drupal\commerce_paytrail\Exception\InvalidBillingException
    */
-  public function buildTransaction(OrderInterface $order, PaytrailBase $plugin, $preselected_method = NULL) {
+  public function buildRepository(OrderInterface $order, PaytrailBase $plugin) {
     $type = $plugin->getSetting('paytrail_type');
 
     $repository = $type === 'S1' ? new S1TransactionRepository() : new E1TransactionRepository();
@@ -160,13 +170,22 @@ class PaymentManager implements PaymentManagerInterface {
       ->setPendingAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
       ->setNotifyAddress($this->getReturnUrl($order, 'commerce_payment.notify'))
       ->setMerchantId($plugin->getMerchantId())
+      ->setCulture($plugin->getCulture())
+      ->setVisibleMethods($plugin->getSetting('visible_methods'));
+
+    return $repository;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildTransaction(OrderInterface $order, PaytrailBase $plugin, $preselected_method = NULL) {
+    $repository = $this->buildRepository($order, $plugin)
       // Preselected method will be populated with ajax.
       ->setPreselectedMethod($preselected_method)
-      ->setCulture($plugin->getCulture())
       // Use bypass mode if preselected method is available. It should not be
       // possible to have preselected method without using bypass mode.
-      ->setMode($preselected_method ? PaytrailBase::BYPASS_MODE : PaytrailBase::NORMAL_MODE)
-      ->setVisibleMethods($plugin->getSetting('visible_methods'));
+      ->setMode($preselected_method ? PaytrailBase::BYPASS_MODE : PaytrailBase::NORMAL_MODE);
 
     $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
     // Allow element values to be altered.
