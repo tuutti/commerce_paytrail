@@ -407,7 +407,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
           '@values' => print_r($request->query->all(), TRUE),
         ]));
 
-      throw new HttpException(Response::HTTP_BAD_REQUEST, 'Hash mismatch.');
+      return new Response('Hash mismatch.', Response::HTTP_BAD_REQUEST);
     }
     // Mark payment as captured.
     try {
@@ -424,7 +424,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
           '@values' => print_r($request->query->all(), TRUE),
         ]));
 
-      throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid payment state.');
+      return new Response('Invalid payment state.', Response::HTTP_BAD_REQUEST);
     }
     catch (PaymentGatewayException $e) {
       // Transaction id mismatch.
@@ -434,7 +434,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
           '@values' => print_r($request->query->all(), TRUE),
         ]));
 
-      throw new HttpException(Response::HTTP_BAD_REQUEST, 'Transaction id mismatch.');
+      return new Response('Transaction id mismatch.', Response::HTTP_BAD_REQUEST);
     }
     return parent::onNotify($request);
   }

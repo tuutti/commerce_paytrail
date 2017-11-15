@@ -137,7 +137,7 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
     // Visible methods is disabled, make sure all default payment
     // methods are visible.
     $count = $this->getSession()->getPage()->findAll('css', '.payment-method-button');
-    $this->assertEquals(count($count), 26);
+    $this->assertEquals(count($count), 27);
   }
 
   /**
