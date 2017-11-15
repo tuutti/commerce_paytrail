@@ -50,7 +50,7 @@ class MethodRepository {
       31 => new Method(31, 'MasterCard'),
       34 => new Method(34, 'Diners Club'),
       35 => new Method(35, 'JCB'),
-      36 => new Method(36, 'PaytrailBase account'),
+      36 => new Method(36, 'Paytrail account'),
       50 => new Method(50, 'Aktia'),
       51 => new Method(51, 'POP Pankki'),
       52 => new Method(52, 'Säästöpankki'),
@@ -59,6 +59,7 @@ class MethodRepository {
       55 => new Method(55, 'Diners Club (Nets)', 'Diners Club'),
       56 => new Method(56, 'American Express (Nets)', 'American Express'),
       57 => new Method(57, 'Maestro (Nets)', 'Maestro'),
+      58 => new Method(58, 'MobilePay'),
       60 => new Method(60, 'Collector Bank'),
       61 => new Method(61, 'Oma Säästöpankki'),
     ];
