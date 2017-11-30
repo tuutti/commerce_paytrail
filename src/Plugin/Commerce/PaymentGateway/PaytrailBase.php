@@ -369,10 +369,11 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *   The 200 response code if validation succeeded.
    */
   public function onNotify(Request $request) {
-    $storage = $this->entityTypeManager->getStorage('commerce_order');
+    $order = $this->entityTypeManager
+      ->getStorage('commerce_order')
+      ->load($request->query->get('ORDER_NUMBER'));
 
-    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
-    if (!$order = $storage->load($request->query->get('ORDER_NUMBER'))) {
+    if (!$order instanceof OrderInterface) {
       $this->logger
         ->notice($this->t('Notify callback called for an invalid order @order [@values]', [
           '@order' => $request->query->get('ORDER_NUMBER'),
@@ -436,7 +437,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
 
       return new Response('Transaction id mismatch.', Response::HTTP_BAD_REQUEST);
     }
-    return parent::onNotify($request);
+    return new Response();
   }
 
   /**
@@ -467,6 +468,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       $hash_values[] = $value;
     }
     $parameters = new ParameterBag([
+      'order_number' => $request->query->get('ORDER_NUMBER'),
       'redirect_key' => $request->query->get('redirect_key'),
       'hash_values' => $hash_values,
       'return_authcode' => $request->query->get('RETURN_AUTHCODE'),
@@ -480,9 +482,10 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       drupal_set_message($this->t('validation failed (redirect key mismatch).'), 'error');
 
       $this->logger
-        ->critical($this->t('Redirect key mismatch for @order [@values]', [
+        ->critical($this->t('Redirect key mismatch for @order [@values] (@exception)', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
+          '@exception' => $e->getMessage(),
         ]));
       throw new PaymentGatewayException();
     }
@@ -490,9 +493,10 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       drupal_set_message($this->t('Validation failed (security hash mismatch)'), 'error');
 
       $this->logger
-        ->critical($this->t('Hash validation failed @order [@values]', [
+        ->critical($this->t('Hash validation failed @order [@values] (@exception)', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
+          '@exception' => $e->getMessage(),
         ]));
       throw new PaymentGatewayException();
     }
