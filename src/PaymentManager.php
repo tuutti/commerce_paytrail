@@ -218,6 +218,13 @@ class PaymentManager implements PaymentManagerInterface {
     if (!$redirect_key_match) {
       throw new RedirectKeyMismatchException('validation failed (redirect key mismatch).');
     }
+
+    // Make sure we have a valid order number and it matches the one given
+    // to the Paytrail.
+    if ((string) $order->id() !== $values->get('order_number')) {
+      throw new SecurityHashMismatchException('Validation failed (order number mismatch)');
+    }
+
     $hash = $this->generateReturnChecksum($plugin->getMerchantHash(), $values->get('hash_values'));
 
     if ($hash !== $values->get('return_authcode')) {

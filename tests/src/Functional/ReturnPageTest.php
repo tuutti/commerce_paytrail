@@ -113,6 +113,10 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->drupalGet($return_url, ['query' => $arguments + $return_code]);
     $this->assertSession()->pageTextContains('Validation failed (security hash mismatch)');
 
+    // Test with invalid order id.
+    $this->drupalGet($return_url, ['query' => $arguments + ['ORDER_NUMBER' => 5]]);
+    $this->assertSession()->pageTextContains('Validation failed (security hash mismatch)');
+
     // Test correct return url.
     $return_code['RETURN_AUTHCODE'] = $authcode;
     $this->drupalGet($return_url, ['query' => $arguments + $return_code]);
