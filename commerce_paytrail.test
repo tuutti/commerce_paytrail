@@ -153,7 +153,7 @@ class CommercePaytrailTest extends CommerceBaseTestCase {
     $this->assertText(t('Checkout complete'), 'Completed order');
 
     $transaction = $this->loadTransaction($order->data['commerce_paytrail']['transaction']->transaction_id);
-    $this->assertTrue($transaction->status === 'success', 'Completed transaction');
+    $this->assertTrue($transaction->status === 'pending', 'Transaction is pending');
 
     // Generate new order.
     $order = $this->createDummyOrder($this->store_customer->uid);
@@ -204,6 +204,14 @@ class CommercePaytrailTest extends CommerceBaseTestCase {
       'query' => $query_parameters,
     ));
     $this->assertText('Notify failed: checksum mismatch', 'Failed when checksum does not match.');
+
+    // Test incorrect order id.
+    $query_parameters['ORDER_NUMBER'] = '123';
+    $this->drupalGet('commerce_paytrail_notify/' . $order->order_id . '/' . $order->data['payment_redirect_key'], array(
+      'query' => $query_parameters,
+    ));
+    $text = sprintf('Notify failed: order id (%s) does not match the one given to paytrail.', $order->order_id);
+    $this->assertText($text, 'Failed when order id does not match.');
 
     // Transaction is supposed to be in 'pending' state after failure.
     $transaction = $this->loadTransaction($order->data['commerce_paytrail']['transaction']->transaction_id);
