@@ -5,7 +5,6 @@ namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -28,17 +27,20 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin */
     $plugin = $payment->getPaymentGateway()->getPlugin();
 
-    $form['#prefix'] = '<div id="payment-form">';
-    $form['#suffix'] = '</div>';
-
     try {
-      // Attempt to use preselected method if available.
-      $preselected = $form_state->getTemporaryValue('selected_method');
-      $data = $plugin->buildPaymentForm($payment, $preselected);
-      $form = $this->buildRedirectForm($form, $form_state, $plugin::HOST, $data, 'post');
+      $formInterface = $plugin->getPaymentManager()
+        ->buildFormInterface($payment->getOrder(), $plugin);
 
-      // This only works when using bypass the payment page feature.
-      if ($plugin->getSetting('paytrail_mode') == PaytrailBase::BYPASS_MODE) {
+      // This only works when using the bypass payment page feature.
+      if ($plugin->isBypassModeEnabled()) {
+        // Attempt to use preselected method if available.
+        if ($preselected = $form_state->getTemporaryValue('selected_method')) {
+          $formInterface->setPaymentMethods([$preselected]);
+        }
+
+        $form['#prefix'] = '<div id="payment-form">';
+        $form['#suffix'] = '</div>';
+
         // Disable auto-redirect so user can select payment method.
         $form['#attached'] = array_filter($form['#attached'], function ($value) {
           return reset($value) !== 'commerce_payment/offsite_redirect';
@@ -50,10 +52,10 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
           '#title' => $this->t('Select payment method'),
           '#type' => 'fieldset',
         ];
-        /** @var \Drupal\commerce_paytrail\Repository\Method $method */
+
         foreach ($plugin->getVisibleMethods() as $key => $method) {
           $class = [
-            Html::getId($method->getSafeLabel()),
+            Html::getId($method->label()),
             'payment-button-' . $key,
             'payment-method-button',
           ];
@@ -62,7 +64,7 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
           }
           $form['payment_methods'][$key] = [
             '#type' => 'submit',
-            '#value' => $method->getDisplayLabel(),
+            '#value' => $method->label(),
             '#method_index' => $key,
             '#submit' => [[$this, 'submitSelectedMethod']],
             '#ajax' => [
@@ -75,23 +77,23 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
           ];
         }
       }
-      return $form;
+      $data = $plugin->getPaymentManager()
+        ->dispatch($formInterface, $plugin, $payment->getOrder());
+
+      return $this->buildRedirectForm($form, $form_state, $plugin::HOST, $data, self::REDIRECT_POST);
     }
     catch (InvalidBillingException $e) {
       $plugin->log('Invalid billing data: ' . $e->getMessage());
     }
-    catch (InvalidValueException $e) {
+    catch (InvalidValueException | \InvalidArgumentException $e) {
       $plugin->log('Field validation failed: ' . $e->getMessage());
     }
     catch (\Exception $e) {
       $plugin->log(sprintf('Validation failed (%s: %s)', get_class($e), $e->getMessage()));
     }
-    // This should never happen, but lets make sure, because otherwise users can
-    // complete the payment process without actually paying anything.
-    // @todo is there any way to gracefully exit?
-    // Seems like ::validateConfigurationForm() or ::validateForm() is never
-    // actually ran.
-    throw new \InvalidArgumentException('Invalid form data.');
+    drupal_set_message($this->t('Unexpected error.', 'error'));
+
+    return [];
   }
 
   /**

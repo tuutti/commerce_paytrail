@@ -1,32 +1,28 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\commerce_paytrail;
 
-use Drupal\address\AddressInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
-use Drupal\commerce_paytrail\Event\TransactionRepositoryEvent;
+use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
-use Drupal\commerce_paytrail\Exception\RedirectKeyMismatchException;
-use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Drupal\commerce_paytrail\Repository\E1TransactionRepository;
+use Drupal\commerce_paytrail\Repository\FormManager;
 use Drupal\commerce_paytrail\Repository\MethodRepository;
-use Drupal\commerce_paytrail\Repository\PaytrailProduct;
-use Drupal\commerce_paytrail\Repository\S1TransactionRepository;
+use Drupal\commerce_paytrail\Repository\Product;
+use Drupal\commerce_paytrail\Repository\Response;
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Component\Utility\Crypt;
-use Drupal\Component\Uuid\Php;
 use Drupal\Core\Entity\EntityTypeManager;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Url;
-use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Class PaymentManager.
- *
- * @package Drupal\commerce_paytrail
+ * Provides shared payment related functionality.
  */
 class PaymentManager implements PaymentManagerInterface {
 
@@ -45,13 +41,6 @@ class PaymentManager implements PaymentManagerInterface {
   protected $eventDispatcher;
 
   /**
-   * The payment method repository.
-   *
-   * @var \Drupal\commerce_paytrail\Repository\MethodRepository
-   */
-  protected $methodRepository;
-
-  /**
    * The time service.
    *
    * @var \Drupal\Component\Datetime\TimeInterface
@@ -59,68 +48,43 @@ class PaymentManager implements PaymentManagerInterface {
   protected $time;
 
   /**
-   * Constructor.
+   * The module handler.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  /**
+   * Constructs a new instance.
    *
    * @param \Drupal\Core\Entity\EntityTypeManager $entity_type_manager
    *   The entity type manager service.
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
    *   The event dispatcher.
-   * @param \Drupal\commerce_paytrail\Repository\MethodRepository $method_repository
-   *   The payment method repository.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The current time.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
+   *   The module handler.
    */
-  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, MethodRepository $method_repository, TimeInterface $time) {
+  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, TimeInterface $time, ModuleHandlerInterface $moduleHandler) {
     $this->entityTypeManager = $entity_type_manager;
     $this->eventDispatcher = $event_dispatcher;
-    $this->methodRepository = $method_repository;
     $this->time = $time;
+    $this->moduleHandler = $moduleHandler;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getPaymentMethods(array $enabled = []) {
-    $methods = $this->methodRepository->getMethods();
-
-    if (empty($enabled)) {
-      return $methods;
-    }
-    return array_intersect_key($methods, array_flip($enabled));
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getReturnUrl(OrderInterface $order, $type, $step = 'payment') {
+  public function getReturnUrl(OrderInterface $order, string $type, $step = 'payment') : string {
     $arguments = [
       'commerce_order' => $order->id(),
       'step' => $step,
       'commerce_payment_gateway' => 'paytrail',
     ];
-    $url = new Url($type, $arguments, [
-      'absolute' => TRUE,
-      'query' => ['redirect_key' => $this->getRedirectKey($order)],
-    ]);
 
-    return $url->toString();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getRedirectKey(OrderInterface $order) {
-    // Generate only once.
-    if ($redirect_key = $order->getData('paytrail_redirect_key')) {
-      return $redirect_key;
-    }
-    $uuid = new Php();
-    $redirect_key = Crypt::hmacBase64(sprintf('%s:%s', $order->id(), $this->time->getRequestTime()), $uuid->generate());
-
-    $order->setData('paytrail_redirect_key', $redirect_key);
-    $order->save();
-
-    return $redirect_key;
+    return (new Url($type, $arguments, ['absolute' => TRUE]))
+      ->toString();
   }
 
   /**
@@ -131,124 +95,87 @@ class PaymentManager implements PaymentManagerInterface {
    * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
    *   The plugin.
    *
-   * @return \Drupal\commerce_paytrail\Repository\TransactionRepository
+   * @return \Drupal\commerce_paytrail\Repository\FormManager
    *   The transaction repository.
    *
    * @throws \Drupal\commerce_paytrail\Exception\InvalidBillingException
    */
-  public function buildRepository(OrderInterface $order, PaytrailBase $plugin) {
-    $type = $plugin->getSetting('paytrail_type');
+  public function buildFormInterface(OrderInterface $order, PaytrailBase $plugin) : FormManager {
+    $form = new FormManager($plugin->getMerchantId(), $plugin->getMerchantHash());
 
-    $repository = $type === 'S1' ? new S1TransactionRepository() : new E1TransactionRepository();
+    // Send address data only if configured.
+    if ($plugin->isDataIncluded(PaytrailBase::PAYER_DETAILS)) {
 
-    if ($repository instanceof S1TransactionRepository) {
-      $repository->setAmount($order->getTotalPrice());
-    }
-    else {
-      $billing_data = $order->getBillingProfile()->get('address')->first();
-
-      // Billing data is required for this.
-      if (!$billing_data instanceof AddressInterface) {
+      if (!$billing_data = $order->getBillingProfile()) {
         throw new InvalidBillingException('Invalid billing data for ' . $order->id());
       }
-      $repository->setContactEmail($order->getEmail())
-        ->setBillingProfile($billing_data)
-        // @todo Check commerce settings.
-        ->setIncludeVat(1)
-        ->setItems(count($order->getItems()));
+      /** @var \Drupal\address\AddressInterface $address */
+      $address = $billing_data->get('address')->first();
 
+      $form->setPayerEmail($order->getEmail())
+        ->setPayerFromAddress($address);
+    }
+
+    if ($plugin->isDataIncluded(PaytrailBase::PRODUCT_DETAILS)) {
+      $taxes_included = FALSE;
+
+      if ($this->moduleHandler->moduleExists('commerce_tax')) {
+        $taxes_included = $order->getStore()->get('prices_include_tax')->value;
+
+        // We can only send this value when taxes are enabled.
+        if ($taxes_included) {
+          $form->setIsVatIncluded(TRUE);
+        }
+      }
+      // @todo Support commerce shipping and promotions.
       foreach ($order->getItems() as $delta => $item) {
-        // @todo Implement taxes when commerce_tax is available.
-        // @todo Implement discount and item type handling.
-        $product = PaytrailProduct::createWithOrderItem($item);
-        $repository->setProduct($delta, $product);
+        $product = Product::createFromOrderItem($item);
+
+        foreach ($item->getAdjustments() as $adjustment) {
+          if ($adjustment->getType() === 'tax' && $taxes_included) {
+            $product->setTax((float) $adjustment->getPercentage() * 100);
+          }
+        }
+        $form->setProduct($product);
       }
     }
-    $repository->setOrderNumber($order->id())
-      ->setReturnAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
-      ->setCancelAddress($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
-      ->setPendingAddress($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
-      ->setNotifyAddress($this->getReturnUrl($order, 'commerce_payment.notify'))
-      ->setMerchantId($plugin->getMerchantId())
-      ->setCulture($plugin->getCulture())
-      ->setVisibleMethods($plugin->getSetting('visible_methods'));
+    $form->setOrderNumber($order->id())
+      ->setAmount($order->getTotalPrice())
+      ->setSuccessUrl($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
+      ->setCancelUrl($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
+      ->setNotifyUrl($this->getReturnUrl($order, 'commerce_payment.notify'))
+      ->setPaymentMethods($plugin->getVisibleMethods());
 
-    return $repository;
+    return $form;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function buildTransaction(OrderInterface $order, PaytrailBase $plugin, $preselected_method = NULL) {
-    $repository = $this->buildRepository($order, $plugin)
-      // Preselected method will be populated with ajax.
-      ->setPreselectedMethod($preselected_method)
-      // Use bypass mode if preselected method is available. It should not be
-      // possible to have preselected method without using bypass mode.
-      ->setMode($preselected_method ? PaytrailBase::BYPASS_MODE : PaytrailBase::NORMAL_MODE);
-
-    $repository_alter = new TransactionRepositoryEvent($plugin, clone $order, $repository);
+  public function dispatch(FormManager $form, PaytrailBase $plugin, OrderInterface $order) : array {
+    $form_alter = new FormInterfaceEvent($plugin, clone $order, $form);
     // Allow element values to be altered.
-    /** @var \Drupal\commerce_paytrail\Event\TransactionRepositoryEvent $event */
-    $event = $this->eventDispatcher->dispatch(PaytrailEvents::TRANSACTION_REPO_ALTER, $repository_alter);
-    // Build repository array.
-    $values = $event->getTransactionRepository()->build();
+    /** @var \Drupal\commerce_paytrail\Event\FormInterfaceEvent $event */
+    $event = $this->eventDispatcher->dispatch(PaytrailEvents::FORM_ALTER, $form_alter);
+
+    $values = $event->getFormInterface()->build();
     // Generate authcode based on values submitted.
-    $values['AUTHCODE'] = $this->generateAuthCode($plugin->getMerchantHash(), $values);
+    $values['AUTHCODE'] = $form->generateAuthCode($values);
 
     return $values;
   }
 
   /**
-   * Validate and store transaction for order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
-   *   The payment gateway plugin.
-   * @param \Symfony\Component\HttpFoundation\ParameterBag $values
-   *   The parameters.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\RedirectKeyMismatchException
-   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
-   */
-  public function onReturn(OrderInterface $order, PaytrailBase $plugin, ParameterBag $values) {
-    $redirect_key_match = $this->getRedirectKey($order) === $values->get('redirect_key');
-
-    if (!$redirect_key_match) {
-      throw new RedirectKeyMismatchException('validation failed (redirect key mismatch).');
-    }
-
-    // Make sure we have a valid order number and it matches the one given
-    // to the Paytrail.
-    if ((string) $order->id() !== $values->get('order_number')) {
-      throw new SecurityHashMismatchException('Validation failed (order number mismatch)');
-    }
-
-    $hash = $this->generateReturnChecksum($plugin->getMerchantHash(), $values->get('hash_values'));
-
-    if ($hash !== $values->get('return_authcode')) {
-      throw new SecurityHashMismatchException('Validation failed (security hash mismatch)');
-    }
-    // Mark payment as authorized. Paytrail will attempt to call notify IPN
-    // which will mark payment as captured.
-    $this->createPaymentForOrder('authorized', $order, $plugin, [
-      'remote_id' => $values->get('remote_id'),
-      'remote_state' => 'waiting_confirm',
-    ]);
-  }
-
-  /**
    * {@inheritdoc}
    */
-  protected function getPayment(OrderInterface $order, PaytrailBase $plugin) {
+  protected function getPayment(OrderInterface $order, PaytrailBase $plugin) : ? PaymentInterface {
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface[] $payments */
     $payments = $this->entityTypeManager
       ->getStorage('commerce_payment')
       ->loadByProperties(['order_id' => $order->id()]);
 
     if (empty($payments)) {
-      return FALSE;
+      return NULL;
     }
     foreach ($payments as $payment) {
       if ($payment->getPaymentGatewayId() !== $plugin->getEntityId() || $payment->getAmount()->compareTo($order->getTotalPrice()) !== 0) {
@@ -256,13 +183,13 @@ class PaymentManager implements PaymentManagerInterface {
       }
       $paytrail_payment = $payment;
     }
-    return empty($paytrail_payment) ? FALSE : $paytrail_payment;
+    return empty($paytrail_payment) ? NULL : $paytrail_payment;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function createPaymentForOrder($status, OrderInterface $order, PaytrailBase $plugin, array $remote) {
+  public function createPaymentForOrder(string $status, OrderInterface $order, PaytrailBase $plugin, Response $response) : PaymentInterface {
     $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
 
     if (!$payment = $this->getPayment($order, $plugin)) {
@@ -276,12 +203,12 @@ class PaymentManager implements PaymentManagerInterface {
     }
     else {
       // Make sure remote id does not change.
-      if ($remote['remote_id'] !== $payment->getRemoteId()) {
+      if ($response->getPaymentId() !== $payment->getRemoteId()) {
         throw new PaymentGatewayException('Remote id does not match with previously stored remote id.');
       }
     }
-    $payment->setRemoteId($remote['remote_id'])
-      ->setRemoteState($remote['remote_state']);
+    $payment->setRemoteId($response->getPaymentId())
+      ->setRemoteState($response->getPaymentStatus());
 
     if ($status === 'authorized') {
       $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
@@ -297,20 +224,6 @@ class PaymentManager implements PaymentManagerInterface {
     $payment->save();
 
     return $payment;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function generateAuthCode($hash, array $values) {
-    return strtoupper(md5($hash . '|' . implode('|', $values)));
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function generateReturnChecksum($hash, array $values) {
-    return strtoupper(md5(implode('|', $values) . '|' . $hash));
   }
 
 }

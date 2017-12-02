@@ -2,7 +2,6 @@
 
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentMethodType;
 
-use Drupal\commerce\BundleFieldDefinition;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentMethodType\PaymentMethodTypeBase;
 

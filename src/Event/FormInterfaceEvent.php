@@ -4,15 +4,15 @@ namespace Drupal\commerce_paytrail\Event;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Drupal\commerce_paytrail\Repository\TransactionRepository;
+use Drupal\commerce_paytrail\Repository\FormManager;
 use Symfony\Component\EventDispatcher\Event;
 
 /**
- * Class TransactionRepositoryEvent.
+ * Class FormInterfaceEvent.
  *
  * @package Drupal\commerce_paytrail\Event\PaymentReposityEvent
  */
-class TransactionRepositoryEvent extends Event {
+class FormInterfaceEvent extends Event {
 
   /**
    * The PaytrailBase payment plugin.
@@ -31,24 +31,24 @@ class TransactionRepositoryEvent extends Event {
   /**
    * The transaction repository.
    *
-   * @var \Drupal\commerce_paytrail\Repository\TransactionRepository
+   * @var \Drupal\commerce_paytrail\Repository\FormManager
    */
-  protected $repository;
+  protected $form;
 
   /**
-   * TransactionRepositoryEvent constructor.
+   * FormInterfaceEvent constructor.
    *
    * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
    *   The PaytrailBase payment plugin.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
-   * @param \Drupal\commerce_paytrail\Repository\TransactionRepository $repository
+   * @param \Drupal\commerce_paytrail\Repository\FormManager $form
    *   The transaction repository.
    */
-  public function __construct(PaytrailBase $plugin, OrderInterface $order, TransactionRepository $repository) {
+  public function __construct(PaytrailBase $plugin, OrderInterface $order, FormManager $form) {
     $this->plugin = $plugin;
     $this->order = $order;
-    $this->repository = $repository;
+    $this->form = $form;
   }
 
   /**
@@ -67,24 +67,24 @@ class TransactionRepositoryEvent extends Event {
   /**
    * Set transaction repository.
    *
-   * @param \Drupal\commerce_paytrail\Repository\TransactionRepository $repository
+   * @param \Drupal\commerce_paytrail\Repository\FormManager $form
    *   The transaction repository.
    *
    * @return $this
    */
-  public function setTransactionRepository(TransactionRepository $repository) {
-    $this->repository = $repository;
+  public function setFormInterface(FormManager $form) {
+    $this->form = $form;
     return $this;
   }
 
   /**
    * Get transaction repository.
    *
-   * @return \Drupal\commerce_paytrail\Repository\TransactionRepository
+   * @return \Drupal\commerce_paytrail\Repository\FormManager
    *   The transaction repository.
    */
-  public function getTransactionRepository() {
-    return $this->repository;
+  public function getFormInterface() {
+    return $this->form;
   }
 
   /**

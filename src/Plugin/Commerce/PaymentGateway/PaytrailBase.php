@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
@@ -8,10 +10,13 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
+use Drupal\commerce_paytrail\Entity\PaymentMethod;
+use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\commerce_paytrail\Exception\RedirectKeyMismatchException;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
 use Drupal\commerce_paytrail\Repository\Method;
+use Drupal\commerce_paytrail\Repository\Response as PaytrailResponse;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -26,9 +31,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Provides the PaytrailBase payment gateway.
- *
- * @todo Implement refunds.
+ * Provides the Paytrail payment gateway.
  *
  * @CommercePaymentGateway(
  *   id = "paytrail",
@@ -68,7 +71,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *
    * @var string
    */
-  const HOST = 'https://payment.paytrail.com';
+  const HOST = 'https://payment.paytrail.com/e2';
 
   /**
    * The default merchant id used for testing.
@@ -85,18 +88,18 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   const MERCHANT_HASH = '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ';
 
   /**
-   * The normal payment mode.
+   * The payer details.
    *
-   * @var int
+   * @var string
    */
-  const NORMAL_MODE = 1;
+  const PAYER_DETAILS = 'payer';
 
   /**
-   * The payment page bypass mode.
+   * The product details.
    *
-   * @var int
+   * @var string
    */
-  const BYPASS_MODE = 2;
+  const PRODUCT_DETAILS = 'product';
 
   /**
    * PaytrailBase constructor.
@@ -156,9 +159,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       'culture' => 'automatic',
       'merchant_id' => static::MERCHANT_ID,
       'merchant_hash' => static::MERCHANT_HASH,
-      'paytrail_type' => 'S1',
-      'paytrail_mode' => static::NORMAL_MODE,
-      'visible_methods' => [],
+      'bypass_mode' => FALSE,
     ] + parent::defaultConfiguration();
   }
 
@@ -216,32 +217,35 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    *   Setting value.
    */
   public function getSetting($key) {
-    return isset($this->configuration[$key]) ? $this->configuration[$key] : NULL;
+    return $this->configuration[$key] ?? NULL;
   }
 
   /**
    * Gets the visible payment methods.
    *
-   * @return array|mixed
+   * @param bool $enabled
+   *   Whether to only load enabled payment methods.
+   *
+   * @return \Drupal\commerce_paytrail\Entity\PaymentMethod[]
    *   The payment methods.
    */
-  public function getVisibleMethods() {
-    return $this->paymentManager->getPaymentMethods($this->configuration['visible_methods']);
+  public function getVisibleMethods($enabled = TRUE) {
+    $storage = $this->entityTypeManager->getStorage('paytrail_payment_method');
+
+    if (!$enabled) {
+      return $storage->loadMultiple();
+    }
+    return $storage->loadByProperties(['status' => TRUE]);
   }
 
   /**
-   * Build payment form.
+   * Gets the payment manager.
    *
-   * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
-   *   The payment.
-   * @param int $preselected
-   *   The preselected payment method.
-   *
-   * @return array|bool
-   *   Payment form values.
+   * @return \Drupal\commerce_paytrail\PaymentManagerInterface
+   *   The payment manager.
    */
-  public function buildPaymentForm(PaymentInterface $payment, $preselected = NULL) {
-    return $this->paymentManager->buildTransaction($payment->getOrder(), $this, $preselected);
+  public function getPaymentManager() : PaymentManagerInterface {
+    return $this->paymentManager;
   }
 
   /**
@@ -260,6 +264,32 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       return isset($mapping[$langcode]) ? $mapping[$langcode] : 'en_US';
     }
     return $this->configuration['culture'];
+  }
+
+  /**
+   * Check if given data type should be delivered to Paytrail.
+   *
+   * @param string $type
+   *   The type.
+   *
+   * @return bool
+   *   TRUE if data is included, FALSE if not.
+   */
+  public function isDataIncluded(string $type) : bool {
+    if (isset($this->configuration['included_data'][$type])) {
+      return $this->configuration['included_data'][$type] === $type;
+    }
+    return FALSE;
+  }
+
+  /**
+   * Checks if the bypass mode is enabled.
+   *
+   * @return bool
+   *   TRUE if enabled, FALSE if not.
+   */
+  public function isBypassModeEnabled() : bool {
+    return $this->configuration['bypass_mode'] ? TRUE : FALSE;
   }
 
   /**
@@ -284,15 +314,14 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['merchant_hash'],
     ];
 
-    $form['paytrail_type'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Type'),
-      '#description' => $this->t('S1 is simple version, E1 requires more information.'),
+    $form['included_data'] = [
+      '#type' => 'checkboxes',
+      '#title' => $this->t('Data to deliver'),
+      '#default_value' => $this->configuration['included_data'],
       '#options' => [
-        'S1' => $this->t('S1'),
-        'E1' => $this->t('E1'),
+        static::PRODUCT_DETAILS => $this->t('Product details'),
+        static::PAYER_DETAILS => $this->t('Payer details'),
       ],
-      '#default_value' => $this->configuration['paytrail_type'],
     ];
 
     $form['culture'] = [
@@ -307,30 +336,24 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       ],
       '#default_value' => $this->configuration['culture'],
     ];
-    $form['paytrail_mode'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Mode'),
-      '#description' => $this->t('Setting this to anything other than normal requires an additional Paytrail services. See @link', [
-        '@link' => 'http://support.paytrail.com/hc/en-us/articles/201911337-Payment-page-bypass',
-      ]),
-      '#options' => [
-        static::NORMAL_MODE => $this->t('Normal service'),
-        static::BYPASS_MODE => $this->t('Bypass payment method selection page'),
-      ],
-      '#default_value' => $this->configuration['paytrail_mode'],
+    $form['bypass_mode'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t("Bypass Paytrail's payment method selection page"),
+      '#description' => $this->t('User will be redirected directly to the selected payment service'),
+      '#default_value' => $this->configuration['bypass_mode'],
     ];
 
-    $payment_methods = array_map(function (Method $value) {
-      return $value->getLabel();
-    }, $this->paymentManager->getPaymentMethods());
-
     $form['visible_methods'] = [
-      '#type' => 'select',
+      '#type' => 'checkboxes',
       '#multiple' => TRUE,
       '#title' => $this->t('Visible payment methods'),
       '#description' => $this->t('List of payment methods that are to be shown on the payment page. If left empty all available payment methods shown.'),
-      '#options' => $payment_methods,
-      '#default_value' => $this->configuration['visible_methods'],
+      '#options' => array_map(function (PaymentMethod $value) {
+        return $value->adminLabel();
+      }, $this->getVisibleMethods(FALSE)),
+      '#default_value' => array_map(function (PaymentMethod $value) {
+        return $value->id();
+      }, $this->getVisibleMethods()),
     ];
 
     return $form;
@@ -345,12 +368,16 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     if (!$form_state->getErrors()) {
       $values = $form_state->getValue($form['#parents']);
 
+      foreach ($this->getVisibleMethods() as $method) {
+        // Enable / disable payment method based on user selection.
+        $method->setStatus(in_array($method->id(), $values['visible_methods']))->save();
+      }
+
       $this->configuration = array_merge($this->configuration, [
         'merchant_id' => $values['merchant_id'],
         'merchant_hash'  => $values['merchant_hash'],
-        'paytrail_type' => $values['paytrail_type'],
-        'paytrail_mode' => $values['paytrail_mode'],
-        'visible_methods' => $values['visible_methods'],
+        'bypass_mode' => $values['bypass_mode'],
+        'included_data' => $values['included_data'],
         'culture' => $values['culture'],
       ]);
     }
@@ -359,7 +386,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   /**
    * IPN callback.
    *
-   * IPN will be called after succesful paytrail payment. Payment will be
+   * IPN will be called after a succesful paytrail payment. Payment will be
    * marked as captured if validation succeeded.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
@@ -368,7 +395,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @return \Symfony\Component\HttpFoundation\Response
    *   The 200 response code if validation succeeded.
    */
-  public function onNotify(Request $request) {
+  public function onNotify(Request $request) : Response {
     $order = $this->entityTypeManager
       ->getStorage('commerce_order')
       ->load($request->query->get('ORDER_NUMBER'));
@@ -382,26 +409,18 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
 
       throw new NotFoundHttpException();
     }
-    $redirect_key_match = $this->paymentManager->getRedirectKey($order) === $request->query->get('redirect_key');
 
-    $hash_values = [];
-    foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
-      if (!$value = $request->query->get($key)) {
-        $this->logger
-          ->notice($this->t('Validation failed (missing @value) for @order [@values]', [
-            '@value' => $key,
-            '@order' => $order->id(),
-            '@values' => print_r($request->query->all(), TRUE),
-          ]));
-
-        throw new HttpException(Response::HTTP_BAD_REQUEST, sprintf('Validation failed (missing %s)', $key));
-      }
-      $hash_values[] = $value;
+    try {
+      $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
     }
-    $hash = $this->paymentManager->generateReturnChecksum($this->getMerchantHash(), $hash_values);
+    catch (InvalidValueException $e) {
+      throw new HttpException(Response::HTTP_BAD_REQUEST, $e->getMessage());
+    }
 
-    // Check redirect key and checksum validity.
-    if (!$redirect_key_match || $hash !== $request->query->get('RETURN_AUTHCODE')) {
+    try {
+      $response->isValidResponse();
+    }
+    catch (SecurityHashMismatchException $e) {
       $this->logger
         ->notice($this->t('Hash mismatch for @order [@values]', [
           '@order' => $order->id(),
@@ -410,12 +429,10 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
 
       return new Response('Hash mismatch.', Response::HTTP_BAD_REQUEST);
     }
+
     // Mark payment as captured.
     try {
-      $this->paymentManager->createPaymentForOrder('capture', $order, $this, [
-        'remote_id' => $request->query->get('PAID'),
-        'remote_state' => 'paid',
-      ]);
+      $this->paymentManager->createPaymentForOrder('capture', $order, $this, $response);
     }
     catch (\InvalidArgumentException $e) {
       // Invalid payment state.
@@ -451,43 +468,24 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @param \Symfony\Component\HttpFoundation\Request $request
    *   The request.
    */
-  public function onReturn(OrderInterface $order, Request $request) {
-    $hash_values = [];
-    foreach (['ORDER_NUMBER', 'TIMESTAMP', 'PAID', 'METHOD'] as $key) {
-      if (!$value = $request->query->get($key)) {
-        drupal_set_message($this->t('Validation failed (missing @key)', ['@key' => $key]), 'error');
-
-        $this->logger
-          ->critical($this->t('Validation failed (missing @key) @order [@values]', [
-            '@key' => $key,
-            '@order' => $order->id(),
-            '@values' => print_r($request->query->all(), TRUE),
-          ]));
-        throw new PaymentGatewayException();
-      }
-      $hash_values[] = $value;
-    }
-    $parameters = new ParameterBag([
-      'order_number' => $request->query->get('ORDER_NUMBER'),
-      'redirect_key' => $request->query->get('redirect_key'),
-      'hash_values' => $hash_values,
-      'return_authcode' => $request->query->get('RETURN_AUTHCODE'),
-      'remote_id' => $request->query->get('PAID'),
-    ]);
-
+  public function onReturn(OrderInterface $order, Request $request) : void {
     try {
-      $this->paymentManager->onReturn($order, $this, $parameters);
+      $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
     }
-    catch (RedirectKeyMismatchException $e) {
-      drupal_set_message($this->t('validation failed (redirect key mismatch).'), 'error');
+    catch (InvalidValueException $e) {
+      drupal_set_message($this->t('Invalid return url'), 'error');
 
       $this->logger
-        ->critical($this->t('Redirect key mismatch for @order [@values] (@exception)', [
+        ->critical($this->t('Validation failed (@exception) @order [@values]', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
           '@exception' => $e->getMessage(),
         ]));
       throw new PaymentGatewayException();
+    }
+
+    try {
+      $response->isValidResponse();
     }
     catch (SecurityHashMismatchException $e) {
       drupal_set_message($this->t('Validation failed (security hash mismatch)'), 'error');
@@ -500,6 +498,11 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
         ]));
       throw new PaymentGatewayException();
     }
+
+    // Mark payment as authorized. Paytrail will attempt to call notify IPN
+    // which will mark payment as captured.
+    $this->paymentManager->createPaymentForOrder('authorized', $order, $this, $response);
+
     drupal_set_message($this->t('Payment was processed.'));
   }
 

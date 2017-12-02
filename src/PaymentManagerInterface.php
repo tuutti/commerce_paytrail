@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\commerce_paytrail;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Symfony\Component\HttpFoundation\ParameterBag;
+use Drupal\commerce_paytrail\Repository\FormManager;
+use Drupal\commerce_paytrail\Repository\Response;
 
 /**
  * Interface PaymentManagerInterface.
@@ -12,17 +16,6 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  * @package Drupal\commerce_paytrail
  */
 interface PaymentManagerInterface {
-
-  /**
-   * Get available payment methods.
-   *
-   * @param array $enabled
-   *   List of enabled payment methods.
-   *
-   * @return array|mixed
-   *   List of available payment methods.
-   */
-  public function getPaymentMethods(array $enabled = []);
 
   /**
    * Get return url for given type.
@@ -35,45 +28,35 @@ interface PaymentManagerInterface {
    * @return \Drupal\Core\GeneratedUrl|string
    *   Return absolute return url.
    */
-  public function getReturnUrl(OrderInterface $order, $type);
+  public function getReturnUrl(OrderInterface $order, string $type) : string;
 
   /**
-   * Get/generate payment redirect key.
+   * Builds form for a given order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   Order.
-   *
-   * @return string
-   *   Payment redirect key.
-   */
-  public function getRedirectKey(OrderInterface $order);
-
-  /**
-   * Build transaction for order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   Order.
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $payment_gateway
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
    *   The payment gateway.
-   * @param int $preselected_method
-   *   The optional preselected method.
    *
-   * @return array|bool
-   *   FALSE on validation failure or transaction array.
+   * @return \Drupal\commerce_paytrail\Repository\FormManager
+   *   The form interface.
    */
-  public function buildTransaction(OrderInterface $order, PaytrailBase $payment_gateway, $preselected_method = NULL);
+  public function buildFormInterface(OrderInterface $order, PaytrailBase $plugin) : FormManager;
 
   /**
-   * Validate and store transaction for order.
+   * Dispatches events and generates authcode for a given values.
    *
+   * @param \Drupal\commerce_paytrail\Repository\FormManager $form
+   *   The form interface.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   *   The payment plugin.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
-   *   The payment gateway plugin.
-   * @param \Symfony\Component\HttpFoundation\ParameterBag $values
-   *   The return values.
+   *
+   * @return array
+   *   The generated form values.
    */
-  public function onReturn(OrderInterface $order, PaytrailBase $plugin, ParameterBag $values);
+  public function dispatch(FormManager $form, PaytrailBase $plugin, OrderInterface $order) : array;
 
   /**
    * Create new payment for given order.
@@ -84,38 +67,12 @@ interface PaymentManagerInterface {
    *   The order.
    * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
    *   The payment plugin.
-   * @param array $remote
-   *   The remove values.
+   * @param \Drupal\commerce_paytrail\Repository\Response $response
+   *   The paytrail response.
    *
    * @return \Drupal\commerce_payment\Entity\PaymentInterface
    *   The payment entity.
    */
-  public function createPaymentForOrder($status, OrderInterface $order, PaytrailBase $plugin, array $remote);
-
-  /**
-   * Calculate authcode for transaction.
-   *
-   * @param string $hash
-   *   Merchant hash.
-   * @param array $values
-   *   Values used to generate mac.
-   *
-   * @return string
-   *   Authcode hash.
-   */
-  public function generateAuthCode($hash, array $values);
-
-  /**
-   * Calculate return checksum.
-   *
-   * @param string $hash
-   *   Merchant hash.
-   * @param array $values
-   *   Values used to generate mac.
-   *
-   * @return string
-   *   Checksum.
-   */
-  public function generateReturnChecksum($hash, array $values);
+  public function createPaymentForOrder(string $status, OrderInterface $order, PaytrailBase $plugin, Response $response) : PaymentInterface;
 
 }

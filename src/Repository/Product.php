@@ -1,16 +1,17 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\commerce_paytrail\Repository;
 
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_price\Price;
+use Webmozart\Assert\Assert;
 
 /**
- * Class PaytrailProduct.
- *
- * @package Drupal\commerce_paytrail\Repository
+ * Provides an object for Paytrail product handling.
  */
-class PaytrailProduct {
+class Product {
 
   /**
    * The default product type.
@@ -76,26 +77,11 @@ class PaytrailProduct {
   protected $type = self::PRODUCT;
 
   /**
-   * The product number.
+   * The product id.
    *
    * @var string
    */
-  protected $number = '';
-
-  /**
-   * Product constructor.
-   *
-   * @param array $settings
-   *   Values to populate.
-   */
-  public function __construct(array $settings = []) {
-    foreach ($settings as $key => $value) {
-      if (!property_exists($this, $key)) {
-        continue;
-      }
-      $this->{$key} = $value;
-    }
-  }
+  protected $id;
 
   /**
    * Create new self with given order item.
@@ -103,17 +89,58 @@ class PaytrailProduct {
    * @param \Drupal\commerce_order\Entity\OrderItemInterface $item
    *   The order item.
    *
-   * @return \Drupal\commerce_paytrail\Repository\PaytrailProduct
+   * @return \Drupal\commerce_paytrail\Repository\Product
    *   The populated instance.
    */
-  public static function createWithOrderItem(OrderItemInterface $item) {
-    /** @var \Drupal\commerce_paytrail\Repository\PaytrailProduct $object */
+  public static function createFromOrderItem(OrderItemInterface $item) {
+    /** @var \Drupal\commerce_paytrail\Repository\Product $object */
     $object = new static();
     $object->setTitle($item->getTitle())
+      ->setItemId($item->getPurchasedEntity()->id())
       ->setQuantity($item->getQuantity())
       ->setPrice($item->getTotalPrice());
 
     return $object;
+  }
+
+  /**
+   * Builds item form array.
+   *
+   * @param int $index
+   *   The product index.
+   *
+   * @return array
+   *   The build array.
+   */
+  public function build(int $index) : array {
+    $values = [
+      sprintf('ITEM_TITLE[%d]', $index) => $this->getTitle(),
+      sprintf('ITEM_QUANTITY[%d]', $index) => $this->getQuantity(),
+      sprintf('ITEM_UNIT_PRICE[%d]', $index) => $this->getPrice(),
+      sprintf('ITEM_VAT_PERCENT[%d]', $index) => $this->getTax(),
+      sprintf('ITEM_DISCOUNT_PERCENT[%d]', $index) => $this->getDiscount(),
+      sprintf('ITEM_TYPE[%d]', $index) => $this->getType(),
+    ];
+
+    if ($this->getItemId()) {
+      $values[sprintf('ITEM_ID[%d]', $index)] = $this->getItemId();
+    }
+    return $values;
+  }
+
+  /**
+   * Sets the item id.
+   *
+   * @param string $id
+   *   The item id.
+   *
+   * @return \Drupal\commerce_paytrail\Repository\Product
+   *   The self.
+   */
+  public function setItemId(string $id) : self {
+    $this->id = $id;
+
+    return $this;
   }
 
   /**
@@ -124,7 +151,7 @@ class PaytrailProduct {
    *
    * @return $this
    */
-  public function setTitle($title) {
+  public function setTitle($title) : self {
     $this->title = $title;
     return $this;
   }
@@ -135,7 +162,7 @@ class PaytrailProduct {
    * @return string
    *   The product title.
    */
-  public function getTitle() {
+  public function getTitle() : string {
     return $this->title;
   }
 
@@ -158,7 +185,7 @@ class PaytrailProduct {
    * @return int
    *   The product quantity.
    */
-  public function getQuantity() {
+  public function getQuantity() : int {
     return (int) round($this->quantity);
   }
 
@@ -170,7 +197,9 @@ class PaytrailProduct {
    *
    * @return $this
    */
-  public function setPrice(Price $price) {
+  public function setPrice(Price $price) : self {
+    Assert::oneOf($price->getCurrencyCode(), ['EUR']);
+
     $this->price = $price;
     return $this;
   }
@@ -181,8 +210,8 @@ class PaytrailProduct {
    * @return string
    *   The formatted price.
    */
-  public function getPrice() {
-    return $this->formatPrice($this->price->getNumber());
+  public function getPrice() : string {
+    return $this->formatPrice((float) $this->price->getNumber());
   }
 
   /**
@@ -216,7 +245,7 @@ class PaytrailProduct {
    *
    * @return $this
    */
-  public function setDiscount($discount) {
+  public function setDiscount(float $discount) {
     $this->discount = $discount;
     return $this;
   }
@@ -227,7 +256,7 @@ class PaytrailProduct {
    * @return float
    *   The discount amount.
    */
-  public function getDiscount() {
+  public function getDiscount() : float {
     return $this->discount;
   }
 
@@ -239,7 +268,9 @@ class PaytrailProduct {
    *
    * @return $this
    */
-  public function setProductType($type) {
+  public function setProductType($type) : self {
+    Assert::oneOf($type, [static::PRODUCT, static::SHIPPING, static::HANDLING]);
+
     $this->type = $type;
     return $this;
   }
@@ -250,31 +281,18 @@ class PaytrailProduct {
    * @return int
    *   The product type.
    */
-  public function getType() {
+  public function getType() : int {
     return $this->type;
   }
 
   /**
-   * Sets the product number.
-   *
-   * @param string $number
-   *   The number.
-   *
-   * @return $this
-   */
-  public function setNumber($number) {
-    $this->number = $number;
-    return $this;
-  }
-
-  /**
-   * Gets the product number.
+   * Gets the product id.
    *
    * @return string
    *   The number.
    */
-  public function getNumber() {
-    return $this->number;
+  public function getItemId() : string {
+    return $this->id;
   }
 
   /**
@@ -286,7 +304,7 @@ class PaytrailProduct {
    * @return string
    *   Formatted price component.
    */
-  protected function formatPrice($price) {
+  protected function formatPrice(float $price) {
     return number_format($price, 2, '.', '');
   }
 

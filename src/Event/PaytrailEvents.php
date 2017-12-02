@@ -10,13 +10,8 @@ namespace Drupal\commerce_paytrail\Event;
 final class PaytrailEvents {
 
   /**
-   * Event to alter payment method repository values.
-   */
-  const PAYMENT_REPO_ALTER = 'paytrail.alter_payment_repository';
-
-  /**
    * Event to alter transaction repository values.
    */
-  const TRANSACTION_REPO_ALTER = 'paytrail.alter_transaction_repository';
+  const FORM_ALTER = 'paytrail.form_alter';
 
 }
