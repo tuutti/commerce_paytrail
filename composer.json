@@ -5,6 +5,7 @@
   "license": "GPL-2.0+",
   "minimum-stability": "dev",
   "require": {
+    "webmozart/assert": "*",
     "drupal/commerce": "^2"
   }
 }
