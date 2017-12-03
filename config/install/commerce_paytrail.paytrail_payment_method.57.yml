@@ -1,5 +1,5 @@
 status: true
 dependencies: {  }
 id: '57'
-label: 'Maestro (Nets)'
-adminLabel: Maestro
+label: Maestro
+adminLabel: 'Maestro (Nets)'

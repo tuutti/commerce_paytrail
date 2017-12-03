@@ -2,6 +2,7 @@ name: Commerce Paytrail
 type: module
 description: Integrates Paytrail payments with Drupal Commerce.
 core: 8.x
+php: 7.1
 package: Commerce (contrib)
 dependencies:
   - commerce:commerce_payment

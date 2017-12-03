@@ -150,11 +150,15 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   /**
    * {@inheritdoc}
    */
-  public function defaultConfiguration() {
+  public function defaultConfiguration() : array {
     return [
       'culture' => 'automatic',
       'merchant_id' => static::MERCHANT_ID,
       'merchant_hash' => static::MERCHANT_HASH,
+      'included_data' => [
+        static::PAYER_DETAILS => static::PAYER_DETAILS,
+        static::PRODUCT_DETAILS => static::PRODUCT_DETAILS,
+      ],
       'bypass_mode' => FALSE,
     ] + parent::defaultConfiguration();
   }
@@ -165,7 +169,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @return string
    *   The entity id.
    */
-  public function getEntityId() {
+  public function getEntityId() : string {
     return $this->entityId;
   }
 
@@ -175,7 +179,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @return mixed|string
    *   The merchant id.
    */
-  public function getMerchantId() {
+  public function getMerchantId() : string {
     return $this->getMode() == 'test' ? static::MERCHANT_ID : $this->getSetting('merchant_id');
   }
 
@@ -185,7 +189,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @return mixed|string
    *   The merchant hash.
    */
-  public function getMerchantHash() {
+  public function getMerchantHash() : string {
     return $this->getMode() == 'test' ? static::MERCHANT_HASH : $this->getSetting('merchant_hash');
   }
 
@@ -199,7 +203,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @param int $severity
    *   The severity.
    */
-  public function log($message, $severity = RfcLogLevel::CRITICAL) {
+  public function log($message, $severity = RfcLogLevel::CRITICAL) : void {
     $this->logger->log($severity, $message);
   }
 
@@ -225,7 +229,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    * @return \Drupal\commerce_paytrail\Entity\PaymentMethod[]
    *   The payment methods.
    */
-  public function getVisibleMethods($enabled = TRUE) {
+  public function getVisibleMethods($enabled = TRUE) : array {
     $storage = $this->entityTypeManager->getStorage('paytrail_payment_method');
 
     if (!$enabled) {
@@ -247,7 +251,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
   /**
    * Get used langcode.
    */
-  public function getCulture() {
+  public function getCulture() : string {
     // Attempt to autodetect.
     if ($this->configuration['culture'] === 'automatic') {
       $mapping = [
@@ -430,7 +434,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
           '@values' => print_r($request->query->all(), TRUE),
         ]));
 
-      return new Response('Hash mismatch.', Response::HTTP_BAD_REQUEST);
+      return new Response(sprintf('Hash mismatch (%s).', $e->getReason()), Response::HTTP_BAD_REQUEST);
     }
 
     // Mark payment as captured.
@@ -476,7 +480,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
     }
     catch (InvalidValueException | \InvalidArgumentException $e) {
-      drupal_set_message($this->t('Invalid return url'), 'error');
+      drupal_set_message($this->t('Invalid return url.'), 'error');
 
       $this->logger
         ->critical($this->t('Validation failed (@exception) @order [@values]', [
@@ -491,7 +495,9 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       $response->isValidResponse();
     }
     catch (SecurityHashMismatchException $e) {
-      drupal_set_message($this->t('Validation failed (security hash mismatch)'), 'error');
+      drupal_set_message($this->t('Validation failed due to security hash mismatch (@reason).', [
+        '@reason' => $e->getReason(),
+      ]), 'error');
 
       $this->logger
         ->critical($this->t('Hash validation failed @order [@values] (@exception)', [

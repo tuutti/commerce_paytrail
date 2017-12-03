@@ -1,5 +1,5 @@
 status: true
 dependencies: {  }
 id: '54'
-label: 'MasterCard (Nets)'
-adminLabel: MasterCard
+label: MasterCard
+adminLabel: 'MasterCard (Nets)'

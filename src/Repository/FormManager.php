@@ -217,7 +217,7 @@ class FormManager extends BaseResource {
    * @return $this
    *   The self.
    */
-  public function setMerchantUiMessage(string $message) : self {
+  public function setMerchantPanelUiMessage(string $message) : self {
     return $this->setValue('MSG_UI_MERCHANT_PANEL', $message);
   }
 
@@ -468,6 +468,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerCountry(string $country) : self {
+    Assert::maxLength($country, 2);
+
     return $this->setValue('PAYER_PERSON_ADDR_COUNTRY', $country);
   }
 
@@ -514,12 +516,11 @@ class FormManager extends BaseResource {
     $form = clone $this;
 
     foreach ($form->products as $i => $product) {
+      // Remove total amount field if we deliver products.
+      $form->removeValue('AMOUNT');
+
       foreach ($product->build($i) as $key => $value) {
         $form->setValue($key, $value);
-      }
-      if ($i > 0) {
-        // Remove total amount field if we deliver products.
-        $this->removeValue('AMOUNT');
       }
     }
     // Override params out because we don't support changing them

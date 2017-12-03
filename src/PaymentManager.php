@@ -176,13 +176,15 @@ class PaymentManager implements PaymentManagerInterface {
     if (empty($payments)) {
       return NULL;
     }
+    $paytrail_payment = NULL;
+
     foreach ($payments as $payment) {
       if ($payment->getPaymentGatewayId() !== $plugin->getEntityId() || $payment->getAmount()->compareTo($order->getTotalPrice()) !== 0) {
         continue;
       }
       $paytrail_payment = $payment;
     }
-    return empty($paytrail_payment) ? NULL : $paytrail_payment;
+    return $paytrail_payment ?? NULL;
   }
 
   /**

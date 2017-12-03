@@ -10,14 +10,14 @@ commerce_payment.commerce_payment_gateway.plugin.paytrail:
     culture:
       type: string
       label: 'Language'
-    paytrail_mode:
-      type: string
-      label: 'Mode'
-    paytrail_type:
-      type: string
-      label: 'Type'
-    visible_methods:
-      type: sequence
-      label: 'Visible payment methods'
-      sequence:
-        type: string
+    included_data:
+      type: mapping
+      mapping:
+        payer:
+          type: string
+        product:
+          type: string
+
+    bypass_mode:
+      type: boolean
+      label: 'Bypass mode'

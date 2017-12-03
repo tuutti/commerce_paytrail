@@ -9,6 +9,9 @@ use Drupal\Tests\UnitTestCase;
 /**
  * PaymentRepository unit tests.
  *
+ * @todo Write unit tests for rest of the payment manager once
+ * core supports phpunit >= 5.
+ *
  * @group commerce_paytrail
  * @coversDefaultClass \Drupal\commerce_paytrail\PaymentManager
  */
@@ -114,55 +117,6 @@ class PaymentManagerTest extends UnitTestCase {
       $response = $this->sut->getReturnUrl($this->order, $type);
       $this->assertEquals('http://localhost/' . $type, $response);
     }
-  }
-
-  /**
-   * Tests generateReturnChecksum() method.
-   *
-   * @covers ::generateAuthCode
-   * @dataProvider generateReturnChecksumProvider
-   */
-  public function testGenerateReturnChecksum($hash, $values, $expected) {
-    $return = $this->sut->generateReturnChecksum($hash, $values);
-    $this->assertEquals($return, $expected);
-  }
-
-  /**
-   * Data provider for testGenerateReturnChecksum().
-   */
-  public function generateReturnChecksumProvider() {
-    return [
-      ['testHash', [1, 2, 3, 4], strtoupper(md5('1|2|3|4|testHash'))],
-      ['hAsH', ['dsa' => '123', 'dd' => '22'], strtoupper(md5('123|22|hAsH'))],
-    ];
-  }
-
-  /**
-   * Tests generateAuthCode() method.
-   *
-   * @covers ::generateAuthCode
-   * @dataProvider generateAuthCodeProvider
-   */
-  public function testGenerateAuthCode($hash, $values, $expected) {
-    $return = $this->sut->generateAuthCode($hash, $values);
-    $this->assertEquals($return, $expected);
-  }
-
-  /**
-   * Data provider for testGenerateAuthCode().
-   */
-  public function generateAuthCodeProvider() {
-    return [
-      ['testHash',
-        [
-          'test' => 1,
-          'test2' => '233',
-          'value' => 'jo0',
-        ],
-        strtoupper(md5('testHash|1|233|jo0')),
-      ],
-      ['MhASh', [1, 2, 3, 4, 5], strtoupper(md5('MhASh|1|2|3|4|5'))],
-    ];
   }
 
 }

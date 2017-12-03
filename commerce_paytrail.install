@@ -43,11 +43,11 @@ function commerce_paytrail_install_default_payment_methods() {
   ];
 
   foreach ($methods as $id => $method) {
-    $label = $method[0];
-    $adminLabel = $label;
+    $adminLabel = $method[0];
+    $label = $adminLabel;
 
     if (isset($method[1])) {
-      $adminLabel = $method[1];
+      $label = $method[1];
     }
     PaymentMethod::create([
       'id' => $id,

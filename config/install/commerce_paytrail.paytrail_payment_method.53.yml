@@ -1,5 +1,5 @@
 status: true
 dependencies: {  }
 id: '53'
-label: 'Visa (Nets)'
-adminLabel: Visa
+label: Visa
+adminLabel: 'Visa (Nets)'

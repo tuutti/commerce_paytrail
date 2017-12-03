@@ -1,5 +1,5 @@
 status: true
 dependencies: {  }
 id: '56'
-label: 'American Express (Nets)'
-adminLabel: 'American Express'
+label: 'American Express'
+adminLabel: 'American Express (Nets)'

@@ -3,6 +3,7 @@
 namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
+use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\Component\Utility\Html;
@@ -27,20 +28,26 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin */
     $plugin = $payment->getPaymentGateway()->getPlugin();
 
+    $form['#prefix'] = '<div id="payment-form">';
+    $form['#suffix'] = '</div>';
+
     try {
       $formInterface = $plugin->getPaymentManager()
         ->buildFormInterface($payment->getOrder(), $plugin);
 
+      $preselected = $form_state->getTemporaryValue('selected_method');
+
+      // Attempt to use preselected method if available.
+      if ($preselected && $method = PaymentMethod::load($preselected)) {
+        $formInterface->setPaymentMethods([$method]);
+      }
+      $data = $plugin->getPaymentManager()
+        ->dispatch($formInterface, $plugin, $payment->getOrder());
+
+      $form = $this->buildRedirectForm($form, $form_state, $plugin::HOST, $data, self::REDIRECT_POST);
+
       // This only works when using the bypass payment page feature.
       if ($plugin->isBypassModeEnabled()) {
-        // Attempt to use preselected method if available.
-        if ($preselected = $form_state->getTemporaryValue('selected_method')) {
-          $formInterface->setPaymentMethods([$preselected]);
-        }
-
-        $form['#prefix'] = '<div id="payment-form">';
-        $form['#suffix'] = '</div>';
-
         // Disable auto-redirect so user can select payment method.
         $form['#attached'] = array_filter($form['#attached'], function ($value) {
           return reset($value) !== 'commerce_payment/offsite_redirect';
@@ -53,7 +60,9 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
           '#type' => 'fieldset',
         ];
 
-        foreach ($plugin->getVisibleMethods() as $key => $method) {
+        foreach ($plugin->getVisibleMethods() as $method) {
+          $key = $method->id();
+
           $class = [
             Html::getId($method->label()),
             'payment-button-' . $key,
@@ -77,10 +86,7 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
           ];
         }
       }
-      $data = $plugin->getPaymentManager()
-        ->dispatch($formInterface, $plugin, $payment->getOrder());
-
-      return $this->buildRedirectForm($form, $form_state, $plugin::HOST, $data, self::REDIRECT_POST);
+      return $form;
     }
     catch (InvalidBillingException $e) {
       $plugin->log('Invalid billing data: ' . $e->getMessage());
