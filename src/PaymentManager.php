@@ -12,11 +12,10 @@ use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\FormManager;
-use Drupal\commerce_paytrail\Repository\MethodRepository;
 use Drupal\commerce_paytrail\Repository\Product;
 use Drupal\commerce_paytrail\Repository\Response;
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Core\Entity\EntityTypeManager;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Url;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -29,7 +28,7 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * Drupal\Core\Entity\EntityTypeManager definition.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManager
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected $entityTypeManager;
 
@@ -57,7 +56,7 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * Constructs a new instance.
    *
-   * @param \Drupal\Core\Entity\EntityTypeManager $entity_type_manager
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager service.
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
    *   The event dispatcher.
@@ -66,7 +65,7 @@ class PaymentManager implements PaymentManagerInterface {
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   The module handler.
    */
-  public function __construct(EntityTypeManager $entity_type_manager, EventDispatcherInterface $event_dispatcher, TimeInterface $time, ModuleHandlerInterface $moduleHandler) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, TimeInterface $time, ModuleHandlerInterface $moduleHandler) {
     $this->entityTypeManager = $entity_type_manager;
     $this->eventDispatcher = $event_dispatcher;
     $this->time = $time;

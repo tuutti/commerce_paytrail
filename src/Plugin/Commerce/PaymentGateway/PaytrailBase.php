@@ -5,17 +5,14 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
-use Drupal\commerce_paytrail\Exception\RedirectKeyMismatchException;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\PaymentManagerInterface;
-use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\commerce_paytrail\Repository\Response as PaytrailResponse;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -24,7 +21,6 @@ use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Logger\RfcLogLevel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -413,7 +409,14 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     try {
       $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
     }
-    catch (InvalidValueException $e) {
+    catch (InvalidValueException | \InvalidArgumentException $e) {
+      $this->logger
+        ->notice($this->t('Invalid return url @order [@values] @exception', [
+          '@order' => $order->id(),
+          '@values' => print_r($request->query->all(), TRUE),
+          '@exception' => $e->getMessage(),
+        ]));
+
       throw new HttpException(Response::HTTP_BAD_REQUEST, $e->getMessage());
     }
 
@@ -472,7 +475,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
     try {
       $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
     }
-    catch (InvalidValueException $e) {
+    catch (InvalidValueException | \InvalidArgumentException $e) {
       drupal_set_message($this->t('Invalid return url'), 'error');
 
       $this->logger

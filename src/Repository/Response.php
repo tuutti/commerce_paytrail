@@ -128,6 +128,11 @@ class Response extends BaseResource {
       $this->getPaymentStatus(),
     ];
 
+    // Make sure payment status is paid.
+    if ($this->getPaymentStatus() !== 'PAID') {
+      throw new SecurityHashMismatchException('Validation failed (invalid paymetn state)');
+    }
+
     // Make sure we have a valid order number and it matches the one given
     // to the Paytrail.
     if ((string) $this->order->id() !== $this->getOrderNumber()) {

@@ -3,8 +3,6 @@
 namespace Drupal\Tests\commerce_paytrail\Unit;
 
 use Drupal\commerce_paytrail\PaymentManager;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Drupal\commerce_paytrail\Repository\Method;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Tests\UnitTestCase;
 
@@ -19,7 +17,7 @@ class PaymentManagerTest extends UnitTestCase {
   /**
    * The mocked entity type manager.
    *
-   * @var \PHPUnit_Framework_MockObject_MockObject
+   * @var \PHPUnit_Framework_MockObject_MockObject|\Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected $entityTypeManager;
 
@@ -38,16 +36,9 @@ class PaymentManagerTest extends UnitTestCase {
   protected $urlGenerator;
 
   /**
-   * The mocked method repository.
-   *
-   * @var \PHPUnit_Framework_MockObject_MockObject
-   */
-  protected $methodRepository;
-
-  /**
    * The mocked event dispatcher.
    *
-   * @var \PHPUnit_Framework_MockObject_MockObject
+   * @var \PHPUnit_Framework_MockObject_MockObject|\Symfony\Component\EventDispatcher\EventDispatcherInterface
    */
   protected $eventDispatcher;
 
@@ -73,17 +64,21 @@ class PaymentManagerTest extends UnitTestCase {
   protected $time;
 
   /**
+   * The module handler.
+   *
+   * @var \PHPUnit_Framework_MockObject_MockObject|\Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  /**
    * {@inheritdoc}
    */
   public function setUp() {
     parent::setUp();
 
+    $this->moduleHandler = $this->getMock('\Drupal\Core\Extension\ModuleHandlerInterface');
     $this->eventDispatcher = $this->getMock('\Symfony\Component\EventDispatcher\EventDispatcherInterface');
     $this->entityTypeManager = $this->getMockBuilder('\Drupal\Core\Entity\EntityTypeManager')
-      ->disableOriginalConstructor()
-      ->getMock();
-
-    $this->methodRepository = $this->getMockBuilder('\Drupal\commerce_paytrail\Repository\MethodRepository')
       ->disableOriginalConstructor()
       ->getMock();
 
@@ -98,34 +93,7 @@ class PaymentManagerTest extends UnitTestCase {
     $this->container->set('url_generator', $this->urlGenerator);
     \Drupal::setContainer($this->container);
 
-    $this->sut = new PaymentManager($this->entityTypeManager, $this->eventDispatcher, $this->methodRepository, $this->time);
-  }
-
-  /**
-   * Tests getPaymentMethods() method.
-   *
-   * @covers ::__construct
-   * @covers ::getPaymentMethods
-   */
-  public function testGetPaymentMethods() {
-    $data = [
-      1 => new Method(1, 'Label 1', 'Label 1'),
-      2 => new Method(2, 'Label 2', 'Label 2'),
-      3 => new Method(3, 'Label 3', 'Label 3'),
-    ];
-    $this->methodRepository->expects($this->any())
-      ->method('getMethods')
-      ->will($this->returnValue($data));
-
-    $response = $this->sut->getPaymentMethods();
-    $this->assertEquals($response, $data);
-
-    // Test enabled methods.
-    $response = $this->sut->getPaymentMethods([2, 3]);
-    $this->assertEquals($response, [
-      2 => new Method(2, 'Label 2', 'Label 2'),
-      3 => new Method(3, 'Label 3', 'Label 3'),
-    ]);
+    $this->sut = new PaymentManager($this->entityTypeManager, $this->eventDispatcher, $this->time, $this->moduleHandler);
   }
 
   /**
@@ -146,24 +114,6 @@ class PaymentManagerTest extends UnitTestCase {
       $response = $this->sut->getReturnUrl($this->order, $type);
       $this->assertEquals('http://localhost/' . $type, $response);
     }
-  }
-
-  /**
-   * Tests getRedirectKey() method.
-   *
-   * @covers ::getRedirectKey
-   */
-  public function testGetRedirectKey() {
-    $response = $this->sut->getRedirectKey($this->order);
-
-    $this->order->expects($this->at(0))
-      ->method('getData')
-      ->will($this->returnValue($response));
-
-    // Make sure redirect key returns the same key when
-    // saved to an order.
-    $response2 = $this->sut->getRedirectKey($this->order);
-    $this->assertEquals($response, $response2);
   }
 
   /**
