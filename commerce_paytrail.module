@@ -190,8 +190,12 @@ function commerce_paytrail_submit_form($payment_method, $pane_values, $checkout_
     return array();
   }
   $enabled_methods = _commerce_paytrail_get_setting('visible_methods', $payment_method);
+
   $methods = array_intersect_key(commerce_paytrail_get_payment_methods(), $enabled_methods);
 
+  if (empty($methods)) {
+    $methods = commerce_paytrail_get_payment_methods();
+  }
   $selected = isset($order->data['commerce_paytrail']['method']) ? $order->data['commerce_paytrail']['method'] : NULL;
 
   $form['method'] = array(
