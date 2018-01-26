@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\commerce_paytrail\Event;
 
 /**
@@ -12,6 +14,11 @@ final class PaytrailEvents {
   /**
    * Event to alter transaction repository values.
    */
-  const FORM_ALTER = 'paytrail.form_alter';
+  public const FORM_ALTER = 'paytrail.form_alter';
+
+  /**
+   * Event to respond when IPN creates a new payment.
+   */
+  public const IPN_CREATED_PAYMENT = 'paytrail.ipn_created_payment';
 
 }

@@ -17,7 +17,9 @@ commerce_payment.commerce_payment_gateway.plugin.paytrail:
           type: string
         product:
           type: string
-
     bypass_mode:
       type: boolean
       label: 'Bypass mode'
+    allow_ipn_create_payment:
+      type: boolean
+      label: 'Allow IPN to create payments'

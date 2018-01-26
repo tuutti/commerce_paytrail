@@ -97,6 +97,7 @@ class PaymentManagerTest extends CommerceKernelTestBase {
         'culture' => 'automatic',
         'merchant_id' => '13466',
         'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
+        'allow_ipn_create_payment' => FALSE,
         'bypass_mode' => FALSE,
         'included_data' => [
           PaytrailBase::PAYER_DETAILS => 0,
@@ -213,6 +214,53 @@ class PaymentManagerTest extends CommerceKernelTestBase {
 
     $request->query->set('PAYMENT_ID', '2333');
     $response = Response::createFromRequest('1234', $order, $request);
+    $payment = $this->sut->createPaymentForOrder('capture', $order, $this->gateway->getPlugin(), $response);
+    $this->assertEquals('completed', $payment->getState()->value);
+  }
+
+  /**
+   * @covers ::createPaymentForOrder
+   * @covers ::getPayment
+   */
+  public function testIpnPayment() {
+    $orderItem = OrderItem::create([
+      'type' => 'default',
+    ]);
+    $orderItem->setUnitPrice(new Price('11', 'EUR'));
+    $order = Order::create([
+      'type' => 'default',
+      'store_id' => $this->store,
+    ]);
+    $order->addItem($orderItem);
+    $order->save();
+
+    $request = Request::createFromGlobals();
+
+    $request->query = new ParameterBag([
+      'ORDER_NUMBER' => '123',
+      'PAYMENT_ID' => '2333',
+      'PAYMENT_METHOD' => '1',
+      'TIMESTAMP' => 1512281966,
+      'STATUS' => 'PAID',
+      'RETURN_AUTHCODE' => '1234',
+    ]);
+    $response = Response::createFromRequest('1234', $order, $request);
+
+    try {
+      $this->sut->createPaymentForOrder('capture', $order, $this->gateway->getPlugin(), $response);
+      $this->fail('Expected InvalidArgumentException');
+    }
+    catch (\InvalidArgumentException $e) {
+      $this->assertEquals('Only payments in the "authorization" state can be captured.', $e->getMessage());
+    }
+
+    $this->gateway->getPlugin()->setConfiguration(
+      [
+        'allow_ipn_create_payment' => TRUE,
+      ]
+    );
+    $this->gateway->save();
+
     $payment = $this->sut->createPaymentForOrder('capture', $order, $this->gateway->getPlugin(), $response);
     $this->assertEquals('completed', $payment->getState()->value);
   }

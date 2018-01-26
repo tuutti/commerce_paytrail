@@ -155,6 +155,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       'culture' => 'automatic',
       'merchant_id' => static::MERCHANT_ID,
       'merchant_hash' => static::MERCHANT_HASH,
+      'allow_ipn_create_payment' => FALSE,
       'included_data' => [
         static::PAYER_DETAILS => static::PAYER_DETAILS,
         static::PRODUCT_DETAILS => static::PRODUCT_DETAILS,
@@ -171,6 +172,19 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    */
   public function getEntityId() : string {
     return $this->entityId;
+  }
+
+  /**
+   * Whether to allow ipn to create new payments.
+   *
+   * This is used to mitigate the fact if user never returns from
+   * the payment gateway, but paid for the order.
+   *
+   * @return bool
+   *   TRUE if allowed, FALSE if not.
+   */
+  public function ipnAllowedToCreatePayment() : bool {
+    return (bool) $this->configuration['allow_ipn_create_payment'];
   }
 
   /**
@@ -336,6 +350,14 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       ],
       '#default_value' => $this->configuration['culture'],
     ];
+
+    $form['allow_ipn_create_payment'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow IPN to create new payments'),
+      '#description' => $this->t('Enable this to allow Paytrail to automatically create a new payment in case user never returns from the payment gateway.'),
+      '#default_value' => $this->configuration['allow_ipn_create_payment'],
+    ];
+
     $form['bypass_mode'] = [
       '#type' => 'checkbox',
       '#title' => $this->t("Bypass Paytrail's payment method selection page"),
@@ -421,7 +443,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
           '@exception' => $e->getMessage(),
         ]));
 
-      throw new HttpException(Response::HTTP_BAD_REQUEST, $e->getMessage());
+      return new Response($e->getMessage(), Response::HTTP_BAD_REQUEST);
     }
 
     try {

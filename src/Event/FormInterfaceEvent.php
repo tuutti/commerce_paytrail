@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\commerce_paytrail\Event;
 
 use Drupal\commerce_order\Entity\OrderInterface;
