@@ -205,7 +205,8 @@ class PaymentManager implements PaymentManagerInterface {
       // Default to authorize state if IPN is allowed to create payments.
       // This only used when PaytrailBase::onNotify() is trying to call this
       // with 'capture' status and no payment exist yet.
-      // This should only happen if user never return from the payment gateway.
+      // This should only happen if user completes the payment but never return
+      // from the payment gateway.
       if ($plugin->ipnAllowedToCreatePayment() && $status === 'capture') {
         $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
         $payment->getState()->applyTransition($transition);
