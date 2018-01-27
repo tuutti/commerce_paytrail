@@ -202,7 +202,6 @@ class PaymentManager implements PaymentManagerInterface {
         'order_id' => $order->id(),
         'test' => $plugin->getMode() == 'test',
       ]);
-
       // Default to authorize state if IPN is allowed to create payments.
       // This only used when PaytrailBase::onNotify() is trying to call this
       // with 'capture' status and no payment exist yet.
