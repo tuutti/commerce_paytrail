@@ -9,6 +9,7 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
@@ -23,7 +24,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -39,7 +39,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *   },
  * )
  */
-class PaytrailBase extends OffsitePaymentGatewayBase {
+class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotificationsInterface {
 
   /**
    * The language manager.
@@ -155,6 +155,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       'culture' => 'automatic',
       'merchant_id' => static::MERCHANT_ID,
       'merchant_hash' => static::MERCHANT_HASH,
+      'allow_ipn_create_payment' => FALSE,
       'included_data' => [
         static::PAYER_DETAILS => static::PAYER_DETAILS,
         static::PRODUCT_DETAILS => static::PRODUCT_DETAILS,
@@ -171,6 +172,19 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
    */
   public function getEntityId() : string {
     return $this->entityId;
+  }
+
+  /**
+   * Whether to allow ipn to create new payments.
+   *
+   * This is used to mitigate the fact if user never returns from
+   * the payment gateway, but paid for the order.
+   *
+   * @return bool
+   *   TRUE if allowed, FALSE if not.
+   */
+  public function ipnAllowedToCreatePayment() : bool {
+    return (bool) $this->configuration['allow_ipn_create_payment'];
   }
 
   /**
@@ -336,6 +350,14 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
       ],
       '#default_value' => $this->configuration['culture'],
     ];
+
+    $form['allow_ipn_create_payment'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow IPN to create new payments'),
+      '#description' => $this->t('Enable this to allow Paytrail to automatically create a new payment in case user never returns from the payment gateway.'),
+      '#default_value' => $this->configuration['allow_ipn_create_payment'],
+    ];
+
     $form['bypass_mode'] = [
       '#type' => 'checkbox',
       '#title' => $this->t("Bypass Paytrail's payment method selection page"),
@@ -375,6 +397,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
 
       $this->configuration = array_merge($this->configuration, [
         'merchant_id' => $values['merchant_id'],
+        'allow_ipn_create_payment' => $values['allow_ipn_create_payment'],
         'merchant_hash'  => $values['merchant_hash'],
         'bypass_mode' => $values['bypass_mode'],
         'included_data' => $values['included_data'],
@@ -421,7 +444,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase {
           '@exception' => $e->getMessage(),
         ]));
 
-      throw new HttpException(Response::HTTP_BAD_REQUEST, $e->getMessage());
+      return new Response($e->getMessage(), Response::HTTP_BAD_REQUEST);
     }
 
     try {

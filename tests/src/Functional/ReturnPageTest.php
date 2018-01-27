@@ -4,7 +4,6 @@ namespace Drupal\Tests\commerce_paytrail\Functional;
 
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentGateway;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\Response;
 use Drupal\commerce_store\StoreCreationTrait;
 use Drupal\Tests\commerce_order\Functional\OrderBrowserTestBase;
@@ -39,6 +38,13 @@ class ReturnPageTest extends OrderBrowserTestBase {
   protected $paymentManager;
 
   /**
+   * The payment gateway.
+   *
+   * @var \Drupal\commerce_payment\Entity\PaymentGatewayInterface
+   */
+  protected $gateway;
+
+  /**
    * The merchant hash.
    *
    * @var string
@@ -51,21 +57,20 @@ class ReturnPageTest extends OrderBrowserTestBase {
   protected function setUp() {
     parent::setUp();
 
-    /** @var \Drupal\commerce_payment\Entity\PaymentGateway $gateway */
-    $gateway = PaymentGateway::create([
+    $this->gateway = PaymentGateway::create([
       'id' => 'paytrail',
       'label' => 'Paytrail',
       'plugin' => 'paytrail',
     ]);
     $this->merchant_hash = '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ';
 
-    $gateway->getPlugin()->setConfiguration([
+    $this->gateway->getPlugin()->setConfiguration([
       'culture' => 'automatic',
       'merchant_id' => '13466',
       'merchant_hash' => $this->merchant_hash,
       'bypass_mode' => FALSE,
     ]);
-    $gateway->save();
+    $this->gateway->save();
 
     $this->paymentManager = $this->container->get('commerce_paytrail.payment_manager');
   }
@@ -145,7 +150,32 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->assertEquals('authorization', $payment->getState()->value);
     $this->assertEquals($response->getPaymentId(), $payment->getRemoteId());
     $this->assertEquals('PAID', $payment->getRemoteState());
+  }
 
+  /**
+   * Tests IPN callback.
+   */
+  public function testIpn() {
+    $order_item = $this->createEntity('commerce_order_item', [
+      'type' => 'default',
+      'unit_price' => [
+        'number' => '999',
+        'currency_code' => 'USD',
+      ],
+    ]);
+    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+    $order = $this->createEntity('commerce_order', [
+      'type' => 'default',
+      'mail' => $this->loggedInUser->getEmail(),
+      'order_items' => [$order_item],
+      'uid' => $this->loggedInUser,
+      'store_id' => $this->store,
+      'state' => 'draft',
+      'checkout_flow' => 'default',
+      'checkout_step' => 'payment',
+      'payment_gateway' => 'paytrail',
+    ]);
+    $request = Request::createFromGlobals();
     // Test nofitifcation.
     $request->query = new ParameterBag([
       'ORDER_NUMBER' => '5',
@@ -178,6 +208,72 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->drupalGet($notify_url, ['query' => $query]);
     $this->assertSession()->statusCodeEquals(400);
     $this->assertSession()->pageTextContains('Hash mismatch (hash_mismatch).');
+
+    // Test with correct values.
+    $request->query = new ParameterBag([
+      'ORDER_NUMBER' => $order->id(),
+      'PAYMENT_ID' => '123d',
+      'PAYMENT_METHOD' => '1',
+      'TIMESTAMP' => \Drupal::time()->getRequestTime(),
+      'STATUS' => 'PAID',
+      'RETURN_AUTHCODE' => '1234',
+    ]);
+    $response = Response::createFromRequest($this->merchant_hash, $order, $request);
+    $query = $response->getHashValues();
+    $query['RETURN_AUTHCODE'] = $response->generateReturnChecksum($response->getHashValues());
+
+    // Make sure we get error when user didn't return from the payment service.
+    $this->drupalGet($notify_url, ['query' => $query]);
+    $this->assertSession()->statusCodeEquals(400);
+    $this->assertSession()->pageTextContains('Invalid payment state.');
+
+    // Call return url to create payment.
+    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $this->drupalGet($return_url, ['query' => $query]);
+
+    $this->drupalGet($notify_url, ['query' => $query]);
+    $this->assertSession()->statusCodeEquals(200);
+
+    /** @var \Drupal\commerce_payment\Entity\Payment $payment */
+    $entity_manager = $this->container->get('entity_type.manager');
+    $entity_manager->getStorage('commerce_payment')->resetCache([1]);
+    $payment = $entity_manager->getStorage('commerce_payment')->load(1);
+    $this->assertEquals('completed', $payment->getState()->value);
+    $this->assertEquals($response->getPaymentId(), $payment->getRemoteId());
+    $this->assertEquals('PAID', $payment->getRemoteState());
+  }
+
+  /**
+   * Tests IPN payment creation.
+   */
+  public function testIpnPayment() {
+    $this->gateway->getPlugin()->setConfiguration([
+      'allow_ipn_create_payment' => TRUE,
+    ]);
+    $this->gateway->save();
+
+    $order_item = $this->createEntity('commerce_order_item', [
+      'type' => 'default',
+      'unit_price' => [
+        'number' => '999',
+        'currency_code' => 'USD',
+      ],
+    ]);
+    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+    $order = $this->createEntity('commerce_order', [
+      'type' => 'default',
+      'mail' => $this->loggedInUser->getEmail(),
+      'order_items' => [$order_item],
+      'uid' => $this->loggedInUser,
+      'store_id' => $this->store,
+      'state' => 'draft',
+      'checkout_flow' => 'default',
+      'checkout_step' => 'payment',
+      'payment_gateway' => 'paytrail',
+    ]);
+    $request = Request::createFromGlobals();
+
+    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify');
 
     // Test with correct values.
     $request->query = new ParameterBag([

@@ -7,6 +7,7 @@ namespace Drupal\commerce_paytrail;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
+use Drupal\commerce_paytrail\Event\PaymentEvent;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
@@ -201,6 +202,20 @@ class PaymentManager implements PaymentManagerInterface {
         'order_id' => $order->id(),
         'test' => $plugin->getMode() == 'test',
       ]);
+      // Default to authorize state if IPN is allowed to create payments.
+      // This only used when PaytrailBase::onNotify() is trying to call this
+      // with 'capture' status and no payment exist yet.
+      // This should only happen if user completes the payment but never return
+      // from the payment gateway.
+      if ($plugin->ipnAllowedToCreatePayment() && $status === 'capture') {
+        $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
+        $payment->getState()->applyTransition($transition);
+
+        /** @var \Drupal\commerce_paytrail\Event\PaymentEvent $event */
+        $this->eventDispatcher->dispatch(PaytrailEvents::IPN_CREATED_PAYMENT,
+          new PaymentEvent($payment)
+        );
+      }
     }
     else {
       // Make sure remote id does not change.
