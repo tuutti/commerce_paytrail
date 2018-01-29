@@ -140,7 +140,7 @@ class Response extends BaseResource {
    * @return $this
    *   The self.
    */
-  protected function setPaymentStatus(string $status) : self {
+  public function setPaymentStatus(string $status) : self {
     Assert::oneOf($status, ['PAID', 'CANCELLED']);
     $this->status = $status;
 
