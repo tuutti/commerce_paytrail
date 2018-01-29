@@ -4,7 +4,7 @@ declare(strict_types = 1);
 
 namespace Drupal\commerce_paytrail\Repository;
 
-use Drupal\address\AddressInterface;
+use CommerceGuys\Addressing\AddressInterface;
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_price\Price;
 use Webmozart\Assert\Assert;
@@ -336,20 +336,35 @@ class FormManager extends BaseResource {
   /**
    * Populates the payer data.
    *
-   * @param \Drupal\address\AddressInterface $address
+   * @param \CommerceGuys\Addressing\AddressInterface $address
    *   The address.
    *
    * @return $this
    *   The self.
    */
   public function setPayerFromAddress(AddressInterface $address) : self {
-    return $this->setPayerAddress($address->getAddressLine1())
-      ->setPayerCity($address->getLocality())
-      ->setPayerFirstName($address->getGivenName())
-      ->setPayerLastName($address->getFamilyName())
-      ->setPayerCompany($address->getOrganization())
-      ->setPayerPostalCode($address->getPostalCode())
-      ->setPayerCountry($address->getCountryCode());
+    if ($addr = $address->getAddressLine1()) {
+      $this->setPayerAddress($addr);
+    }
+    if ($city = $address->getLocality()) {
+      $this->setPayerCity($city);
+    }
+    if ($firstname = $address->getGivenName()) {
+      $this->setPayerFirstName($firstname);
+    }
+    if ($lastname = $address->getFamilyName()) {
+      $this->setPayerLastName($lastname);
+    }
+    if ($company = $address->getOrganization()) {
+      $this->setPayerCompany($company);
+    }
+    if ($postal = $address->getPostalCode()) {
+      $this->setPayerPostalCode($postal);
+    }
+    if ($country = $address->getCountryCode()) {
+      $this->setPayerCountry($country);
+    }
+    return $this;
   }
 
   /**
