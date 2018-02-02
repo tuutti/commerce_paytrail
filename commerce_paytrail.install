@@ -1,0 +1,21 @@
+<?php
+
+/**
+ * @file
+ * Contains installation tasks for Commerce paytrail.
+ */
+
+/**
+ * Update the old default Return address (notify) to new.
+ */
+function commerce_paytrail_update_7100(&$sandbox) {
+  $payment_method = commerce_payment_method_instance_load('commerce_paytrail|commerce_payment_commerce_paytrail');
+  if (!empty($payment_method) && $payment_method['settings']['advanced']['return_notify'] == 'checkout/!order_id/payment/return/!payment_redirect_key/notify') {
+    $rules_config = rules_config_load('commerce_payment_commerce_paytrail');
+    foreach ($rules_config->actions() as $action) {
+      $action->settings['payment_method']['settings']['advanced']['return_notify'] = 'commerce_paytrail_notify/!order_id/!payment_redirect_key';
+    }
+    $rules_config->save();
+    return t('Return address (notify) was updated from the old default to new. If you had it intentionally set to old default, please fix this manually.');
+  }
+}
