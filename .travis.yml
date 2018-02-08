@@ -78,7 +78,6 @@ before_install:
 
 install:
   - drupal-ti install
-  - composer run-script drupal-phpunit-upgrade
   - mkdir travis-phantomjs
   - wget https://s3.amazonaws.com/travis-phantomjs/phantomjs-2.0.0-ubuntu-12.04.tar.bz2 -O $PWD/travis-phantomjs/phantomjs-2.0.0-ubuntu-12.04.tar.bz2
   - tar -xvf $PWD/travis-phantomjs/phantomjs-2.0.0-ubuntu-12.04.tar.bz2 -C $PWD/travis-phantomjs
@@ -88,6 +87,7 @@ install:
 before_script:
   - drupal-ti --include ".travis-before-script.sh"
   - drupal-ti before_script
+  - composer run-script drupal-phpunit-upgrade
 
 script:
   - drupal-ti script
