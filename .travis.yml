@@ -75,7 +75,9 @@ install:
 before_script:
   - drupal-ti --include ".travis-before-script.sh"
   - drupal-ti before_script
-  - phantomjs --ssl-protocol=any --ignore-ssl-errors=true "$DRUPAL_TI_DRUPAL_DIR/vendor/jcalderonzumba/gastonjs/src/Client/main.js" 8510 1024 768 2>&1 >> /dev/null &
+  - echo $DRUPAL_TI_DRUPAL_DIR
+  - cd $DRUPAL_TI_DRUPAL_DIR
+  - phantomjs --ssl-protocol=any --ignore-ssl-errors=true vendor/jcalderonzumba/gastonjs/src/Client/main.js 8510 1024 768 2>&1 >> /dev/null &
 
 script:
   - drupal-ti script
