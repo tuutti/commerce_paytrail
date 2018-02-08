@@ -6,9 +6,9 @@ set -e $DRUPAL_TI_DEBUG
 # Note: This function is re-entrant.
 drupal_ti_ensure_drupal
 
-cd "$DRUPAL_TI_DRUPAL_BASE/drupal"
+if [ "$DRUPAL_TI_CORE_BRANCH" == "8.5.x"]; then
+  cd "$DRUPAL_TI_DRUPAL_BASE/drupal"
 
-if [ "$TRAVIS_PHP_VERSION" == "7.2"]; then
   composer update phpunit/phpunit --with-dependencies --no-progress
 fi
 
