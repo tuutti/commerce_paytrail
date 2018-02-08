@@ -52,12 +52,6 @@ env:
     # This needs to match your .coveralls.yml file.
     - DRUPAL_TI_COVERAGE_FILE="build/logs/clover.xml"
 
-    # Debug options
-    #- DRUPAL_TI_DEBUG="-x -v"
-    # Set to "all" to output all files, set to e.g. "xvfb selenium" or "selenium",
-    # etc. to only output those channels.
-    #- DRUPAL_TI_DEBUG_FILE_OUTPUT="selenium xvfb webserver"
-
   matrix:
     - DRUPAL_TI_RUNNERS="phpunit-core"
 
@@ -87,7 +81,6 @@ install:
 before_script:
   - drupal-ti --include ".travis-before-script.sh"
   - drupal-ti before_script
-  - cd $DRUPAL_TI_DRUPAL_BASE && composer update phpunit/phpunit --with-dependencies --no-progress
 
 script:
   - drupal-ti script
