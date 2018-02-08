@@ -6,7 +6,7 @@ set -e $DRUPAL_TI_DEBUG
 # Note: This function is re-entrant.
 drupal_ti_ensure_drupal
 
-cd "$DRUPAL_TI_DRUPAL_BASE"
+cd "$DRUPAL_TI_DRUPAL_BASE/drupal"
 composer update phpunit/phpunit --with-dependencies --no-progress
 
 # Turn on PhantomJS for functional Javascript tests
