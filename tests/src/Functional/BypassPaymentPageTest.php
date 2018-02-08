@@ -200,7 +200,7 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
       $this->waitForAjaxToFinish();
       // Make sure submit button gets marked as selected.
       $found = $this->getSession()->getPage()->find('css', $selector . '.selected');
-      $this->assertEquals(count($found), 1);
+      $this->assertEquals($found->getValue(), $method->label());
       // Make sure payment method value is set accordingly.
       $this->assertSession()->elementExists('xpath', '//input[@name="PAYMENT_METHODS"][@value="' . $method->id() . '"]');
     }

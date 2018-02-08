@@ -13,7 +13,7 @@ use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\FormManager;
-use Drupal\commerce_paytrail\Repository\Product;
+use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_paytrail\Repository\Response;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -202,6 +202,7 @@ class PaymentManager implements PaymentManagerInterface {
         'order_id' => $order->id(),
         'test' => $plugin->getMode() == 'test',
       ]);
+      $payment->setAuthorizedTime($this->time->getRequestTime());
       // Default to authorize state if IPN is allowed to create payments.
       // This only used when PaytrailBase::onNotify() is trying to call this
       // with 'capture' status and no payment exist yet.
@@ -222,6 +223,14 @@ class PaymentManager implements PaymentManagerInterface {
       if ($response->getPaymentId() !== $payment->getRemoteId()) {
         throw new PaymentGatewayException('Remote id does not match with previously stored remote id.');
       }
+    }
+
+    // This should prevent a payment state from being overridden when
+    // IPN is allowed to create payments and IPN completes the payment before
+    // user returns from the payment gateway (due to slow connection for
+    // example).
+    if ($payment->getState()->value === 'completed') {
+      return $payment;
     }
     $payment->setRemoteId($response->getPaymentId())
       ->setRemoteState($response->getPaymentStatus());
