@@ -87,7 +87,6 @@ install:
 before_script:
   - drupal-ti --include ".travis-before-script.sh"
   - drupal-ti before_script
-  - composer run-script drupal-phpunit-upgrade
 
 script:
   - drupal-ti script
