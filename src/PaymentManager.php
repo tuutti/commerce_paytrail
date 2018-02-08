@@ -88,17 +88,7 @@ class PaymentManager implements PaymentManagerInterface {
   }
 
   /**
-   * Builds the repository object.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
-   *   The plugin.
-   *
-   * @return \Drupal\commerce_paytrail\Repository\FormManager
-   *   The transaction repository.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\InvalidBillingException
+   * {@inheritdoc}
    */
   public function buildFormInterface(OrderInterface $order, PaytrailBase $plugin) : FormManager {
     $form = new FormManager($plugin->getMerchantId(), $plugin->getMerchantHash());

@@ -28,9 +28,6 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin */
     $plugin = $payment->getPaymentGateway()->getPlugin();
 
-    $form['#prefix'] = '<div id="payment-form">';
-    $form['#suffix'] = '</div>';
-
     try {
       $formInterface = $plugin->getPaymentManager()
         ->buildFormInterface($payment->getOrder(), $plugin);
@@ -45,6 +42,9 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
         ->dispatch($formInterface, $plugin, $payment->getOrder());
 
       $form = $this->buildRedirectForm($form, $form_state, $plugin::HOST, $data, self::REDIRECT_POST);
+
+      $form['#prefix'] = '<div id="payment-form">';
+      $form['#suffix'] = '</div>';
 
       // This only works when using the bypass payment page feature.
       if ($plugin->isBypassModeEnabled()) {
@@ -90,16 +90,23 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     }
     catch (InvalidBillingException $e) {
       $plugin->log('Invalid billing data: ' . $e->getMessage());
+
+      $message = $this->t('Billing profile not found. Please contact store administration if the problem persists.');
     }
     catch (InvalidValueException | \InvalidArgumentException $e) {
       $plugin->log('Field validation failed: ' . $e->getMessage());
+
+      $message = $this->t('Field validation failed. Please contact store administration if the problem persists.');
     }
     catch (\Exception $e) {
       $plugin->log(sprintf('Validation failed (%s: %s)', get_class($e), $e->getMessage()));
-    }
-    drupal_set_message($this->t('Unexpected error.', 'error'));
 
-    return [];
+      $message = $this->t('Unexpected error. Please contact store administration if the problem persists.');
+    }
+
+    return [
+      '#markup' => $message,
+    ];
   }
 
   /**
