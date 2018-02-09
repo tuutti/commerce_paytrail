@@ -10,14 +10,11 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_paytrail\Event\PaymentEvent;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
-use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\FormManager;
-use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_paytrail\Repository\Response;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Url;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -48,13 +45,6 @@ class PaymentManager implements PaymentManagerInterface {
   protected $time;
 
   /**
-   * The module handler.
-   *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface
-   */
-  protected $moduleHandler;
-
-  /**
    * Constructs a new instance.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -63,14 +53,11 @@ class PaymentManager implements PaymentManagerInterface {
    *   The event dispatcher.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The current time.
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
-   *   The module handler.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, TimeInterface $time, ModuleHandlerInterface $moduleHandler) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, TimeInterface $time) {
     $this->entityTypeManager = $entity_type_manager;
     $this->eventDispatcher = $event_dispatcher;
     $this->time = $time;
-    $this->moduleHandler = $moduleHandler;
   }
 
   /**
@@ -93,42 +80,6 @@ class PaymentManager implements PaymentManagerInterface {
   public function buildFormInterface(OrderInterface $order, PaytrailBase $plugin) : FormManager {
     $form = new FormManager($plugin->getMerchantId(), $plugin->getMerchantHash());
 
-    // Send address data only if configured.
-    if ($plugin->isDataIncluded(PaytrailBase::PAYER_DETAILS)) {
-
-      if (!$billing_data = $order->getBillingProfile()) {
-        throw new InvalidBillingException('Invalid billing data for ' . $order->id());
-      }
-      /** @var \Drupal\address\AddressInterface $address */
-      $address = $billing_data->get('address')->first();
-
-      $form->setPayerEmail($order->getEmail())
-        ->setPayerFromAddress($address);
-    }
-
-    if ($plugin->isDataIncluded(PaytrailBase::PRODUCT_DETAILS)) {
-      $taxes_included = FALSE;
-
-      if ($this->moduleHandler->moduleExists('commerce_tax')) {
-        $taxes_included = $order->getStore()->get('prices_include_tax')->value;
-
-        // We can only send this value when taxes are enabled.
-        if ($taxes_included) {
-          $form->setIsVatIncluded(TRUE);
-        }
-      }
-      // @todo Support commerce shipping and promotions.
-      foreach ($order->getItems() as $delta => $item) {
-        $product = Product::createFromOrderItem($item);
-
-        foreach ($item->getAdjustments() as $adjustment) {
-          if ($adjustment->getType() === 'tax' && $taxes_included) {
-            $product->setTax((float) $adjustment->getPercentage() * 100);
-          }
-        }
-        $form->setProduct($product);
-      }
-    }
     $form->setOrderNumber($order->id())
       ->setAmount($order->getTotalPrice())
       ->setSuccessUrl($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
