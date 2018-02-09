@@ -4,7 +4,7 @@ namespace Drupal\Tests\commerce_paytrail\Unit;
 
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Repository\FormManager;
-use Drupal\commerce_paytrail\Repository\Product;
+use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_price\Price;
 use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Tests\UnitTestCase;
@@ -17,6 +17,22 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  * @coversDefaultClass \Drupal\commerce_paytrail\Repository\FormManager
  */
 class FormManagerTest extends UnitTestCase {
+
+  /**
+   * The form manager.
+   *
+   * @var \Drupal\commerce_paytrail\Repository\FormManager
+   */
+  protected $sut;
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    parent::setUp();
+
+    $this->sut = new FormManager('12345', '12345');
+  }
 
   /**
    * Tests the default values.
@@ -36,6 +52,211 @@ class FormManagerTest extends UnitTestCase {
       'PARAMS_OUT' => 'ORDER_NUMBER,PAYMENT_ID,PAYMENT_METHOD,TIMESTAMP,STATUS',
     ];
     $this->assertEquals($expected, $build);
+  }
+
+  /**
+   * Tests ::assertPhone().
+   *
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertPhone
+   */
+  public function testAssertPhone() {
+    $data = [
+      '040213121_3123' => TRUE,
+      '033213:231' => TRUE,
+      'dsadsad0404' => TRUE,
+      '040123333' => FALSE,
+      '040-212333' => FALSE,
+      '044+3432312' => FALSE,
+      '040 423332' => FALSE,
+    ];
+    foreach ($data as $number => $expectedException) {
+      $exception = FALSE;
+      try {
+        $this->sut->assertPhone($number);
+      }
+      catch (\InvalidArgumentException $e) {
+        $exception = TRUE;
+      }
+      $this->assertEquals($expectedException, $exception);
+    }
+  }
+
+  /**
+   * Tests ::assertPostalCode().
+   *
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertPostalCode
+   */
+  public function testAssertPostalCode() {
+    $data = [
+      'wwww:dsd' => TRUE,
+      'dasda//dsa' => TRUE,
+      '001 00' => TRUE,
+      '123456' => FALSE,
+      '12345AW' => FALSE,
+      'W134555A' => FALSE,
+      'w123Wa' => FALSE,
+    ];
+    foreach ($data as $code => $expectedException) {
+      $exception = FALSE;
+      try {
+        $this->sut->assertPostalCode($code);
+      }
+      catch (\InvalidArgumentException $e) {
+        $exception = TRUE;
+      }
+      $this->assertEquals($expectedException, $exception);
+    }
+  }
+
+  /**
+   * Tests ::assertValidUrl().
+   *
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertValidUrl
+   */
+  public function testAssertValidUrl() {
+    $data = [
+      'http://' => TRUE,
+      'localhost' => TRUE,
+      'http://localhost' => FALSE,
+      'http://example.com' => FALSE,
+    ];
+
+    foreach ($data as $number => $expectedException) {
+      $exception = FALSE;
+      try {
+        $this->sut->assertValidUrl($number);
+      }
+      catch (\InvalidArgumentException $e) {
+        $exception = TRUE;
+      }
+      $this->assertEquals($expectedException, $exception);
+    }
+  }
+
+  /**
+   * Tests ::assertBetween().
+   *
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertBetween
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertAmountBetween
+   * @dataProvider assertBetweenData
+   */
+  public function testAssertBetween($data) {
+    list('exception' => $exception, 'num' => $num, 'min' => $min, 'max' => $max) = $data;
+
+    $exceptionThrown = FALSE;
+
+    try {
+      $this->sut->assertBetween($num, $min, $max);
+    }
+    catch (\InvalidArgumentException $e) {
+      $exceptionThrown = TRUE;
+    }
+
+    $this->assertEquals($exception, $exceptionThrown);
+
+    $exceptionThrown = FALSE;
+
+    try {
+      $this->sut->assertAmountBetween(new Price($num, 'EUR'), $min, $max);
+    }
+    catch (\InvalidArgumentException $e) {
+      $exceptionThrown = TRUE;
+    }
+
+    $this->assertEquals($exception, $exceptionThrown);
+  }
+
+  /**
+   * Provides assert between data.
+   *
+   * @return array
+   *   The data.
+   */
+  public function assertBetweenData() {
+    return [
+      [
+        [
+          'exception' => TRUE,
+          'num' => 0.1,
+          'min' => 0.65,
+          'max' => 65,
+        ],
+        [
+          'exception' => TRUE,
+          'num' => 66,
+          'min' => 0.65,
+          'max' => 65,
+        ],
+        [
+          'exception' => FALSE,
+          'num' => 0.65,
+          'min' => 0.65,
+          'max' => 65,
+        ],
+        [
+          'exception' => FALSE,
+          'num' => 65,
+          'min' => 0.65,
+          'max' => 65,
+        ],
+        [
+          'exception' => FALSE,
+          'num' => 1,
+          'min' => 0.65,
+          'max' => 65,
+        ],
+      ],
+    ];
+  }
+
+  /**
+   * Tests ::assertText()
+   *
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertText
+   */
+  public function testAssertText() {
+    $data = [
+      'Test: test' => TRUE,
+      'T€st' => TRUE,
+      'Test test 1234' => FALSE,
+      'Test *test*, test "TEst" dsa' => FALSE,
+      "Test {test} [test] 'test' -_-" => FALSE,
+    ];
+    foreach ($data as $number => $expectedException) {
+      $exception = FALSE;
+      try {
+        $this->sut->assertText($number);
+      }
+      catch (\InvalidArgumentException $e) {
+        $exception = TRUE;
+      }
+      $this->assertEquals($expectedException, $exception);
+    }
+  }
+
+  /**
+   * Tests ::assertNonStrictText()
+   *
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertNonStrictText
+   */
+  public function testAssertNonStrictText() {
+    $data = [
+      'TEst (11 €)' => TRUE,
+      'Test: test $_,.:&!?@#$£' => FALSE,
+      'Test test 1234' => FALSE,
+      'Test *test*, test "TEst" dsa' => FALSE,
+      "Test {test} [test] 'test' -_-" => FALSE,
+    ];
+    foreach ($data as $number => $expectedException) {
+      $exception = FALSE;
+      try {
+        $this->sut->assertNonStrictText($number);
+      }
+      catch (\InvalidArgumentException $e) {
+        $exception = TRUE;
+      }
+      $this->assertEquals($expectedException, $exception);
+    }
   }
 
   /**
@@ -104,7 +325,7 @@ class FormManagerTest extends UnitTestCase {
       ->setCurrency('EUR')
       ->setReferenceNumber('234')
       ->setPaymentMethods($entities)
-      ->setPayerPhone('040123456')
+      ->setPayerPhone('040 123456')
       ->setPayerEmail('test@localhost')
       ->setPayerFirstName('Firstname')
       ->setPayerLastName('Lastname')
@@ -133,7 +354,7 @@ class FormManagerTest extends UnitTestCase {
       'CURRENCY' => 'EUR',
       'REFERENCE_NUMBER' => '234',
       'PAYMENT_METHODS' => '1,2',
-      'PAYER_PERSON_PHONE' => '040123456',
+      'PAYER_PERSON_PHONE' => '040 123456',
       'PAYER_PERSON_EMAIL' => 'test@localhost',
       'PAYER_PERSON_FIRSTNAME' => 'Firstname',
       'PAYER_PERSON_LASTNAME' => 'Lastname',

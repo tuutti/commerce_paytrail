@@ -5,7 +5,9 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\Repository;
 
 use CommerceGuys\Addressing\AddressInterface;
+use Drupal\commerce_paytrail\AssertTrait;
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
+use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_price\Price;
 use Webmozart\Assert\Assert;
 
@@ -13,6 +15,8 @@ use Webmozart\Assert\Assert;
  * Provides form interface base class.
  */
 class FormManager extends BaseResource {
+
+  use AssertTrait;
 
   /**
    * Array of form values.
@@ -24,7 +28,7 @@ class FormManager extends BaseResource {
   /**
    * Array of paytrail products.
    *
-   * @var \Drupal\commerce_paytrail\Repository\Product[]
+   * @var \Drupal\commerce_paytrail\Repository\Product\Product[]
    */
   protected $products = [];
 
@@ -110,6 +114,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setAmount(Price $amount) : self {
+    $this->assertAmountBetween($amount, 0.65, 499999);
+
     return $this->setValue('AMOUNT', number_format((float) $amount->getNumber(), 2, '.', ''));
   }
 
@@ -123,6 +129,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setMerchantId(string $id) : self {
+    Assert::numeric($id);
+    Assert::maxLength($id, 11);
+
     return $this->setValue('MERCHANT_ID', $id);
   }
 
@@ -136,6 +145,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setSuccessUrl(string $url) : self {
+    $this->assertValidUrl($url);
+
     return $this->setValue('URL_SUCCESS', $url);
   }
 
@@ -149,6 +160,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setCancelUrl(string $url) : self {
+    $this->assertValidUrl($url);
+
     return $this->setValue('URL_CANCEL', $url);
   }
 
@@ -162,6 +175,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setNotifyUrl(string $url) : self {
+    $this->assertValidUrl($url);
+
     return $this->setValue('URL_NOTIFY', $url);
   }
 
@@ -175,13 +190,16 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setOrderNumber(string $orderNumber) : self {
+    Assert::maxLength($orderNumber, 64);
+    Assert::alnum($orderNumber);
+
     return $this->setValue('ORDER_NUMBER', $orderNumber);
   }
 
   /**
    * Sets the products.
    *
-   * @param \Drupal\commerce_paytrail\Repository\Product[] $products
+   * @param \Drupal\commerce_paytrail\Repository\Product\Product[] $products
    *   The products.
    *
    * @return $this
@@ -197,7 +215,7 @@ class FormManager extends BaseResource {
   /**
    * Sets the product.
    *
-   * @param \Drupal\commerce_paytrail\Repository\Product $product
+   * @param \Drupal\commerce_paytrail\Repository\Product\Product $product
    *   The product.
    *
    * @return $this
@@ -218,6 +236,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setMerchantPanelUiMessage(string $message) : self {
+    $this->assertText($message);
+    Assert::maxLength($message, 255);
+
     return $this->setValue('MSG_UI_MERCHANT_PANEL', $message);
   }
 
@@ -235,6 +256,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPaymentMethodUiMessage(string $message) : self {
+    $this->assertText($message);
+    Assert::maxLength($message, 255);
+
     return $this->setValue('MSG_UI_PAYMENT_METHOD', $message);
   }
 
@@ -251,6 +275,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerSettlementMessage(string $message) : self {
+    $this->assertText($message);
+    Assert::maxLength($message, 255);
+
     return $this->setValue('MSG_SETTLEMENT_PAYER', $message);
   }
 
@@ -266,6 +293,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setMerchantSettlementMessage(string $message) : self {
+    $this->assertText($message);
+    Assert::maxLength($message, 255);
+
     return $this->setValue('MSG_SETTLEMENT_MERCHANT', $message);
   }
 
@@ -313,6 +343,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setReferenceNumber(string $number) : self {
+    Assert::maxLength($number, 20);
+    Assert::alnum($number);
+
     return $this->setValue('REFERENCE_NUMBER', $number);
   }
 
@@ -377,6 +410,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerPhone(string $phone) : self {
+    $this->assertPhone($phone);
+
     return $this->setValue('PAYER_PERSON_PHONE', $phone);
   }
 
@@ -390,6 +425,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerEmail(string $email) : self {
+    Assert::maxLength($email, 255);
+
     return $this->setValue('PAYER_PERSON_EMAIL', $email);
   }
 
@@ -403,6 +440,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerFirstName(string $name) : self {
+    $this->assertNonStrictText($name);
+    Assert::maxLength($name, 64);
+
     return $this->setValue('PAYER_PERSON_FIRSTNAME', $name);
   }
 
@@ -416,6 +456,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerLastName(string $name) : self {
+    $this->assertNonStrictText($name);
+    Assert::maxLength($name, 64);
+
     return $this->setValue('PAYER_PERSON_LASTNAME', $name);
   }
 
@@ -429,6 +472,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerCompany(string $company) : self {
+    $this->assertNonStrictText($company);
+    Assert::maxLength($company, 128);
+
     return $this->setValue('PAYER_COMPANY_NAME', $company);
   }
 
@@ -442,6 +488,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerAddress(string $address) : self {
+    $this->assertNonStrictText($address);
+    Assert::maxLength($address, 128);
+
     return $this->setValue('PAYER_PERSON_ADDR_STREET', $address);
   }
 
@@ -455,6 +504,8 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerPostalCode(string $code) : self {
+    $this->assertPostalCode($code);
+
     return $this->setValue('PAYER_PERSON_ADDR_POSTAL_CODE', $code);
   }
 
@@ -468,6 +519,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerCity(string $city) : self {
+    $this->assertNonStrictText($city);
+    Assert::maxLength($city, 64);
+
     return $this->setValue('PAYER_PERSON_ADDR_TOWN', $city);
   }
 

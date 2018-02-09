@@ -26,10 +26,22 @@ final class FormValue {
     $this->value = str_replace('|', '', $value);
   }
 
+  /**
+   * Gets the key.
+   *
+   * @return string
+   *   The key.
+   */
   public function key() : string {
     return $this->key;
   }
 
+  /**
+   * Gets the value.
+   *
+   * @return string
+   *   The value.
+   */
   public function value() : string {
     return $this->value;
   }

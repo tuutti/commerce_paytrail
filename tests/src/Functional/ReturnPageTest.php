@@ -298,6 +298,14 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->assertEquals('completed', $payment->getState()->value);
     $this->assertEquals($response->getPaymentId(), $payment->getRemoteId());
     $this->assertEquals('PAID', $payment->getRemoteState());
+
+    // Make sure payment state won't be overridden when calling return again.
+    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $this->drupalGet($return_url, ['query' => $query]);
+
+    $entity_manager->getStorage('commerce_payment')->resetCache([1]);
+    $payment = $entity_manager->getStorage('commerce_payment')->load(1);
+    $this->assertEquals('completed', $payment->getState()->value);
   }
 
 }

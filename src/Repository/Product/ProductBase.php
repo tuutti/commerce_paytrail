@@ -2,37 +2,18 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\commerce_paytrail\Repository;
+namespace Drupal\commerce_paytrail\Repository\Product;
 
-use Drupal\commerce_order\Entity\OrderItemInterface;
+use Drupal\commerce_paytrail\AssertTrait;
 use Drupal\commerce_price\Price;
 use Webmozart\Assert\Assert;
 
 /**
  * Provides an object for Paytrail product handling.
  */
-class Product {
+abstract class ProductBase {
 
-  /**
-   * The default product type.
-   *
-   * @var int
-   */
-  const PRODUCT = 1;
-
-  /**
-   * The shipping product type.
-   *
-   * @var int
-   */
-  const SHIPPING = 2;
-
-  /**
-   * The item handling product type.
-   *
-   * @var int
-   */
-  const HANDLING = 3;
+  use AssertTrait;
 
   /**
    * The product title.
@@ -70,38 +51,11 @@ class Product {
   protected $discount = 0;
 
   /**
-   * The product type.
-   *
-   * @var int
-   */
-  protected $type = self::PRODUCT;
-
-  /**
    * The product id.
    *
    * @var string
    */
   protected $id;
-
-  /**
-   * Create new self with given order item.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderItemInterface $item
-   *   The order item.
-   *
-   * @return \Drupal\commerce_paytrail\Repository\Product
-   *   The populated instance.
-   */
-  public static function createFromOrderItem(OrderItemInterface $item) {
-    /** @var \Drupal\commerce_paytrail\Repository\Product $object */
-    $object = new static();
-    $object->setTitle($item->getTitle())
-      ->setItemId($item->getPurchasedEntity()->id())
-      ->setQuantity($item->getQuantity())
-      ->setPrice($item->getTotalPrice());
-
-    return $object;
-  }
 
   /**
    * Builds item form array.
@@ -134,10 +88,13 @@ class Product {
    * @param string $id
    *   The item id.
    *
-   * @return \Drupal\commerce_paytrail\Repository\Product
+   * @return $this
    *   The self.
    */
   public function setItemId(string $id) : self {
+    Assert::numeric($id);
+    Assert::maxLength($id, 16);
+
     $this->id = $id;
 
     return $this;
@@ -150,8 +107,11 @@ class Product {
    *   The title.
    *
    * @return $this
+   *   The self.
    */
-  public function setTitle($title) : self {
+  public function setTitle(string $title) : self {
+    $this->assertNonStrictText($title);
+
     $this->title = $title;
     return $this;
   }
@@ -173,8 +133,9 @@ class Product {
    *   The quantity.
    *
    * @return $this
+   *   The self.
    */
-  public function setQuantity($quantity) {
+  public function setQuantity(int $quantity) : self {
     $this->quantity = $quantity;
     return $this;
   }
@@ -196,9 +157,11 @@ class Product {
    *   The price.
    *
    * @return $this
+   *   The self.
    */
   public function setPrice(Price $price) : self {
     Assert::oneOf($price->getCurrencyCode(), ['EUR']);
+    $this->assertAmountBetween($price, 0, 499999);
 
     $this->price = $price;
     return $this;
@@ -221,8 +184,11 @@ class Product {
    *   The tax.
    *
    * @return $this
+   *   The self.
    */
-  public function setTax($tax) {
+  public function setTax(float $tax) : self {
+    $this->assertBetween($tax, 0, 100);
+
     $this->tax = $tax;
     return $this;
   }
@@ -233,7 +199,7 @@ class Product {
    * @return string
    *   The formatted tax.
    */
-  public function getTax() {
+  public function getTax() : string {
     return $this->formatPrice($this->tax);
   }
 
@@ -244,8 +210,11 @@ class Product {
    *   The discount.
    *
    * @return $this
+   *   The self.
    */
-  public function setDiscount(float $discount) {
+  public function setDiscount(float $discount) : self {
+    $this->assertBetween($discount, 0, 100);
+
     $this->discount = $discount;
     return $this;
   }
@@ -261,29 +230,12 @@ class Product {
   }
 
   /**
-   * Sets the product type.
-   *
-   * @param int $type
-   *   The product type.
-   *
-   * @return $this
-   */
-  public function setProductType($type) : self {
-    Assert::oneOf($type, [static::PRODUCT, static::SHIPPING, static::HANDLING]);
-
-    $this->type = $type;
-    return $this;
-  }
-
-  /**
    * Gets the product type.
    *
    * @return int
    *   The product type.
    */
-  public function getType() : int {
-    return $this->type;
-  }
+  abstract public function getType() : int;
 
   /**
    * Gets the product id.
@@ -304,7 +256,7 @@ class Product {
    * @return string
    *   Formatted price component.
    */
-  protected function formatPrice(float $price) {
+  protected function formatPrice(float $price) : string {
     return number_format($price, 2, '.', '');
   }
 

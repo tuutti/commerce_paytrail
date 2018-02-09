@@ -28,15 +28,13 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
     /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin */
     $plugin = $payment->getPaymentGateway()->getPlugin();
 
-    $form['#prefix'] = '<div id="payment-form">';
-    $form['#suffix'] = '</div>';
-
     try {
       $formInterface = $plugin->getPaymentManager()
         ->buildFormInterface($payment->getOrder(), $plugin);
 
       $preselected = $form_state->getTemporaryValue('selected_method');
 
+      $method = NULL;
       // Attempt to use preselected method if available.
       if ($preselected && $method = PaymentMethod::load($preselected)) {
         $formInterface->setPaymentMethods([$method]);
@@ -48,58 +46,91 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
 
       // This only works when using the bypass payment page feature.
       if ($plugin->isBypassModeEnabled()) {
-        // Disable auto-redirect so user can select payment method.
-        $form['#attached'] = array_filter($form['#attached'], function ($value) {
-          return reset($value) !== 'commerce_payment/offsite_redirect';
-        });
-        // Hide redirect message.
-        $form['commerce_message']['#markup'] = NULL;
-
-        $form['payment_methods'] = [
-          '#title' => $this->t('Select payment method'),
-          '#type' => 'fieldset',
-        ];
-
-        foreach ($plugin->getVisibleMethods() as $method) {
-          $key = $method->id();
-
-          $class = [
-            Html::getId($method->label()),
-            'payment-button-' . $key,
-            'payment-method-button',
-          ];
-          if ($preselected === $key) {
-            $class[] = 'selected';
-          }
-          $form['payment_methods'][$key] = [
-            '#type' => 'submit',
-            '#value' => $method->label(),
-            '#method_index' => $key,
-            '#submit' => [[$this, 'submitSelectedMethod']],
-            '#ajax' => [
-              'callback' => [$this, 'setSelectedMethod'],
-              'wrapper' => 'payment-form',
-            ],
-            '#attributes' => [
-              'class' => $class,
-            ],
-          ];
-        }
+        $form = $this->buildBypassForm($form, $form_state, $method);
       }
       return $form;
     }
     catch (InvalidBillingException $e) {
       $plugin->log('Invalid billing data: ' . $e->getMessage());
+
+      $message = $this->t('Billing profile not found. Please contact store administration if the problem persists.');
     }
     catch (InvalidValueException | \InvalidArgumentException $e) {
       $plugin->log('Field validation failed: ' . $e->getMessage());
+
+      $message = $this->t('Field validation failed. Please contact store administration if the problem persists.');
     }
     catch (\Exception $e) {
       $plugin->log(sprintf('Validation failed (%s: %s)', get_class($e), $e->getMessage()));
-    }
-    drupal_set_message($this->t('Unexpected error.', 'error'));
 
-    return [];
+      $message = $this->t('Unexpected error. Please contact store administration if the problem persists.');
+    }
+
+    return [
+      '#markup' => $message,
+    ];
+  }
+
+  /**
+   * Populates the bypass form.
+   *
+   * @param array $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param \Drupal\commerce_paytrail\Entity\PaymentMethod|null $preselected
+   *   The preselected method.
+   *
+   * @return array
+   *   The form.
+   */
+  protected function buildBypassForm(array $form, FormStateInterface $form_state, ? PaymentMethod $preselected) {
+    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin */
+    $plugin = $this->entity->getPaymentGateway()->getPlugin();
+
+    $form['#prefix'] = '<div id="payment-form">';
+    $form['#suffix'] = '</div>';
+
+    // Disable auto-redirect so user can select payment method.
+    $form['#attached'] = array_filter($form['#attached'], function ($value) {
+      return reset($value) !== 'commerce_payment/offsite_redirect';
+    });
+    // Hide redirect message.
+    $form['commerce_message']['#markup'] = NULL;
+
+    $form['payment_methods'] = [
+      '#title' => $this->t('Select payment method'),
+      '#type' => 'fieldset',
+    ];
+
+    foreach ($plugin->getVisibleMethods() as $method) {
+      $key = $method->id();
+
+      $class = [
+        Html::getId($method->label()),
+        'payment-button-' . $key,
+        'payment-method-button',
+      ];
+
+      if ($preselected && $preselected->id() === $key) {
+        $class[] = 'selected';
+      }
+      $form['payment_methods'][$key] = [
+        '#type' => 'submit',
+        '#value' => $method->label(),
+        '#method_index' => $key,
+        '#submit' => [[$this, 'submitSelectedMethod']],
+        '#ajax' => [
+          'callback' => [$this, 'setSelectedMethod'],
+          'wrapper' => 'payment-form',
+        ],
+        '#attributes' => [
+          'class' => $class,
+        ],
+      ];
+    }
+
+    return $form;
   }
 
   /**
