@@ -88,8 +88,6 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
 
     $this->assertEquals('1', $alter['ITEM_ID[0]']);
     $this->assertEquals('24.00', $alter['ITEM_VAT_PERCENT[0]']);
-
-    var_dump($alter);
   }
 
 }
