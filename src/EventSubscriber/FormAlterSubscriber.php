@@ -75,13 +75,17 @@ class FormAlterSubscriber implements EventSubscriberInterface {
         $event->getFormInterface()->setIsVatIncluded(TRUE);
       }
     }
-    // @todo Support commerce shipping and promotions.
+
     foreach ($order->getItems() as $delta => $item) {
       $product = Product::createFromOrderItem($item);
 
       foreach ($item->getAdjustments() as $adjustment) {
         if ($adjustment->getType() === 'tax' && $taxes_included) {
           $product->setTax((float) $adjustment->getPercentage() * 100);
+        }
+
+        if ($adjustment->getType() === 'promotion') {
+          // $product->setDiscount((float) $adjustment->getPercentage() * 100);
         }
       }
       $event->getFormInterface()->setProduct($product);
