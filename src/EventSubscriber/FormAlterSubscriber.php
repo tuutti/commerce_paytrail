@@ -116,19 +116,15 @@ class FormAlterSubscriber implements EventSubscriberInterface {
    *   The promotion percentage.
    */
   protected function collectPromotions(Adjustment $adjustment, ? Price $price) : float {
-    if (!$this->moduleHandler->moduleExists('commerce_promotion')) {
+    if (!$this->moduleHandler->moduleExists('commerce_promotion') || !$price) {
       return 0;
     }
     // Convert fixed amount adjustment to percentage.
     if (!$percentage = $adjustment->getPercentage()) {
       $amount = (float) $adjustment->getAmount()->getNumber();
-
-      if (!$amount > 0 || !$price) {
-        return 0;
-      }
       $price = (float) $price->getNumber();
       // Calculate total discounted price.
-      $discount = (float) $price + $amount;
+      $discount = $price + $amount;
 
       // Make sure this is actually a discount (not price increase).
       if ($discount >= $price) {
