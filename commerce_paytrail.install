@@ -49,6 +49,10 @@ function commerce_paytrail_install_default_payment_methods() {
     if (isset($method[1])) {
       $label = $method[1];
     }
+
+    if (PaymentMethod::load($id)) {
+      continue;
+    }
     PaymentMethod::create([
       'id' => $id,
       'label' => $label,
