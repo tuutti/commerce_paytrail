@@ -433,7 +433,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       ->load($request->query->get('ORDER_NUMBER'));
 
     if (!$order instanceof OrderInterface) {
-      $this->loggerFactory
+      $this->logger
         ->notice($this->t('Notify callback called for an invalid order @order [@values]', [
           '@order' => $request->query->get('ORDER_NUMBER'),
           '@values' => print_r($request->query->all(), TRUE),
@@ -446,7 +446,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
     }
     catch (InvalidValueException | \InvalidArgumentException $e) {
-      $this->loggerFactory
+      $this->logger
         ->notice($this->t('Invalid return url @order [@values] @exception', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
@@ -460,7 +460,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       $response->isValidResponse();
     }
     catch (SecurityHashMismatchException $e) {
-      $this->loggerFactory
+      $this->logger
         ->notice($this->t('Hash mismatch for @order [@values]', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
@@ -475,7 +475,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
     }
     catch (\InvalidArgumentException $e) {
       // Invalid payment state.
-      $this->loggerFactory
+      $this->logger
         ->error($this->t('Invalid payment state for @order [@values]', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
@@ -485,7 +485,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
     }
     catch (PaymentGatewayException $e) {
       // Transaction id mismatch.
-      $this->loggerFactory
+      $this->logger
         ->error($this->t('Transaction id mismatch for @order [@values]', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
@@ -514,7 +514,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
     catch (InvalidValueException | \InvalidArgumentException $e) {
       drupal_set_message($this->t('Invalid return url.'), 'error');
 
-      $this->loggerFactory
+      $this->logger
         ->critical($this->t('Validation failed (@exception) @order [@values]', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
@@ -531,7 +531,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
         '@reason' => $e->getReason(),
       ]), 'error');
 
-      $this->loggerFactory
+      $this->logger
         ->critical($this->t('Hash validation failed @order [@values] (@exception)', [
           '@order' => $order->id(),
           '@values' => print_r($request->query->all(), TRUE),
