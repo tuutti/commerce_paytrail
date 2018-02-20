@@ -3,7 +3,6 @@
 namespace Drupal\commerce_paytrail\EventSubscriber;
 
 use Drupal\commerce_order\Adjustment;
-use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
@@ -80,7 +79,14 @@ class FormAlterSubscriber implements EventSubscriberInterface {
     }
 
     foreach ($order->getItems() as $delta => $item) {
-      $product = Product::createFromOrderItem($item);
+      $product = (new Product())
+        ->setQuantity((int) $item->getQuantity())
+        ->setTitle($item->getTitle())
+        ->setPrice($item->getUnitPrice());
+
+      if ($purchasedEntity = $item->getPurchasedEntity()) {
+        $product->setItemId($purchasedEntity->id());
+      }
 
       foreach ($item->getAdjustments() as $adjustment) {
         if ($adjustment->getType() === 'tax' && $taxes_included) {
@@ -92,9 +98,8 @@ class FormAlterSubscriber implements EventSubscriberInterface {
         if ($adjustment->getType() === 'promotion') {
           $percentage = $this->collectPromotions($adjustment, $item->getUnitPrice());
           // We only support one discount type per product row.
-          // This means that you can't add -5% discount to an order item
-          // and flat -20€ to second order item, unless they are on different
-          // rows.
+          // This means that you can't add -5% discount to a product
+          // and a flat -20€ to a second product.
           $product->setDiscount(round((float) $percentage * 100, 3));
 
           continue;
