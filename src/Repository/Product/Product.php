@@ -25,7 +25,7 @@ class Product extends ProductBase {
     $object->setTitle($item->getTitle())
       ->setItemId($item->getPurchasedEntity()->id())
       ->setQuantity((int) $item->getQuantity())
-      ->setPrice($item->getTotalPrice());
+      ->setPrice($item->getUnitPrice());
 
     return $object;
   }

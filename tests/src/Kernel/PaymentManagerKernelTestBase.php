@@ -45,6 +45,7 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     'commerce_order',
     'commerce_payment',
     'commerce_paytrail',
+    'commerce_promotion',
   ];
 
   /**
@@ -60,11 +61,13 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     $this->installEntitySchema('commerce_product_variation');
     $this->installEntitySchema('commerce_payment');
     $this->installEntitySchema('commerce_payment_method');
+    $this->installEntitySchema('commerce_promotion');
     $this->installConfig('path');
     $this->installConfig('commerce_order');
     $this->installConfig('commerce_product');
     $this->installConfig('commerce_checkout');
     $this->installConfig('commerce_payment');
+    $this->installConfig('commerce_promotion');
     $this->installConfig('commerce_paytrail');
 
     $this->store->set('prices_include_tax', TRUE)->save();

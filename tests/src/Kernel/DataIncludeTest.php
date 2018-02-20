@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
@@ -40,7 +41,7 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
       'sku' => 'test_product',
       'title' => 'Test title',
     ]);
-    $variation->setPrice(new Price('11', 'EUR'));
+    $variation->setPrice(new Price('123', 'EUR'));
     $variation->save();
 
     $product = Product::create([
@@ -50,16 +51,39 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
     $product->addVariation($variation)
       ->save();
 
-    $orderItem = OrderItem::create([
-      'type' => 'default',
-      'purchased_entity' => $variation,
-    ]);
+    $adjustments = [
+      new Adjustment([
+        'type' => 'promotion',
+        'label' => 'Promotion 1',
+        'amount' => new Price('-10', 'EUR'),
+        'locked' => TRUE,
+      ]),
+      new Adjustment([
+        'type' => 'promotion',
+        'label' => 'Promotion 2',
+        'amount' => new Price('-6.15', 'EUR'),
+        'percentage' => '0.05',
+        'locked' => TRUE,
+      ]),
+    ];
+
     $order = Order::create([
       'type' => 'default',
       'store_id' => $this->store,
       'mail' => 'admin@example.com',
     ]);
-    $order->addItem($orderItem);
+    foreach ($adjustments as $index => $adjustment) {
+      $orderItem = OrderItem::create([
+        'type' => 'default',
+        'purchased_entity' => $variation,
+        'title' => 'Title ' . $index,
+      ]);
+      $orderItem->setUnitPrice($variation->getPrice());
+      $orderItem->addAdjustment($adjustment);
+      $orderItem->save();
+
+      $order->addItem($orderItem);
+    }
     $order->save();
 
     // Make sure empty billing profile throws an exception.
@@ -88,6 +112,11 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
 
     $this->assertEquals('1', $alter['ITEM_ID[0]']);
     $this->assertEquals('24.00', $alter['ITEM_VAT_PERCENT[0]']);
+    $this->assertEquals('8.85', $alter['ITEM_DISCOUNT_PERCENT[0]']);
+
+    $this->assertEquals('1', $alter['ITEM_ID[1]']);
+    $this->assertEquals('24.00', $alter['ITEM_VAT_PERCENT[1]']);
+    $this->assertEquals('5', $alter['ITEM_DISCOUNT_PERCENT[1]']);
   }
 
 }

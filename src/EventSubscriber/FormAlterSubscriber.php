@@ -82,10 +82,37 @@ class FormAlterSubscriber implements EventSubscriberInterface {
       foreach ($item->getAdjustments() as $adjustment) {
         if ($adjustment->getType() === 'tax' && $taxes_included) {
           $product->setTax((float) $adjustment->getPercentage() * 100);
+
+          continue;
         }
 
         if ($adjustment->getType() === 'promotion') {
-          // $product->setDiscount((float) $adjustment->getPercentage() * 100);
+          // Convert fixed amount adjustment to percentage.
+          if (!$percentage = $adjustment->getPercentage()) {
+            $amount = (float) $adjustment->getAmount()->getNumber();
+            $price = $item->getUnitPrice();
+
+            if (!$amount > 0 || !$price) {
+              continue;
+            }
+            $price = (float) $price->getNumber();
+            // Calculate total discounted price.
+            $discount = (float) $price + $amount;
+
+            // Make sure this is actually a discount (not price increase).
+            if ($discount >= $price) {
+              continue;
+            }
+            // Calculate an actual percentage based on price difference.
+            $percentage = (abs($amount) / $discount);
+          }
+          // We only support one discount type per product row.
+          // This means that you can't add -5% discount to an order item
+          // and flat -20€ to second order item, unless they are on different
+          // rows.
+          $product->setDiscount(round((float) $percentage * 100, 3));
+
+          continue;
         }
       }
       $event->getFormInterface()->setProduct($product);
