@@ -19,6 +19,8 @@ use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\Core\Logger\LoggerChannelFactory;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Logger\RfcLogLevel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -98,53 +100,60 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
   const PRODUCT_DETAILS = 'product';
 
   /**
-   * PaytrailBase constructor.
-   *
-   * @param array $configuration
-   *   A configuration array containing information about the plugin instance.
-   * @param string $plugin_id
-   *   The plugin_id for the plugin instance.
-   * @param mixed $plugin_definition
-   *   The plugin implementation definition.
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   *   The entity type manager.
-   * @param \Drupal\commerce_payment\PaymentTypeManager $payment_type_manager
-   *   The payment type manager.
-   * @param \Drupal\commerce_payment\PaymentMethodTypeManager $payment_method_type_manager
-   *   The payment method type manager.
-   * @param \Drupal\Component\Datetime\TimeInterface $time
-   *   The time service.
-   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
-   *   The language manager.
-   * @param \Drupal\commerce_paytrail\PaymentManagerInterface $payment_manager
-   *   The payment manager.
-   * @param \Psr\Log\LoggerInterface $logger
-   *   The logger.
-   */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, TimeInterface $time, LanguageManagerInterface $language_manager, PaymentManagerInterface $payment_manager, LoggerInterface $logger) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager, $time);
-
-    $this->languageManager = $language_manager;
-    $this->paymentManager = $payment_manager;
-    $this->logger = $logger;
-  }
-
-  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    return new static(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
-      $container->get('entity_type.manager'),
-      $container->get('plugin.manager.commerce_payment_type'),
-      $container->get('plugin.manager.commerce_payment_method_type'),
-      $container->get('datetime.time'),
-      $container->get('language_manager'),
-      $container->get('commerce_paytrail.payment_manager'),
-      $container->get('logger.channel.commerce_paytrail')
-    );
+    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $instance */
+    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
+
+    // Populate via setters to avoid overriding the parent constructor.
+    $instance->setLanguageManager($container->get('language_manager'))
+      ->setPaymentManager($container->get('commerce_paytrail.payment_manager'))
+      ->setLogger($container->get('logger.channel.commerce_paytrail'));
+
+    return $instance;
+  }
+
+  /**
+   * Setter to populate language manager.
+   *
+   * @param \Drupal\Core\Language\LanguageManagerInterface $languageManager
+   *   The language manager.
+   *
+   * @return $this
+   *   The self.
+   */
+  public function setLanguageManager(LanguageManagerInterface $languageManager) : self {
+    $this->languageManager = $languageManager;
+    return $this;
+  }
+
+  /**
+   * Gets the payment manager.
+   *
+   * @param \Drupal\commerce_paytrail\PaymentManagerInterface $paymentManager
+   *   The payment manager.
+   *
+   * @return $this
+   *   The self.
+   */
+  public function setPaymentManager(PaymentManagerInterface $paymentManager) : self {
+    $this->paymentManager = $paymentManager;
+    return $this;
+  }
+
+  /**
+   * Sets the logger.
+   *
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger.
+   *
+   * @return $this
+   *   The self.
+   */
+  public function setLogger(LoggerInterface $logger) : self {
+    $this->logger = $logger;
+    return $this;
   }
 
   /**

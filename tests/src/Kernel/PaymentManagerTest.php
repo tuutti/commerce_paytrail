@@ -4,17 +4,10 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderItem;
-use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
-use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
-use Drupal\commerce_paytrail\PaymentManager;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\FormManager;
 use Drupal\commerce_paytrail\Repository\Response;
-use Drupal\commerce_price\Entity\Currency;
 use Drupal\commerce_price\Price;
-use Drupal\Tests\commerce\Kernel\CommerceKernelTestBase;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -24,100 +17,7 @@ use Symfony\Component\HttpFoundation\Request;
  * @group commerce_paytrail
  * @coversDefaultClass \Drupal\commerce_paytrail\PaymentManager
  */
-class PaymentManagerTest extends CommerceKernelTestBase {
-
-  /**
-   * The payment manager.
-   *
-   * @var \Drupal\commerce_paytrail\PaymentManager
-   */
-  protected $sut;
-
-  /**
-   * The event dispatcher.
-   *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface|\PHPUnit_Framework_MockObject_MockObject
-   */
-  protected $eventDispatcher;
-
-  /**
-   * The payment gateway.
-   *
-   * @var \Drupal\commerce_payment\Entity\PaymentGateway
-   */
-  protected $gateway;
-
-  public static $modules = [
-    'state_machine',
-    'address',
-    'profile',
-    'entity_reference_revisions',
-    'path',
-    'commerce_product',
-    'commerce_checkout',
-    'commerce_order',
-    'commerce_payment',
-    'commerce_paytrail',
-  ];
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setUp() {
-    parent::setUp();
-
-    $this->installEntitySchema('profile');
-    $this->installEntitySchema('commerce_order');
-    $this->installEntitySchema('commerce_order_item');
-    $this->installEntitySchema('commerce_product');
-    $this->installEntitySchema('commerce_product_variation');
-    $this->installEntitySchema('commerce_payment');
-    $this->installEntitySchema('commerce_payment_method');
-    $this->installConfig('path');
-    $this->installConfig('commerce_order');
-    $this->installConfig('commerce_product');
-    $this->installConfig('commerce_checkout');
-    $this->installConfig('commerce_payment');
-    $this->installConfig('commerce_paytrail');
-
-    Currency::create([
-      'currencyCode' => 'EUR',
-      'name' => 'Euro',
-    ])->save();
-
-    $this->gateway = PaymentGateway::create(
-      [
-        'id' => 'paytrail',
-        'label' => 'Paytrail',
-        'plugin' => 'paytrail',
-      ]
-    );
-    $this->gateway->getPlugin()->setConfiguration(
-      [
-        'culture' => 'automatic',
-        'merchant_id' => '13466',
-        'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
-        'allow_ipn_create_payment' => FALSE,
-        'bypass_mode' => FALSE,
-        'included_data' => [
-          PaytrailBase::PAYER_DETAILS => 0,
-          PaytrailBase::PRODUCT_DETAILS => 0,
-        ],
-      ]
-    );
-    $this->gateway->save();
-
-    $entityTypeManager = $this->container->get('entity_type.manager');
-    $this->eventDispatcher = $this->getMock(EventDispatcherInterface::class);
-    $time = $this->container->get('datetime.time');
-    $moduleHandler = $this->container->get('module_handler');
-
-    $this->sut = new PaymentManager($entityTypeManager, $this->eventDispatcher, $time, $moduleHandler);
-
-    $account = $this->createUser([]);
-
-    \Drupal::currentUser()->setAccount($account);
-  }
+class PaymentManagerTest extends PaymentManagerKernelTestBase {
 
   /**
    * Tests buildFormInterface().
@@ -140,23 +40,11 @@ class PaymentManagerTest extends CommerceKernelTestBase {
     $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
     $this->assertInstanceOf(FormManager::class, $form);
 
-    $dispatched_event = new FormInterfaceEvent($this->gateway->getPlugin(), $order, $form);
-    $this->eventDispatcher->expects($this->any())
-      ->method('dispatch')
-      ->willReturn($dispatched_event);
-
     $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
     $this->assertEquals('1', $alter['ORDER_NUMBER']);
 
     $authcode = $alter['AUTHCODE'];
     $this->assertNotEmpty($authcode);
-
-    // Make sure we can alter elements.
-    $dispatched_event->getFormInterface()->setOrderNumber('12345');
-    $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
-    $this->assertEquals('12345', $alter['ORDER_NUMBER']);
-    // Make sure authcode gets regenerated when we change values.
-    $this->assertNotEquals($alter['AUTHCODE'], $authcode);
   }
 
   /**

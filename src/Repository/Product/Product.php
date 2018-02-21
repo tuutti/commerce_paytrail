@@ -23,10 +23,12 @@ class Product extends ProductBase {
   public static function createFromOrderItem(OrderItemInterface $item) {
     $object = new static();
     $object->setTitle($item->getTitle())
-      ->setItemId($item->getPurchasedEntity()->id())
       ->setQuantity((int) $item->getQuantity())
-      ->setPrice($item->getTotalPrice());
+      ->setPrice($item->getUnitPrice());
 
+    if ($purchasedEntity = $item->getPurchasedEntity()) {
+      $object->setItemId($purchasedEntity->id());
+    }
     return $object;
   }
 

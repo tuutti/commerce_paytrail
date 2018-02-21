@@ -2,11 +2,13 @@
 
 namespace Drupal\commerce_paytrail\EventSubscriber;
 
+use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\Product\Product;
+use Drupal\commerce_price\Price;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -75,17 +77,68 @@ class FormAlterSubscriber implements EventSubscriberInterface {
         $event->getFormInterface()->setIsVatIncluded(TRUE);
       }
     }
-    // @todo Support commerce shipping and promotions.
+
     foreach ($order->getItems() as $delta => $item) {
-      $product = Product::createFromOrderItem($item);
+      $product = (new Product())
+        ->setQuantity((int) $item->getQuantity())
+        ->setTitle($item->getTitle())
+        ->setPrice($item->getUnitPrice());
+
+      if ($purchasedEntity = $item->getPurchasedEntity()) {
+        $product->setItemId($purchasedEntity->id());
+      }
 
       foreach ($item->getAdjustments() as $adjustment) {
         if ($adjustment->getType() === 'tax' && $taxes_included) {
           $product->setTax((float) $adjustment->getPercentage() * 100);
+
+          continue;
+        }
+
+        if ($adjustment->getType() === 'promotion') {
+          $percentage = $this->collectPromotions($adjustment, $item->getUnitPrice());
+          // We only support one discount type per product row.
+          // This means that you can't add -5% discount to a product
+          // and a flat -20€ to a second product.
+          $product->setDiscount(round($percentage * 100, 3));
+
+          continue;
         }
       }
       $event->getFormInterface()->setProduct($product);
     }
+  }
+
+  /**
+   * Collects the promotions for a given item.
+   *
+   * @param \Drupal\commerce_order\Adjustment $adjustment
+   *   The adjustment.
+   * @param \Drupal\commerce_price\Price|null $price
+   *   The price.
+   *
+   * @return float
+   *   The promotion percentage.
+   */
+  protected function collectPromotions(Adjustment $adjustment, ? Price $price) : float {
+    if (!$this->moduleHandler->moduleExists('commerce_promotion') || !$price) {
+      return 0;
+    }
+    // Convert fixed amount adjustment to percentage.
+    if (!$percentage = $adjustment->getPercentage()) {
+      $amount = (float) $adjustment->getAmount()->getNumber();
+      $price = (float) $price->getNumber();
+      // Calculate total discounted price.
+      $discount = $price + $amount;
+
+      // Make sure this is actually a discount (not price increase).
+      if ($discount >= $price) {
+        return 0;
+      }
+      // Calculate an actual percentage based on price difference.
+      $percentage = (abs($amount) / $discount);
+    }
+    return (float) $percentage;
   }
 
   /**
