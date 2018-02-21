@@ -79,10 +79,6 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
     $address_component['settings']['default_country'] = 'FI';
     $customer_form_display->setComponent('address', $address_component);
     $customer_form_display->save();
-
-    $this->placeBlock('user_login_block', [
-      'region' => 'header',
-    ]);
   }
 
   /**
@@ -177,13 +173,11 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
 
     /** @var \Drupal\commerce_paytrail\Entity\PaymentMethod $method */
     foreach ($gateway->getPlugin()->getVisibleMethods(FALSE) as $method) {
-      // Disable everything but first 3 payment methods.
+      // Disable everything but the first 3 payment methods.
       if ((int) $method->id() > 4) {
         $method->setStatus(FALSE)->save();
       }
     }
-    // Flush caches to reset render cache.
-    drupal_flush_all_caches();
 
     $this->getSession()->reload();
 

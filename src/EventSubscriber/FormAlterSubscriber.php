@@ -100,7 +100,7 @@ class FormAlterSubscriber implements EventSubscriberInterface {
           // We only support one discount type per product row.
           // This means that you can't add -5% discount to a product
           // and a flat -20€ to a second product.
-          $product->setDiscount(round((float) $percentage * 100, 3));
+          $product->setDiscount(round($percentage * 100, 3));
 
           continue;
         }
@@ -138,7 +138,7 @@ class FormAlterSubscriber implements EventSubscriberInterface {
       // Calculate an actual percentage based on price difference.
       $percentage = (abs($amount) / $discount);
     }
-    return $percentage;
+    return (float) $percentage;
   }
 
   /**
