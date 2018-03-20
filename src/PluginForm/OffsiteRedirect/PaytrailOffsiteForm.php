@@ -7,6 +7,7 @@ use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Exception\InvalidValueException;
 use Drupal\Component\Utility\Html;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 
@@ -128,6 +129,8 @@ class PaytrailOffsiteForm extends PaymentOffsiteForm {
           'class' => $class,
         ],
       ];
+
+      $form['#cache']['tags'] = Cache::mergeTags($form['#cache']['tags'] ?? [], $method->getCacheTags());
     }
 
     return $form;

@@ -5,6 +5,7 @@ namespace Drupal\Tests\commerce_paytrail\Functional;
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_store\StoreCreationTrait;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
 use Drupal\Tests\commerce\Functional\CommerceBrowserTestBase;
 use Drupal\Tests\commerce\FunctionalJavascript\JavascriptTestTrait;
@@ -83,23 +84,35 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
   /**
    * Test bypass mode.
    */
-  public function testPayment() {
+  public function testPayment($mail = NULL) {
     $this->drupalGet($this->product->toUrl()->toString());
     $this->submitForm([], 'Add to cart');
     $cart_link = $this->getSession()->getPage()->findLink('your cart');
     $cart_link->click();
     $this->submitForm([], 'Checkout');
+
+    $review_form = [];
+
+    if ($mail) {
+      $this->submitForm([], 'Continue as Guest');
+      $review_form['contact_information[email]'] = $mail;
+      $review_form['contact_information[email_confirm]'] = $mail;
+    }
+
     $this->assertSession()->pageTextContains('Order Summary');
-    $this->submitForm([
+
+    $review_form += [
       'payment_information[billing_information][address][0][address][given_name]' => 'Matti',
       'payment_information[billing_information][address][0][address][family_name]' => 'Meikäläinen',
       'payment_information[billing_information][address][0][address][address_line1]' => 'Fredrikinkatu 34',
       'payment_information[billing_information][address][0][address][organization]' => 'Druid Oy',
       'payment_information[billing_information][address][0][address][locality]' => 'Helsinki',
       'payment_information[billing_information][address][0][address][postal_code]' => '00100',
-    ], 'Continue to review');
+    ];
+    $this->submitForm($review_form, 'Continue to review');
+
     $this->assertSession()->pageTextContains('Contact information');
-    $this->assertSession()->pageTextContains($this->loggedInUser->getEmail());
+    $this->assertSession()->pageTextContains($mail ?? $this->loggedInUser->getEmail());
     $this->assertSession()->pageTextContains('Payment information');
     $this->assertSession()->pageTextContains('Paytrail');
     $this->assertSession()->pageTextContains('Order Summary');
@@ -125,39 +138,10 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
     $count = $this->getSession()->getPage()->findAll('css', '.payment-method-button');
     $this->assertEquals(count($count), 27);
 
-    // Disable product details and make sure no product details are sent.
-    $gateway = PaymentGateway::load('paytrail');
-    $gateway->getPlugin()->setConfiguration([
-      'culture' => 'automatic',
-      'merchant_id' => '13466',
-      'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
-      'bypass_mode' => TRUE,
-      'included_data' => [
-        PaytrailBase::PRODUCT_DETAILS => 0,
-        PaytrailBase::PAYER_DETAILS => PaytrailBase::PAYER_DETAILS,
-      ],
-    ]);
-    $gateway->save();
-
-    $this->getSession()->reload();
-
-    $expected = [
-      'ITEM_TITLE[0]',
-      'ITEM_QUANTITY[0]',
-      'ITEM_UNIT_PRICE[0]',
-      'ITEM_TYPE[0]',
-    ];
-    foreach ($expected as $key) {
-      $this->assertSession()->elementNotExists('xpath', sprintf('//input[@name="%s"]', $key));
-    }
-
     // Disable both; product details and payer details and make sure no
     // product or payer details are sent.
     $gateway = PaymentGateway::load('paytrail');
     $gateway->getPlugin()->setConfiguration([
-      'culture' => 'automatic',
-      'merchant_id' => '13466',
-      'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
       'bypass_mode' => TRUE,
       'included_data' => [
         PaytrailBase::PRODUCT_DETAILS => 0,
@@ -166,9 +150,16 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
     ]);
     $gateway->save();
 
+    // Flush caches to reset render cache.
+    Cache::invalidateTags(['config:commerce_checkout.commerce_checkout_flow.default']);
+
     $this->getSession()->reload();
 
     $expected = [
+      'ITEM_TITLE[0]',
+      'ITEM_QUANTITY[0]',
+      'ITEM_UNIT_PRICE[0]',
+      'ITEM_TYPE[0]',
       'PAYER_PERSON_FIRSTNAME',
       'PAYER_PERSON_LASTNAME',
       'PAYER_COMPANY_NAME',
@@ -182,11 +173,12 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
 
     /** @var \Drupal\commerce_paytrail\Entity\PaymentMethod $method */
     foreach ($gateway->getPlugin()->getVisibleMethods(FALSE) as $method) {
-      // Disable everything but first 3 payment methods.
+      // Disable everything but the first 3 payment methods.
       if ((int) $method->id() > 4) {
         $method->setStatus(FALSE)->save();
       }
     }
+
     $this->getSession()->reload();
 
     // Make sure only 3 buttons are visible.
@@ -204,6 +196,17 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
       // Make sure payment method value is set accordingly.
       $this->assertSession()->elementExists('xpath', '//input[@name="PAYMENT_METHODS"][@value="' . $method->id() . '"]');
     }
+    // Make sure we don't get redirected to paytrail too early.
+    $this->assertSession()->pageTextContains('Select payment method');
+  }
+
+  /**
+   * Run same tests as an anonymous user.
+   */
+  public function testAnonymous() {
+    $this->drupalLogout();
+
+    $this->testPayment('admin@example.com');
   }
 
 }

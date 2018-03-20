@@ -166,7 +166,7 @@ class PaymentManager implements PaymentManagerInterface {
       }
     }
 
-    // This should prevent a payment state from being overridden when
+    // This should prevent payment state from being overridden when
     // IPN is allowed to create payments and IPN completes the payment before
     // user returns from the payment gateway (due to slow connection for
     // example).
