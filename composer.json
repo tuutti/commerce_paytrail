@@ -5,6 +5,7 @@
   "license": "GPL-2.0+",
   "minimum-stability": "dev",
   "require": {
+    "php": ">=7.1",
     "webmozart/assert": "*",
     "drupal/commerce": "^2"
   }
