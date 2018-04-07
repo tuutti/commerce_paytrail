@@ -67,19 +67,11 @@ class PaymentManagerTest extends UnitTestCase {
   protected $time;
 
   /**
-   * The module handler.
-   *
-   * @var \PHPUnit_Framework_MockObject_MockObject|\Drupal\Core\Extension\ModuleHandlerInterface
-   */
-  protected $moduleHandler;
-
-  /**
    * {@inheritdoc}
    */
   public function setUp() {
     parent::setUp();
 
-    $this->moduleHandler = $this->getMock('\Drupal\Core\Extension\ModuleHandlerInterface');
     $this->eventDispatcher = $this->getMock('\Symfony\Component\EventDispatcher\EventDispatcherInterface');
     $this->entityTypeManager = $this->getMockBuilder('\Drupal\Core\Entity\EntityTypeManager')
       ->disableOriginalConstructor()
@@ -96,7 +88,7 @@ class PaymentManagerTest extends UnitTestCase {
     $this->container->set('url_generator', $this->urlGenerator);
     \Drupal::setContainer($this->container);
 
-    $this->sut = new PaymentManager($this->entityTypeManager, $this->eventDispatcher, $this->time, $this->moduleHandler);
+    $this->sut = new PaymentManager($this->entityTypeManager, $this->eventDispatcher, $this->time);
   }
 
   /**
