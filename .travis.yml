@@ -42,7 +42,7 @@ env:
 
     # The environment to use, supported are: drupal-7, drupal-8
     - DRUPAL_TI_ENVIRONMENT="drupal-8"
-    - DRUPAL_TI_CORE_BRANCH="8.4.x"
+    - DRUPAL_TI_CORE_BRANCH=$(if [ "$TRAVIS_PHP_VERSION" == "5.6" ]; then echo "$DRUPAL_CORE_DEFAULT"; else echo "$DRUPAL_CORE_DEV"; fi)
 
     # Drupal specific variables.
     - DRUPAL_TI_DB="drupal_travis_db"
