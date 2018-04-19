@@ -16,6 +16,7 @@ use Drupal\commerce_paytrail\Repository\Response as PaytrailResponse;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Logger\RfcLogLevel;
+use Drupal\Core\Messenger\MessengerTrait;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -36,6 +37,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * )
  */
 class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotificationsInterface {
+
+  use MessengerTrait;
 
   /**
    * The language manager.
@@ -197,7 +200,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    *   The merchant id.
    */
   public function getMerchantId() : string {
-    return $this->getMode() == 'test' ? static::MERCHANT_ID : $this->getSetting('merchant_id');
+    return $this->getMode() == 'test' ? static::MERCHANT_ID : $this->configuration['merchant_id'];
   }
 
   /**
@@ -207,7 +210,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    *   The merchant hash.
    */
   public function getMerchantHash() : string {
-    return $this->getMode() == 'test' ? static::MERCHANT_HASH : $this->getSetting('merchant_hash');
+    return $this->getMode() == 'test' ? static::MERCHANT_HASH : $this->configuration['merchant_hash'];
   }
 
   /**
@@ -227,11 +230,15 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
   /**
    * Get setting value.
    *
+   * @todo Remove this.
+   *
    * @param string $key
    *   Setting key.
    *
    * @return mixed
    *   Setting value.
+   *
+   * @deprecated
    */
   public function getSetting($key) {
     return $this->configuration[$key] ?? NULL;
@@ -506,7 +513,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
     }
     catch (InvalidValueException | \InvalidArgumentException $e) {
-      drupal_set_message($this->t('Invalid return url.'), 'error');
+      $this->messenger()->addError($this->t('Invalid return url.'));
 
       $this->logger
         ->critical($this->t('Validation failed (@exception) @order [@values]', [
@@ -521,9 +528,9 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       $response->isValidResponse();
     }
     catch (SecurityHashMismatchException $e) {
-      drupal_set_message($this->t('Validation failed due to security hash mismatch (@reason).', [
+      $this->messenger()->addError($this->t('Validation failed due to security hash mismatch (@reason).', [
         '@reason' => $e->getReason(),
-      ]), 'error');
+      ]));
 
       $this->logger
         ->critical($this->t('Hash validation failed @order [@values] (@exception)', [
@@ -538,7 +545,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
     // which will mark payment as captured.
     $this->paymentManager->createPaymentForOrder('authorized', $order, $this, $response);
 
-    drupal_set_message($this->t('Payment was processed.'));
+    $this->messenger()->addMessage($this->t('Payment was processed.'));
   }
 
 }
