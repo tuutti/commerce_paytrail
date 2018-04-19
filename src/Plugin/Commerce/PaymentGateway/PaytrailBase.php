@@ -200,7 +200,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    *   The merchant id.
    */
   public function getMerchantId() : string {
-    return $this->getMode() == 'test' ? static::MERCHANT_ID : $this->getSetting('merchant_id');
+    return $this->getMode() == 'test' ? static::MERCHANT_ID : $this->configuration['merchant_id'];
   }
 
   /**
@@ -210,7 +210,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    *   The merchant hash.
    */
   public function getMerchantHash() : string {
-    return $this->getMode() == 'test' ? static::MERCHANT_HASH : $this->getSetting('merchant_hash');
+    return $this->getMode() == 'test' ? static::MERCHANT_HASH : $this->configuration['merchant_hash'];
   }
 
   /**
@@ -230,11 +230,15 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
   /**
    * Get setting value.
    *
+   * @todo Remove this.
+   *
    * @param string $key
    *   Setting key.
    *
    * @return mixed
    *   Setting value.
+   *
+   * @deprecated
    */
   public function getSetting($key) {
     return $this->configuration[$key] ?? NULL;
