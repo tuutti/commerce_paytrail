@@ -400,7 +400,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
     if (!$form_state->getErrors()) {
       $values = $form_state->getValue($form['#parents']);
 
-      foreach ($this->getVisibleMethods() as $method) {
+      foreach ($this->getVisibleMethods(FALSE) as $method) {
         // Enable / disable payment method based on user selection.
         $method->setStatus(in_array($method->id(), $values['visible_methods']))->save();
       }
