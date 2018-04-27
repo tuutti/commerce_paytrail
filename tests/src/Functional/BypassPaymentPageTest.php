@@ -136,7 +136,7 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
     }
     // Make sure all payment methods are visible by default.
     $count = $this->getSession()->getPage()->findAll('css', '.payment-method-button');
-    $this->assertEquals(count($count), 27);
+    $this->assertEquals(27, count($count));
 
     // Disable both; product details and payer details and make sure no
     // product or payer details are sent.
