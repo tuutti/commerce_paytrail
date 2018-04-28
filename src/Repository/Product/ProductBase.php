@@ -110,7 +110,7 @@ abstract class ProductBase {
    *   The self.
    */
   public function setTitle(string $title) : self {
-    $this->assertNonStrictText($title);
+    $this->assertText($title);
 
     $this->title = $title;
     return $this;

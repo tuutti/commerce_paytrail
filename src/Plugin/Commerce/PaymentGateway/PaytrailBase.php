@@ -164,7 +164,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       'allow_ipn_create_payment' => FALSE,
       'included_data' => [
         static::PAYER_DETAILS => static::PAYER_DETAILS,
-        static::PRODUCT_DETAILS => static::PRODUCT_DETAILS,
+        static::PRODUCT_DETAILS => static::PAYER_DETAILS,
       ],
       'bypass_mode' => FALSE,
     ] + parent::defaultConfiguration();
@@ -183,8 +183,8 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
   /**
    * Whether to allow ipn to create new payments.
    *
-   * This is used to mitigate the fact if user never returns from
-   * the payment gateway, but paid for the order.
+   * This is used to mitigate the issue when user never returns from
+   * the payment gateway (to complete the order), but has paid the order.
    *
    * @return bool
    *   TRUE if allowed, FALSE if not.
@@ -225,23 +225,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    */
   public function log($message, $severity = RfcLogLevel::CRITICAL) : void {
     $this->logger->log($severity, $message);
-  }
-
-  /**
-   * Get setting value.
-   *
-   * @todo Remove this.
-   *
-   * @param string $key
-   *   Setting key.
-   *
-   * @return mixed
-   *   Setting value.
-   *
-   * @deprecated
-   */
-  public function getSetting($key) {
-    return $this->configuration[$key] ?? NULL;
   }
 
   /**
@@ -445,6 +428,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
 
     try {
       $response = PaytrailResponse::createFromRequest($this->getMerchantHash(), $order, $request);
+      $response->isValidResponse();
     }
     catch (InvalidValueException | \InvalidArgumentException $e) {
       $this->logger
@@ -455,10 +439,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
         ]));
 
       return new Response($e->getMessage(), Response::HTTP_BAD_REQUEST);
-    }
-
-    try {
-      $response->isValidResponse();
     }
     catch (SecurityHashMismatchException $e) {
       $this->logger
@@ -501,7 +481,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    * Validate and store transaction for order.
    *
    * Payment will be initially stored as 'authorized' until
-   * paytrail calls the notify ipn.
+   * paytrail calls the notify IPN.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The commerce order.

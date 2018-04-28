@@ -8,6 +8,7 @@ use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Exception\InvalidBillingException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\Product\Product;
+use Drupal\commerce_paytrail\SanitizeTrait;
 use Drupal\commerce_price\Price;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -16,6 +17,8 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
  * Includes required data for paytrail form interface.
  */
 class FormAlterSubscriber implements EventSubscriberInterface {
+
+  use SanitizeTrait;
 
   protected $moduleHandler;
 
@@ -72,7 +75,7 @@ class FormAlterSubscriber implements EventSubscriberInterface {
     if ($this->moduleHandler->moduleExists('commerce_tax')) {
       $taxes_included = $order->getStore()->get('prices_include_tax')->value;
 
-      // We can only send this value when taxes are enabled.
+      // We can only send this value when taxes are included in prices.
       if ($taxes_included) {
         $event->getFormInterface()->setIsVatIncluded(TRUE);
       }
@@ -81,7 +84,7 @@ class FormAlterSubscriber implements EventSubscriberInterface {
     foreach ($order->getItems() as $delta => $item) {
       $product = (new Product())
         ->setQuantity((int) $item->getQuantity())
-        ->setTitle($item->getTitle())
+        ->setTitle($this->sanitize($item->getTitle()))
         ->setPrice($item->getUnitPrice());
 
       if ($purchasedEntity = $item->getPurchasedEntity()) {

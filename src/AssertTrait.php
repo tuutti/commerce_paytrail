@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Drupal\commerce_paytrail;
 
+use Drupal\commerce_paytrail\Repository\RegularExpressions;
 use Drupal\commerce_price\Price;
 use Webmozart\Assert\Assert;
 
@@ -63,8 +64,8 @@ trait AssertTrait {
    * @note Regex taken from Paytrail documentation.
    * @see http://docs.paytrail.com/en/index-all.html#payment-api.e2
    */
-  public function assertText(string $text) : void {
-    Assert::regex($text, '/^[\pL-0-9- "\', ()\[\]{}*+\-_,.]*$/u');
+  public function assertStrictText(string $text) : void {
+    Assert::regex($text, RegularExpressions::VALIDATE_TEXT_STRICT);
   }
 
   /**
@@ -100,12 +101,9 @@ trait AssertTrait {
    *
    * @param string $string
    *   The text.
-   *
-   * @note Regex taken from Paytrail documentation.
-   * @see http://docs.paytrail.com/en/index-all.html#payment-api.e2
    */
-  public function assertNonStrictText(string $string) : void {
-    Assert::regex($string, '/^[\pL-0-9- "\', ()\[\]{}*\/ + \-_,.:&!?@#$£=*;~]*$/u');
+  public function assertText(string $string) : void {
+    Assert::regex($string, RegularExpressions::VALIDATE_TEXT_DEFAULT);
   }
 
 }
