@@ -164,7 +164,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       'allow_ipn_create_payment' => FALSE,
       'included_data' => [
         static::PAYER_DETAILS => static::PAYER_DETAILS,
-        static::PRODUCT_DETAILS => static::PAYER_DETAILS,
+        static::PRODUCT_DETAILS => static::PRODUCT_DETAILS,
       ],
       'bypass_mode' => FALSE,
     ] + parent::defaultConfiguration();

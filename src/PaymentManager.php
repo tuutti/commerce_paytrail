@@ -146,7 +146,7 @@ class PaymentManager implements PaymentManagerInterface {
       $payment->setAuthorizedTime($this->time->getRequestTime());
 
       // This should only happen when PaytrailBase::onNotify() is trying to
-      // call this  with 'capture' status and no payment exist yet.
+      // call this with 'capture' status when no payment exist yet.
       // That usually happens when user completed the payment, but didn't return
       // from the payment service.
       if ($plugin->ipnAllowedToCreatePayment() && $status === 'capture') {
