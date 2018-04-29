@@ -111,7 +111,6 @@ class PaytrailBaseTest extends CommerceKernelTestBase {
    *
    * @covers ::__construct
    * @covers ::getCulture
-   * @covers ::getSetting
    * @covers ::defaultConfiguration
    */
   public function testCulture() {
