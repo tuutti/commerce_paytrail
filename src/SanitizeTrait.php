@@ -22,7 +22,7 @@ trait SanitizeTrait {
    * @return string
    *   The string.
    */
-  protected function sanitize(string $string, string $regex = 'default') : string {
+  public function sanitize(string $string, string $regex = 'default') : string {
     $regexes = [
       'default' => RegularExpressions::SANITIZE_TEXT_DEFAULT,
       'strict' => RegularExpressions::SANITIZE_TEXT_STRICT,
