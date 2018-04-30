@@ -16,7 +16,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * Includes required data for paytrail form interface.
  */
-class FormAlterSubscriber implements EventSubscriberInterface {
+final class FormAlterSubscriber implements EventSubscriberInterface {
 
   use SanitizeTrait;
 

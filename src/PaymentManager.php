@@ -167,8 +167,8 @@ class PaymentManager implements PaymentManagerInterface {
       }
     }
 
-    // Prevent payment state from being overridden when IPN completes the
-    // payment before user is able to return from the payment service (due
+    // Prevent payment state from being overridden if IPN completes the
+    // payment before user is returned from the payment service (due
     // to slow connection for example).
     if ($payment->getState()->value === 'completed') {
       return $payment;

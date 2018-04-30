@@ -233,9 +233,8 @@ final class FormManager extends BaseResource {
   /**
    * Sets the message shown in Merchant's Panel.
    *
-   * Paytrail has strict validation for this field.
-   * You might want to strip non-allowed characters
-   * from this field to avoid validation errors.
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters * from this field to avoid validation errors.
    *
    * See: SanitizeTrait::sanitize().
    *
@@ -259,9 +258,8 @@ final class FormManager extends BaseResource {
    * supported by Osuuspankki, Visa (Nets), MasterCard (Nets),
    * American Express (Nets) and Diners Club (Nets).
    *
-   * Paytrail has strict validation for this field.
-   * You might want to strip non-allowed characters
-   * from this field to avoid validation errors.
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters from this field to avoid validation errors.
    *
    * See: SanitizeTrait::sanitize().
    *
@@ -284,9 +282,8 @@ final class FormManager extends BaseResource {
    * Message to consumers bank statement or credit card bill if supported by
    * payment method.
    *
-   * Note: Paytrail has strict validation for this field.
-   * You might want to strip non-allowed characters
-   * from this field to avoid validation errors.
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters from this field to avoid validation errors.
    *
    * See: SanitizeTrait::sanitize().
    *
@@ -308,9 +305,8 @@ final class FormManager extends BaseResource {
    *
    * Message to merchants bank statement if supported by payment method.
    *
-   * Note: Paytrail has strict validation for this field.
-   * You might want to strip non-allowed characters
-   * from this field to avoid validation errors.
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters from this field to avoid validation errors.
    *
    * See: SanitizeTrait::sanitize().
    *

@@ -14,6 +14,9 @@ trait SanitizeTrait {
   /**
    * Sanitizes the given string.
    *
+   * Paytrail doesn't allow characters such as €, <, > or % so
+   * we need to strip those from certain fields.
+   *
    * @param string $string
    *   The string.
    * @param string $regex
