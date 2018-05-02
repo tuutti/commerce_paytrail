@@ -212,7 +212,7 @@ class FormManagerTest extends UnitTestCase {
   /**
    * Tests ::assertText()
    *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertText
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertStrictText
    */
   public function testAssertText() {
     $data = [
@@ -225,7 +225,7 @@ class FormManagerTest extends UnitTestCase {
     foreach ($data as $number => $expectedException) {
       $exception = FALSE;
       try {
-        $this->sut->assertText($number);
+        $this->sut->assertStrictText($number);
       }
       catch (\InvalidArgumentException $e) {
         $exception = TRUE;
@@ -237,7 +237,7 @@ class FormManagerTest extends UnitTestCase {
   /**
    * Tests ::assertNonStrictText()
    *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertNonStrictText
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertText
    */
   public function testAssertNonStrictText() {
     $data = [
@@ -250,7 +250,7 @@ class FormManagerTest extends UnitTestCase {
     foreach ($data as $number => $expectedException) {
       $exception = FALSE;
       try {
-        $this->sut->assertNonStrictText($number);
+        $this->sut->assertText($number);
       }
       catch (\InvalidArgumentException $e) {
         $exception = TRUE;

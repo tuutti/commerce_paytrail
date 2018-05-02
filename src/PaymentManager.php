@@ -144,12 +144,13 @@ class PaymentManager implements PaymentManagerInterface {
         'test' => $plugin->getMode() == 'test',
       ]);
       $payment->setAuthorizedTime($this->time->getRequestTime());
-      // Default to authorize state if IPN is allowed to create payments.
-      // This only used when PaytrailBase::onNotify() is trying to call this
-      // with 'capture' status and no payment exist yet.
-      // This should only happen if user completes the payment but never return
-      // from the payment gateway.
+
+      // This should only happen when PaytrailBase::onNotify() is trying to
+      // call this with 'capture' status when no payment exist yet.
+      // That usually happens when user completed the payment, but didn't return
+      // from the payment service.
       if ($plugin->ipnAllowedToCreatePayment() && $status === 'capture') {
+        // Complete 'authorize' transition to run necessary event subscribers.
         $transition = $payment->getState()->getWorkflow()->getTransition('authorize');
         $payment->getState()->applyTransition($transition);
 
@@ -166,10 +167,9 @@ class PaymentManager implements PaymentManagerInterface {
       }
     }
 
-    // This should prevent payment state from being overridden when
-    // IPN is allowed to create payments and IPN completes the payment before
-    // user returns from the payment gateway (due to slow connection for
-    // example).
+    // Prevent payment state from being overridden if IPN completes the
+    // payment before user is returned from the payment service (due
+    // to slow connection for example).
     if ($payment->getState()->value === 'completed') {
       return $payment;
     }

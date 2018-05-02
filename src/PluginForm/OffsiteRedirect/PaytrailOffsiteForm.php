@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
@@ -12,11 +14,9 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 
 /**
- * Class PaytrailOffsiteForm.
- *
- * @package Drupal\commerce_paytrail\PluginForm\OffsiteRedirect
+ * Provides the Paytrail payment off-site form.
  */
-class PaytrailOffsiteForm extends PaymentOffsiteForm {
+final class PaytrailOffsiteForm extends PaymentOffsiteForm {
 
   use StringTranslationTrait;
 

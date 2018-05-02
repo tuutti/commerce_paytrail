@@ -83,7 +83,6 @@ class PaytrailBaseTest extends CommerceKernelTestBase {
    * @covers ::getMerchantId
    * @covers ::getMerchantHash
    * @covers ::defaultConfiguration
-   * @covers ::getSetting
    * @covers ::__construct
    */
   public function testTestMode() {
@@ -112,7 +111,6 @@ class PaytrailBaseTest extends CommerceKernelTestBase {
    *
    * @covers ::__construct
    * @covers ::getCulture
-   * @covers ::getSetting
    * @covers ::defaultConfiguration
    */
   public function testCulture() {

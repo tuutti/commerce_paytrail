@@ -9,12 +9,13 @@ use Drupal\commerce_paytrail\AssertTrait;
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_price\Price;
+use Egulias\EmailValidator\EmailValidator;
 use Webmozart\Assert\Assert;
 
 /**
  * Provides form interface base class.
  */
-class FormManager extends BaseResource {
+final class FormManager extends BaseResource {
 
   use AssertTrait;
 
@@ -92,7 +93,10 @@ class FormManager extends BaseResource {
   }
 
   /**
-   * Sets the parameters sent when returning from the payment gateway.
+   * Sets parameters out.
+   *
+   * The parameters to be returned (URL arguments) when
+   * returning from the payment gateway.
    *
    * @param array $params
    *   The params.
@@ -229,6 +233,11 @@ class FormManager extends BaseResource {
   /**
    * Sets the message shown in Merchant's Panel.
    *
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters * from this field to avoid validation errors.
+   *
+   * See: SanitizeTrait::sanitize().
+   *
    * @param string $message
    *   The message.
    *
@@ -236,7 +245,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setMerchantPanelUiMessage(string $message) : self {
-    $this->assertText($message);
+    $this->assertStrictText($message);
     Assert::maxLength($message, 255);
 
     return $this->setValue('MSG_UI_MERCHANT_PANEL', $message);
@@ -249,6 +258,11 @@ class FormManager extends BaseResource {
    * supported by Osuuspankki, Visa (Nets), MasterCard (Nets),
    * American Express (Nets) and Diners Club (Nets).
    *
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters from this field to avoid validation errors.
+   *
+   * See: SanitizeTrait::sanitize().
+   *
    * @param string $message
    *   The message.
    *
@@ -256,7 +270,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPaymentMethodUiMessage(string $message) : self {
-    $this->assertText($message);
+    $this->assertStrictText($message);
     Assert::maxLength($message, 255);
 
     return $this->setValue('MSG_UI_PAYMENT_METHOD', $message);
@@ -268,6 +282,11 @@ class FormManager extends BaseResource {
    * Message to consumers bank statement or credit card bill if supported by
    * payment method.
    *
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters from this field to avoid validation errors.
+   *
+   * See: SanitizeTrait::sanitize().
+   *
    * @param string $message
    *   The message.
    *
@@ -275,7 +294,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerSettlementMessage(string $message) : self {
-    $this->assertText($message);
+    $this->assertStrictText($message);
     Assert::maxLength($message, 255);
 
     return $this->setValue('MSG_SETTLEMENT_PAYER', $message);
@@ -286,6 +305,11 @@ class FormManager extends BaseResource {
    *
    * Message to merchants bank statement if supported by payment method.
    *
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters from this field to avoid validation errors.
+   *
+   * See: SanitizeTrait::sanitize().
+   *
    * @param string $message
    *   The message.
    *
@@ -293,7 +317,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setMerchantSettlementMessage(string $message) : self {
-    $this->assertText($message);
+    $this->assertStrictText($message);
     Assert::maxLength($message, 255);
 
     return $this->setValue('MSG_SETTLEMENT_MERCHANT', $message);
@@ -425,6 +449,9 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerEmail(string $email) : self {
+    if (!(new EmailValidator())->isValid($email)) {
+      throw new \InvalidArgumentException(sprintf('%s is not valid email address.', $email));
+    }
     Assert::maxLength($email, 255);
 
     return $this->setValue('PAYER_PERSON_EMAIL', $email);
@@ -440,7 +467,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerFirstName(string $name) : self {
-    $this->assertNonStrictText($name);
+    $this->assertText($name);
     Assert::maxLength($name, 64);
 
     return $this->setValue('PAYER_PERSON_FIRSTNAME', $name);
@@ -456,7 +483,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerLastName(string $name) : self {
-    $this->assertNonStrictText($name);
+    $this->assertText($name);
     Assert::maxLength($name, 64);
 
     return $this->setValue('PAYER_PERSON_LASTNAME', $name);
@@ -472,7 +499,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerCompany(string $company) : self {
-    $this->assertNonStrictText($company);
+    $this->assertText($company);
     Assert::maxLength($company, 128);
 
     return $this->setValue('PAYER_COMPANY_NAME', $company);
@@ -488,7 +515,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerAddress(string $address) : self {
-    $this->assertNonStrictText($address);
+    $this->assertText($address);
     Assert::maxLength($address, 128);
 
     return $this->setValue('PAYER_PERSON_ADDR_STREET', $address);
@@ -519,7 +546,7 @@ class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerCity(string $city) : self {
-    $this->assertNonStrictText($city);
+    $this->assertText($city);
     Assert::maxLength($city, 64);
 
     return $this->setValue('PAYER_PERSON_ADDR_TOWN', $city);
@@ -601,7 +628,7 @@ class FormManager extends BaseResource {
       'TIMESTAMP',
       'STATUS',
     ])
-      // Update params in to contains all defines values.
+      // Update params in to contain all defines values.
       ->setParamsIn(array_map(function (FormValue $value) {
         return $value->key();
       }, $form->values));

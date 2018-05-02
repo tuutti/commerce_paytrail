@@ -13,7 +13,7 @@ use Drupal\commerce_product\Entity\ProductVariation;
 use Drupal\profile\Entity\Profile;
 
 /**
- * PaytrailBaseTest unit tests.
+ * Test data includes.
  *
  * @group commerce_paytrail
  * @coversDefaultClass \Drupal\commerce_paytrail\EventSubscriber\FormAlterSubscriber

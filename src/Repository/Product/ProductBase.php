@@ -103,6 +103,11 @@ abstract class ProductBase {
   /**
    * Sets the product title.
    *
+   * Note: Paytrail has strict validation for this field. You might want to
+   * strip non-allowed characters from this field to avoid validation errors.
+   *
+   * See: SanitizeTrait::sanitize().
+   *
    * @param string $title
    *   The title.
    *
@@ -110,7 +115,7 @@ abstract class ProductBase {
    *   The self.
    */
   public function setTitle(string $title) : self {
-    $this->assertNonStrictText($title);
+    $this->assertText($title);
 
     $this->title = $title;
     return $this;
