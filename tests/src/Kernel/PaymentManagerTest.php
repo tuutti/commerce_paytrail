@@ -20,6 +20,58 @@ use Symfony\Component\HttpFoundation\Request;
 class PaymentManagerTest extends PaymentManagerKernelTestBase {
 
   /**
+   * Tests ::getReturnUrl().
+   *
+   * @covers ::getReturnUrl
+   * @dataProvider returnUrlDataProvider
+   */
+  public function testReturnUrl(string $expected, string $route, array $arguments) {
+    $order = Order::create([
+      'type' => 'default',
+      'store_id' => $this->store,
+    ]);
+    $order->save();
+
+    $value = $this->sut->getReturnUrl($order, $route, $arguments);
+    $expected = str_replace('%id', $order->id(), $expected);
+
+    $this->assertEquals($expected, $value);
+  }
+
+  /**
+   * Data provider for testReturnUrl().
+   */
+  public function returnUrlDataProvider() {
+    return [
+      [
+        'http://localhost/checkout/%id/payment/return',
+        'commerce_payment.checkout.return',
+        [],
+      ],
+      [
+        'http://localhost/checkout/%id/payment/cancel',
+        'commerce_payment.checkout.cancel',
+        [],
+      ],
+      [
+        'http://localhost/checkout/%id/review/cancel',
+        'commerce_payment.checkout.cancel',
+        ['step' => 'review'],
+      ],
+      [
+        'http://localhost/payment/notify/paytrail?commerce_order=%id&step=payment',
+        'commerce_payment.notify',
+        ['commerce_payment_gateway' => 'paytrail'],
+      ],
+      [
+        'http://localhost/payment/notify/test?commerce_order=%id&step=payment',
+        'commerce_payment.notify',
+        ['commerce_payment_gateway' => 'test'],
+      ],
+    ];
+  }
+
+  /**
    * Tests buildFormInterface().
    *
    * @covers ::buildFormInterface
