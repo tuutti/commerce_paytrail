@@ -63,12 +63,11 @@ class PaymentManager implements PaymentManagerInterface {
   /**
    * {@inheritdoc}
    */
-  public function getReturnUrl(OrderInterface $order, string $type, $step = 'payment') : string {
-    $arguments = [
+  public function getReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string {
+    $arguments = array_merge([
       'commerce_order' => $order->id(),
-      'step' => $step,
-      'commerce_payment_gateway' => 'paytrail',
-    ];
+      'step' => $arguments['step'] ?? 'payment',
+    ], $arguments);
 
     return (new Url($type, $arguments, ['absolute' => TRUE]))
       ->toString();
@@ -84,7 +83,9 @@ class PaymentManager implements PaymentManagerInterface {
       ->setAmount($order->getTotalPrice())
       ->setSuccessUrl($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
       ->setCancelUrl($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
-      ->setNotifyUrl($this->getReturnUrl($order, 'commerce_payment.notify'))
+      ->setNotifyUrl($this->getReturnUrl($order, 'commerce_payment.notify', [
+        'commerce_payment_gateway' => $plugin->getPluginId(),
+      ]))
       ->setPaymentMethods($plugin->getVisibleMethods());
 
     return $form;
