@@ -30,7 +30,7 @@ interface PaymentManagerInterface {
    * @return \Drupal\Core\GeneratedUrl|string
    *   Return absolute return url.
    */
-  public function getReturnUrl(OrderInterface $order, string $type, array $arguments) : string;
+  public function getReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string;
 
   /**
    * Builds form for a given order.

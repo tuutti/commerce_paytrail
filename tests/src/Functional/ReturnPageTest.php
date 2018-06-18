@@ -191,7 +191,9 @@ class ReturnPageTest extends OrderBrowserTestBase {
 
     $query['RETURN_AUTHCODE'] = '1234';
 
-    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify');
+    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify', [
+      'commerce_payment_gateway' => 'paytrail',
+    ]);
 
     // Test invalid order id.
     $this->drupalGet($notify_url, ['query' => $query]);
@@ -273,7 +275,9 @@ class ReturnPageTest extends OrderBrowserTestBase {
     ]);
     $request = Request::createFromGlobals();
 
-    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify');
+    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify', [
+      'commerce_payment_gateway' => 'paytrail',
+    ]);
 
     // Test with correct values.
     $request->query = new ParameterBag([

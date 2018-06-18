@@ -84,7 +84,7 @@ class PaymentManager implements PaymentManagerInterface {
       ->setSuccessUrl($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
       ->setCancelUrl($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
       ->setNotifyUrl($this->getReturnUrl($order, 'commerce_payment.notify', [
-        'commerce_payment_gateway' => $plugin->getPluginId(),
+        'commerce_payment_gateway' => $plugin->getEntityId(),
       ]))
       ->setPaymentMethods($plugin->getVisibleMethods());
 
