@@ -67,7 +67,6 @@ class PaymentManager implements PaymentManagerInterface {
     $arguments = array_merge([
       'commerce_order' => $order->id(),
       'step' => $arguments['step'] ?? 'payment',
-      'commerce_payment_gateway' => $arguments['commerce_payment_gateway'] ?? 'paytrail',
     ], $arguments);
 
     return (new Url($type, $arguments, ['absolute' => TRUE]))
