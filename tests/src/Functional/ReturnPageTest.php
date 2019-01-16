@@ -186,7 +186,6 @@ class ReturnPageTest extends OrderBrowserTestBase {
    * Tests IPN callback.
    */
   public function testIpn() {
-    return;
     $order_item = $this->createEntity('commerce_order_item', [
       'type' => 'default',
       'unit_price' => [
@@ -280,7 +279,6 @@ class ReturnPageTest extends OrderBrowserTestBase {
    * Tests IPN payment creation.
    */
   public function testIpnPayment() {
-    return;
     $this->gateway->getPlugin()->setConfiguration([
       'allow_ipn_create_payment' => TRUE,
     ]);
