@@ -2,10 +2,12 @@
 
 namespace Drupal\Tests\commerce_paytrail\Functional;
 
+use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Repository\Response;
 use Drupal\commerce_store\StoreCreationTrait;
+use Drupal\Core\Url;
 use Drupal\Tests\commerce_order\Functional\OrderBrowserTestBase;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
@@ -76,6 +78,29 @@ class ReturnPageTest extends OrderBrowserTestBase {
   }
 
   /**
+   * Builds the return url.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param string $type
+   *   The return url type.
+   * @param array $arguments
+   *   The additional arguments.
+   *
+   * @return string
+   *   The return url.
+   */
+  private function buildReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string {
+    $arguments = array_merge([
+      'commerce_order' => $order->id(),
+      'step' => $arguments['step'] ?? 'payment',
+    ], $arguments);
+
+    return (new Url($type, $arguments, ['absolute' => TRUE]))
+      ->toString();
+  }
+
+  /**
    * Tests return callbacks.
    */
   public function testReturn() {
@@ -98,7 +123,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
       'checkout_step' => 'payment',
       'payment_gateway' => 'paytrail',
     ]);
-    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $return_url = $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
 
     $request = Request::createFromGlobals();
 
@@ -191,7 +216,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
 
     $query['RETURN_AUTHCODE'] = '1234';
 
-    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify', [
+    $notify_url = $this->buildReturnUrl($order, 'commerce_payment.notify', [
       'commerce_payment_gateway' => 'paytrail',
     ]);
 
@@ -230,7 +255,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->assertSession()->pageTextContains('Invalid payment state.');
 
     // Call return url to create payment.
-    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $return_url = $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
     $this->drupalGet($return_url, ['query' => $query]);
 
     $this->drupalGet($notify_url, ['query' => $query]);
@@ -275,7 +300,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     ]);
     $request = Request::createFromGlobals();
 
-    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify', [
+    $notify_url = $this->buildReturnUrl($order, 'commerce_payment.notify', [
       'commerce_payment_gateway' => 'paytrail',
     ]);
 
@@ -304,7 +329,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->assertEquals('PAID', $payment->getRemoteState());
 
     // Make sure payment state won't be overridden when calling return again.
-    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $return_url = $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
     $this->drupalGet($return_url, ['query' => $query]);
 
     $entity_manager->getStorage('commerce_payment')->resetCache([1]);

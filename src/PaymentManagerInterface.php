@@ -18,21 +18,6 @@ use Drupal\commerce_paytrail\Repository\Response;
 interface PaymentManagerInterface {
 
   /**
-   * Get return url for given type.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   Order.
-   * @param string $type
-   *   Return type.
-   * @param array $arguments
-   *   The additional url arguments.
-   *
-   * @return \Drupal\Core\GeneratedUrl|string
-   *   Return absolute return url.
-   */
-  public function getReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string;
-
-  /**
    * Builds form for a given order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order

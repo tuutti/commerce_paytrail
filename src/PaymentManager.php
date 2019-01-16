@@ -24,24 +24,12 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 class PaymentManager implements PaymentManagerInterface {
 
   /**
-   * Drupal\Core\Entity\EntityTypeManager definition.
+   * The payment storage.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   * @var \Drupal\commerce_payment\PaymentStorageInterface
    */
-  protected $entityTypeManager;
-
-  /**
-   * The event dispatcher.
-   *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
-   */
+  protected $paymentStorage;
   protected $eventDispatcher;
-
-  /**
-   * The time service.
-   *
-   * @var \Drupal\Component\Datetime\TimeInterface
-   */
   protected $time;
 
   /**
@@ -55,15 +43,51 @@ class PaymentManager implements PaymentManagerInterface {
    *   The current time.
    */
   public function __construct(EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, TimeInterface $time) {
-    $this->entityTypeManager = $entity_type_manager;
+    $this->paymentStorage = $entity_type_manager->getStorage('commerce_payment');
     $this->eventDispatcher = $event_dispatcher;
     $this->time = $time;
   }
 
   /**
-   * {@inheritdoc}
+   * Get return url for given type.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   Order.
+   * @param string $type
+   *   Return type.
+   * @param string $step
+   *   The default step.
+   *
+   * @return \Drupal\Core\GeneratedUrl|string
+   *   Return absolute return url.
+   *
+   * @deprecated
+   *   This was accidentally exposed as public API and will be removed in 3.x.
    */
-  public function getReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string {
+  public function getReturnUrl(OrderInterface $order, string $type, $step = 'payment') : string {
+    $arguments = [
+      'commerce_order' => $order->id(),
+      'step' => $step,
+      'commerce_payment_gateway' => 'paytrail',
+    ];
+    return (new Url($type, $arguments, ['absolute' => TRUE]))
+      ->toString();
+  }
+
+  /**
+   * Builds the return url.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param string $type
+   *   The return url type.
+   * @param array $arguments
+   *   The additional arguments.
+   *
+   * @return string
+   *   The return url.
+   */
+  private function buildReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string {
     $arguments = array_merge([
       'commerce_order' => $order->id(),
       'step' => $arguments['step'] ?? 'payment',
@@ -80,10 +104,10 @@ class PaymentManager implements PaymentManagerInterface {
     $form = new FormManager($plugin->getMerchantId(), $plugin->getMerchantHash());
 
     $form->setOrderNumber($order->id())
-      ->setAmount($order->getTotalPrice())
-      ->setSuccessUrl($this->getReturnUrl($order, 'commerce_payment.checkout.return'))
-      ->setCancelUrl($this->getReturnUrl($order, 'commerce_payment.checkout.cancel'))
-      ->setNotifyUrl($this->getReturnUrl($order, 'commerce_payment.notify', [
+      ->setAmount($order->getBalance())
+      ->setSuccessUrl($this->buildReturnUrl($order, 'commerce_payment.checkout.return'))
+      ->setCancelUrl($this->buildReturnUrl($order, 'commerce_payment.checkout.cancel'))
+      ->setNotifyUrl($this->buildReturnUrl($order, 'commerce_payment.notify', [
         'commerce_payment_gateway' => $plugin->getEntityId(),
       ]))
       ->setPaymentMethods($plugin->getVisibleMethods());
@@ -112,9 +136,8 @@ class PaymentManager implements PaymentManagerInterface {
    */
   protected function getPayment(OrderInterface $order, PaytrailBase $plugin) : ? PaymentInterface {
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface[] $payments */
-    $payments = $this->entityTypeManager
-      ->getStorage('commerce_payment')
-      ->loadByProperties(['order_id' => $order->id()]);
+    $payments = $this->paymentStorage
+      ->loadMultipleByOrder($order);
 
     if (empty($payments)) {
       return NULL;
@@ -134,11 +157,9 @@ class PaymentManager implements PaymentManagerInterface {
    * {@inheritdoc}
    */
   public function createPaymentForOrder(string $status, OrderInterface $order, PaytrailBase $plugin, Response $response) : PaymentInterface {
-    $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
-
     if (!$payment = $this->getPayment($order, $plugin)) {
       /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
-      $payment = $payment_storage->create([
+      $payment = $this->paymentStorage->create([
         'amount' => $order->getTotalPrice(),
         'payment_gateway' => $plugin->getEntityId(),
         'order_id' => $order->id(),
