@@ -93,7 +93,7 @@ trait AssertTrait {
    */
   public function assertPostalCode(string $code) : void {
     Assert::maxLength($code, 16);
-    Assert::regex($code, '/^[0-9a-zA-Z]*$/');
+    Assert::regex($code, '/^[0-9a-zA-Z ]*$/');
   }
 
   /**

@@ -90,7 +90,7 @@ class FormManagerTest extends UnitTestCase {
     $data = [
       'wwww:dsd' => TRUE,
       'dasda//dsa' => TRUE,
-      '001 00' => TRUE,
+      'CR2 6XH' => FALSE,
       '123456' => FALSE,
       '12345AW' => FALSE,
       'W134555A' => FALSE,
