@@ -2,9 +2,13 @@
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\commerce_order\Entity\Order;
+use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\PaymentManager;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_price\Price;
 use Drupal\commerce_tax\Entity\TaxType;
 
 /**
@@ -112,6 +116,33 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     $account = $this->createUser([]);
 
     \Drupal::currentUser()->setAccount($account);
+  }
+
+  /**
+   * Creates new order.
+   *
+   * @return \Drupal\commerce_order\Entity\OrderInterface
+   *   The order.
+   */
+  protected function createOrder(): OrderInterface {
+    /** @var \Drupal\commerce_order\Entity\OrderItemInterface $orderItem */
+    $orderItem = OrderItem::create([
+      'type' => 'default',
+    ]);
+    $orderItem->save();
+    $orderItem = $this->reloadEntity($orderItem);
+
+    $orderItem->setUnitPrice(new Price('11', 'EUR'))
+      ->setQuantity(2);
+
+    $order = Order::create([
+      'type' => 'default',
+      'store_id' => $this->store,
+    ]);
+    $order->addItem($orderItem);
+    $order->save();
+
+    return $order;
   }
 
 }

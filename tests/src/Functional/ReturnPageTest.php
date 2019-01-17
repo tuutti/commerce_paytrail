@@ -2,10 +2,12 @@
 
 namespace Drupal\Tests\commerce_paytrail\Functional;
 
+use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Repository\Response;
 use Drupal\commerce_store\StoreCreationTrait;
+use Drupal\Core\Url;
 use Drupal\Tests\commerce_order\Functional\OrderBrowserTestBase;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
@@ -76,6 +78,29 @@ class ReturnPageTest extends OrderBrowserTestBase {
   }
 
   /**
+   * Builds the return url.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param string $type
+   *   The return url type.
+   * @param array $arguments
+   *   The additional arguments.
+   *
+   * @return string
+   *   The return url.
+   */
+  private function buildReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string {
+    $arguments = array_merge([
+      'commerce_order' => $order->id(),
+      'step' => $arguments['step'] ?? 'payment',
+    ], $arguments);
+
+    return (new Url($type, $arguments, ['absolute' => TRUE]))
+      ->toString();
+  }
+
+  /**
    * Tests return callbacks.
    */
   public function testReturn() {
@@ -98,7 +123,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
       'checkout_step' => 'payment',
       'payment_gateway' => 'paytrail',
     ]);
-    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $return_url = $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
 
     $request = Request::createFromGlobals();
 
@@ -120,28 +145,33 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->drupalGet($return_url, ['query' => $query]);
     $this->assertSession()->pageTextContains('Validation failed due to security hash mismatch (payment_state).');
 
-    $request->query = new ParameterBag([
-      'ORDER_NUMBER' => $order->id(),
-      'PAYMENT_ID' => '123d',
-      'PAYMENT_METHOD' => '1',
-      'TIMESTAMP' => \Drupal::time()->getRequestTime(),
-      'STATUS' => 'PAID',
-      'RETURN_AUTHCODE' => '1234',
-    ]);
-    $response = Response::createFromRequest($this->merchant_hash, $order, $request);
-    $authcode = $response->generateReturnChecksum($response->getHashValues());
-    $query = $response->getHashValues();
-    $query['RETURN_AUTHCODE'] = '1234';
+    // Update order back to payment step.
+    $order->set('checkout_step', 'payment')->save();
+
+    // Update status to paid.
+    $query['STATUS'] = 'PAID';
 
     $this->drupalGet($return_url, ['query' => $query]);
     $this->assertSession()->pageTextContains('Validation failed due to security hash mismatch (hash_mismatch).');
 
+    // Update order back to payment step.
+    $order->set('checkout_step', 'payment')->save();
+
+    $request->query->set('STATUS', 'PAID');
+    $response = Response::createFromRequest($this->merchant_hash, $order, $request);
+    $authcode = $response->generateReturnChecksum($response->getHashValues());
+    $query = $response->getHashValues();
     // Test with invalid order id.
     $query['RETURN_AUTHCODE'] = $authcode;
+    $query['ORDER_NUMBER'] = 5;
 
-    $this->drupalGet($return_url, ['query' => ['ORDER_NUMBER' => '5'] + $query]);
+    $this->drupalGet($return_url, ['query' => $query]);
     $this->assertSession()->pageTextContains('Validation failed due to security hash mismatch (order_number).');
 
+    // Update order back to payment step.
+    $order->set('checkout_step', 'payment')->save();
+
+    $query['ORDER_NUMBER'] = $order->id();
     // Test correct return url.
     $this->drupalGet($return_url, ['query' => $query]);
     $this->assertSession()->pageTextContains('Payment was processed.');
@@ -191,7 +221,9 @@ class ReturnPageTest extends OrderBrowserTestBase {
 
     $query['RETURN_AUTHCODE'] = '1234';
 
-    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify');
+    $notify_url = $this->buildReturnUrl($order, 'commerce_payment.notify', [
+      'commerce_payment_gateway' => 'paytrail',
+    ]);
 
     // Test invalid order id.
     $this->drupalGet($notify_url, ['query' => $query]);
@@ -228,7 +260,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->assertSession()->pageTextContains('Invalid payment state.');
 
     // Call return url to create payment.
-    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $return_url = $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
     $this->drupalGet($return_url, ['query' => $query]);
 
     $this->drupalGet($notify_url, ['query' => $query]);
@@ -273,7 +305,9 @@ class ReturnPageTest extends OrderBrowserTestBase {
     ]);
     $request = Request::createFromGlobals();
 
-    $notify_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.notify');
+    $notify_url = $this->buildReturnUrl($order, 'commerce_payment.notify', [
+      'commerce_payment_gateway' => 'paytrail',
+    ]);
 
     // Test with correct values.
     $request->query = new ParameterBag([
@@ -300,7 +334,7 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->assertEquals('PAID', $payment->getRemoteState());
 
     // Make sure payment state won't be overridden when calling return again.
-    $return_url = $this->paymentManager->getReturnUrl($order, 'commerce_payment.checkout.return');
+    $return_url = $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
     $this->drupalGet($return_url, ['query' => $query]);
 
     $entity_manager->getStorage('commerce_payment')->resetCache([1]);

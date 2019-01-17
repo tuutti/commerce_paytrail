@@ -2,12 +2,9 @@
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
-use Drupal\commerce_order\Entity\Order;
-use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_paytrail\Repository\FormManager;
 use Drupal\commerce_paytrail\Repository\Response;
-use Drupal\commerce_price\Price;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -20,22 +17,48 @@ use Symfony\Component\HttpFoundation\Request;
 class PaymentManagerTest extends PaymentManagerKernelTestBase {
 
   /**
+   * Tests ::buildReturnUrl().
+   *
+   * @covers ::buildReturnUrl
+   * @dataProvider returnUrlDataProvider
+   */
+  public function testReturnUrl(string $type, string $expected) {
+    $order = $this->createOrder();
+
+    $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
+    $data = $form->build();
+
+    $this->assertEquals(str_replace('%id', $order->id(), $expected), $data[$type]);
+  }
+
+  /**
+   * Data provider for testReturnUrl().
+   */
+  public function returnUrlDataProvider() {
+    return [
+      [
+        'URL_SUCCESS',
+        'http://localhost/checkout/%id/payment/return',
+      ],
+      [
+        'URL_CANCEL',
+        'http://localhost/checkout/%id/payment/cancel',
+      ],
+      [
+        'URL_NOTIFY',
+        'http://localhost/payment/notify/paytrail?commerce_order=%id&step=payment',
+      ],
+    ];
+  }
+
+  /**
    * Tests buildFormInterface().
    *
    * @covers ::buildFormInterface
    * @covers ::dispatch
    */
   public function testBuildFormInterface() {
-    $orderItem = OrderItem::create([
-      'type' => 'default',
-    ]);
-    $orderItem->setUnitPrice(new Price('11', 'EUR'));
-    $order = Order::create([
-      'type' => 'default',
-      'store_id' => $this->store,
-    ]);
-    $order->addItem($orderItem);
-    $order->save();
+    $order = $this->createOrder();
 
     $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
     $this->assertInstanceOf(FormManager::class, $form);
@@ -54,16 +77,7 @@ class PaymentManagerTest extends PaymentManagerKernelTestBase {
    * @covers ::createPaymentForOrder
    */
   public function testPayments() {
-    $orderItem = OrderItem::create([
-      'type' => 'default',
-    ]);
-    $orderItem->setUnitPrice(new Price('11', 'EUR'));
-    $order = Order::create([
-      'type' => 'default',
-      'store_id' => $this->store,
-    ]);
-    $order->addItem($orderItem);
-    $order->save();
+    $order = $this->createOrder();
 
     $request = Request::createFromGlobals();
 
@@ -111,16 +125,7 @@ class PaymentManagerTest extends PaymentManagerKernelTestBase {
    * @covers ::getPayment
    */
   public function testIpnPayment() {
-    $orderItem = OrderItem::create([
-      'type' => 'default',
-    ]);
-    $orderItem->setUnitPrice(new Price('11', 'EUR'));
-    $order = Order::create([
-      'type' => 'default',
-      'store_id' => $this->store,
-    ]);
-    $order->addItem($orderItem);
-    $order->save();
+    $order = $this->createOrder();
 
     $request = Request::createFromGlobals();
 
