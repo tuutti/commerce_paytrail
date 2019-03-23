@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\Tests\commerce_paytrail\Functional;
+namespace Drupal\Tests\commerce_paytrail\FunctionalJavascript;
 
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
