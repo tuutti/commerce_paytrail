@@ -48,6 +48,7 @@ env:
 
     # Simpletest specific commandline arguments, the DRUPAL_TI_SIMPLETEST_GROUP is appended at the end.
     - DRUPAL_TI_SIMPLETEST_ARGS="--verbose --color --concurrency 4 --url $DRUPAL_TI_WEBSERVER_URL:$DRUPAL_TI_WEBSERVER_PORT --types Simpletest"
+    - DRUPAL_TI_SIMPLETEST_JS_ARGS="--verbose --color --concurrency 5 --url $DRUPAL_TI_WEBSERVER_URL:$DRUPAL_TI_WEBSERVER_PORT --types PHPUnit-FunctionalJavascript --suppress-deprecations"
 
     # Code coverage via coveralls.io
     - DRUPAL_TI_COVERAGE="satooshi/php-coveralls:0.6.*"
@@ -74,11 +75,14 @@ before_install:
 
 install:
   - drupal-ti install
-  - mkdir travis-phantomjs
-  - wget https://s3.amazonaws.com/travis-phantomjs/phantomjs-2.0.0-ubuntu-14.04.tar.bz2 -O $PWD/travis-phantomjs/phantomjs-2.0.0-ubuntu-14.04.tar.bz2
-  - tar -xvf $PWD/travis-phantomjs/phantomjs-2.0.0-ubuntu-14.04.tar.bz2 -C $PWD/travis-phantomjs
-  - export PATH=$PWD/travis-phantomjs:$PATH
-  - phantomjs --version
+  # Install Chromedriver.
+  - mkdir travis-chromedriver
+  - CHROMEDRIVER_VERSION=$(wget http://chromedriver.storage.googleapis.com/LATEST_RELEASE -qO-)
+  - wget http://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip
+  - unzip chromedriver_linux64.zip -d travis-chromedriver && rm -f chromedriver_linux64.zip
+  - chmod a+x travis-chromedriver/chromedriver
+  - export PATH=$PWD/travis-chromedriver:$PATH
+  - chromedriver --version
 
 before_script:
   - drupal-ti --include ".travis-before-script.sh"
@@ -86,6 +90,7 @@ before_script:
 
 script:
   - drupal-ti script
+  - drupal-ti --include ".travis-simpletest-js.sh"
 
 after_script:
   - drupal-ti after_script
