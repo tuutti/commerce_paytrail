@@ -22,6 +22,9 @@ branches:
 matrix:
   fast_finish: true
 
+addons:
+  chrome: stable
+
 env:
   global:
     - SYMFONY_DEPRECATIONS_HELPER="disabled"
@@ -47,7 +50,7 @@ env:
     - DRUPAL_TI_WEBSERVER_PORT="8080"
 
     # Simpletest specific commandline arguments, the DRUPAL_TI_SIMPLETEST_GROUP is appended at the end.
-    - DRUPAL_TI_SIMPLETEST_ARGS="--verbose --color --concurrency 4 --url $DRUPAL_TI_WEBSERVER_URL:$DRUPAL_TI_WEBSERVER_PORT --types Simpletest,PHPUnit-Unit,PHPUnit-Kernel,PHPUnit-Functional --suppress-deprecations"
+    - DRUPAL_TI_SIMPLETEST_ARGS="--verbose --color --concurrency 5 --url $DRUPAL_TI_WEBSERVER_URL:$DRUPAL_TI_WEBSERVER_PORT --types Simpletest,PHPUnit-Unit,PHPUnit-Kernel,PHPUnit-Functional --suppress-deprecations"
     - DRUPAL_TI_SIMPLETEST_JS_ARGS="--verbose --color --concurrency 5 --url $DRUPAL_TI_WEBSERVER_URL:$DRUPAL_TI_WEBSERVER_PORT --types PHPUnit-FunctionalJavascript --suppress-deprecations"
 
     # Code coverage via coveralls.io

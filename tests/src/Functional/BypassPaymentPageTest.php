@@ -10,7 +10,7 @@ use Drupal\Core\Entity\Entity\EntityFormDisplay;
 use Drupal\Tests\commerce\FunctionalJavascript\CommerceWebDriverTestBase;
 
 /**
- * Class BypassPaymentPageTest.
+ * Tests bypass payment page feature.
  *
  * @group commerce_paytrail
  */
