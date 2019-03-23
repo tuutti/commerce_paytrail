@@ -1,24 +1,22 @@
 <?php
 
-namespace Drupal\Tests\commerce_paytrail\Functional;
+namespace Drupal\Tests\commerce_paytrail\FunctionalJavascript;
 
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_store\StoreCreationTrait;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
-use Drupal\Tests\commerce\Functional\CommerceBrowserTestBase;
-use Drupal\Tests\commerce\FunctionalJavascript\JavascriptTestTrait;
+use Drupal\Tests\commerce\FunctionalJavascript\CommerceWebDriverTestBase;
 
 /**
- * Class BypassPaymentPageTest.
+ * Tests bypass payment page feature.
  *
  * @group commerce_paytrail
  */
-class BypassPaymentPageTest extends CommerceBrowserTestBase {
+class BypassPaymentPageTest extends CommerceWebDriverTestBase {
 
   use StoreCreationTrait;
-  use JavascriptTestTrait;
 
   /**
    * {@inheritdoc}
@@ -189,7 +187,7 @@ class BypassPaymentPageTest extends CommerceBrowserTestBase {
       $selector = sprintf('.payment-button-%d', $method->id());
       $button = $this->getSession()->getPage()->find('css', $selector);
       $button->press();
-      $this->waitForAjaxToFinish();
+      $this->assertSession()->assertWaitOnAjaxRequest();
       // Make sure submit button gets marked as selected.
       $found = $this->getSession()->getPage()->find('css', $selector . '.selected');
       $this->assertEquals($found->getValue(), $method->label());
