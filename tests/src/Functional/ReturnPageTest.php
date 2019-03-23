@@ -108,14 +108,23 @@ class ReturnPageTest extends OrderBrowserTestBase {
     $this->drupalGet($return_url, ['query' => $arguments + $return_code]);
     $this->assertSession()->pageTextContains('Validation failed (redirect key mismatch).');
 
+    // Update order back to payment step.
+    $order->set('checkout_step', 'payment')->save();
+
     // Test with invalid authcode.
     $return_url = str_replace('redirect_key=12345', 'redirect_key=' . $redirect_key, $return_url);
     $this->drupalGet($return_url, ['query' => $arguments + $return_code]);
     $this->assertSession()->pageTextContains('Validation failed (security hash mismatch)');
 
+    // Update order back to payment step.
+    $order->set('checkout_step', 'payment')->save();
+
     // Test with invalid order id.
     $this->drupalGet($return_url, ['query' => $arguments + ['ORDER_NUMBER' => 5]]);
     $this->assertSession()->pageTextContains('Validation failed (security hash mismatch)');
+
+    // Update order back to payment step.
+    $order->set('checkout_step', 'payment')->save();
 
     // Test correct return url.
     $return_code['RETURN_AUTHCODE'] = $authcode;
