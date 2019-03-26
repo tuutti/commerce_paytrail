@@ -449,9 +449,6 @@ final class FormManager extends BaseResource {
    *   The self.
    */
   public function setPayerEmail(string $email) : self {
-    if (!(new EmailValidator())->isValid($email)) {
-      throw new \InvalidArgumentException(sprintf('%s is not valid email address.', $email));
-    }
     Assert::maxLength($email, 255);
 
     return $this->setValue('PAYER_PERSON_EMAIL', $email);
