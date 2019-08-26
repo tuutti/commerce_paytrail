@@ -25,6 +25,9 @@ matrix:
 addons:
   chrome: stable
 
+services:
+  - mysql
+
 env:
   global:
     - SYMFONY_DEPRECATIONS_HELPER="disabled"
