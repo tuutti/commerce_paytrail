@@ -86,6 +86,7 @@ install:
   - unzip chromedriver_linux64.zip -d travis-chromedriver && rm -f chromedriver_linux64.zip
   - chmod a+x travis-chromedriver/chromedriver
   - export PATH=$PWD/travis-chromedriver:$PATH
+  - composer require phpunit/phpunit
   - chromedriver --version
 
 before_script:
