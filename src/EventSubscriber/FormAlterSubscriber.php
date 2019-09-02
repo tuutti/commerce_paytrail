@@ -5,8 +5,6 @@ namespace Drupal\commerce_paytrail\EventSubscriber;
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
-use Drupal\commerce_paytrail\Exception\InvalidBillingException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_paytrail\SanitizeTrait;
 use Drupal\commerce_price\Price;
@@ -42,12 +40,8 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
     $order = $event->getOrder();
 
     // Send address data only if configured.
-    if (!$event->getPlugin()->isDataIncluded(PaytrailBase::PAYER_DETAILS)) {
-      return;
-    }
-
     if (!$billing_data = $order->getBillingProfile()) {
-      throw new InvalidBillingException('Invalid billing data for ' . $order->id());
+      return;
     }
     /** @var \Drupal\address\AddressInterface $address */
     $address = $billing_data->get('address')->first();
@@ -66,7 +60,7 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
   public function addProductDetails(FormInterfaceEvent $event) : void {
     $order = $event->getOrder();
 
-    if (!$event->getPlugin()->isDataIncluded(PaytrailBase::PRODUCT_DETAILS)) {
+    if (!$event->getPlugin()->collectProductDetails()) {
       return;
     }
 

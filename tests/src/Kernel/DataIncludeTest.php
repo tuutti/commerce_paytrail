@@ -5,8 +5,6 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderItem;
-use Drupal\commerce_paytrail\Exception\InvalidBillingException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_product\Entity\Product;
 use Drupal\commerce_product\Entity\ProductVariation;
@@ -28,10 +26,7 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
   public function testDataIncludes() {
     $this->gateway->getPlugin()->setConfiguration(
       [
-        'included_data' => [
-          PaytrailBase::PAYER_DETAILS => PaytrailBase::PAYER_DETAILS,
-          PaytrailBase::PRODUCT_DETAILS => PaytrailBase::PRODUCT_DETAILS,
-        ],
+        'collect_product_details' => TRUE,
       ]
     );
     $this->gateway->save();
@@ -86,14 +81,10 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
     }
     $order->save();
 
-    // Make sure empty billing profile throws an exception.
-    try {
-      $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
-      $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
-      $this->fail('Expected InvalidBillingException');
-    }
-    catch (InvalidBillingException $e) {
-    }
+    // Make sure we can build form with empty billing profile.
+    $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
+    $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
+    $this->assertTrue(empty($alter['PAYER_PERSON_ADDR_COUNTRY']));
 
     $profile = Profile::create([
       'type' => 'customer',
@@ -110,6 +101,7 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
     $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
     $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
 
+    $this->assertEquals('FI', $alter['PAYER_PERSON_ADDR_COUNTRY']);
     $this->assertEquals('1', $alter['ITEM_ID[0]']);
     $this->assertEquals('24.00', $alter['ITEM_VAT_PERCENT[0]']);
     $this->assertEquals('8.85', $alter['ITEM_DISCOUNT_PERCENT[0]']);

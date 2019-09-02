@@ -7,7 +7,6 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\PaymentManager;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_tax\Entity\TaxType;
 
@@ -99,10 +98,7 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
         'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
         'allow_ipn_create_payment' => FALSE,
         'bypass_mode' => FALSE,
-        'included_data' => [
-          PaytrailBase::PAYER_DETAILS => 0,
-          PaytrailBase::PRODUCT_DETAILS => 0,
-        ],
+        'collect_product_details' => FALSE,
       ]
     );
     $this->gateway->save();

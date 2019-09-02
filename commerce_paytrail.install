@@ -5,6 +5,7 @@
  * Contains commerce_paytrail installation procedures.
  */
 
+use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\Core\Database\Database;
 
@@ -81,9 +82,38 @@ function commerce_paytrail_update_8001() {
  * Adds default payment methods.
  */
 function commerce_paytrail_update_8200() {
-  $manager = \Drupal::entityDefinitionUpdateManager();
-  $entity_type = \Drupal::entityTypeManager()->getDefinition('paytrail_payment_method');
+  $manager = Drupal::entityDefinitionUpdateManager();
+  $entity_type = Drupal::entityTypeManager()->getDefinition('paytrail_payment_method');
   $manager->installEntityType($entity_type);
 
   commerce_paytrail_install_default_payment_methods();
+}
+
+/**
+ * Remove 'included_data' config.
+ */
+function commerce_paytrail_update_8201() {
+  foreach (PaymentGateway::loadMultiple() as $gateway) {
+    if ($gateway->getPluginId() !== 'paytrail') {
+      continue;
+    }
+    $configuration = $gateway->getPluginConfiguration();
+
+    if (isset($configuration['included_data'])) {
+
+      // Enable product details collection if enabled before.
+      if (!empty($configuration['included_data']['product'])) {
+        $configuration['collect_product_details'] = TRUE;
+      }
+
+      // Enable billing information collection if enabled before.
+      if (!empty($configuration['included_data']['payer'])) {
+        $configuration['collect_billing_information'] = TRUE;
+      }
+      unset($configuration['included_data']);
+
+      $gateway->setPluginConfiguration($configuration);
+      $gateway->save();
+    }
+  }
 }
