@@ -3,7 +3,6 @@
 namespace Drupal\Tests\commerce_paytrail\FunctionalJavascript;
 
 use Drupal\commerce_payment\Entity\PaymentGateway;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_store\StoreCreationTrait;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
@@ -141,10 +140,6 @@ class BypassPaymentPageTest extends CommerceWebDriverTestBase {
     $gateway = PaymentGateway::load('paytrail');
     $gateway->getPlugin()->setConfiguration([
       'bypass_mode' => TRUE,
-      'included_data' => [
-        PaytrailBase::PRODUCT_DETAILS => 0,
-        PaytrailBase::PAYER_DETAILS => 0,
-      ],
     ]);
     $gateway->save();
 
