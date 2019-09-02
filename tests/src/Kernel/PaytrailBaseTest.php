@@ -162,26 +162,19 @@ class PaytrailBaseTest extends CommerceKernelTestBase {
   /**
    * Tests isDataIncluded().
    *
-   * @covers ::isDataIncluded
+   * @covers ::collectProductDetails
    * @covers ::defaultConfiguration
    */
-  public function testDataIncluded() {
-    // Make sure both, product and payer details are enabled by default.
-    foreach ([PaytrailBase::PAYER_DETAILS, PaytrailBase::PRODUCT_DETAILS] as $type) {
-      $this->assertTrue($this->sut->isDataIncluded($type));
-    }
+  public function testCollectProductDetails() {
+    // Make sure the settings is disabled by default.
+    $this->assertFalse($this->sut->collectProductDetails());
 
     $this->sut->setConfiguration([
-      'included_data' => [
-        PaytrailBase::PRODUCT_DETAILS => 0,
-        PaytrailBase::PAYER_DETAILS => 0,
-      ],
+      'collect_product_details' => TRUE,
     ] + $this->sut->getConfiguration());
 
-    // Make sure details get disabled accordingly.
-    foreach ([PaytrailBase::PAYER_DETAILS, PaytrailBase::PRODUCT_DETAILS] as $type) {
-      $this->assertFalse($this->sut->isDataIncluded($type));
-    }
+    // Make sure details get enabled accordingly.
+    $this->assertTrue($this->sut->collectProductDetails());
   }
 
   /**

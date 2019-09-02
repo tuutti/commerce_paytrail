@@ -10,13 +10,9 @@ commerce_payment.commerce_payment_gateway.plugin.paytrail:
     culture:
       type: string
       label: 'Language'
-    included_data:
-      type: mapping
-      mapping:
-        payer:
-          type: string
-        product:
-          type: string
+    collect_product_details:
+      type: boolean
+      label: 'Collect product details'
     bypass_mode:
       type: boolean
       label: 'Bypass mode'

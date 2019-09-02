@@ -34,6 +34,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *   forms = {
  *     "offsite-payment" = "Drupal\commerce_paytrail\PluginForm\OffsiteRedirect\PaytrailOffsiteForm",
  *   },
+ *   requires_billing_information = FALSE
  * )
  */
 class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotificationsInterface {
@@ -81,20 +82,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    * @var string
    */
   const MERCHANT_HASH = '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ';
-
-  /**
-   * The payer details.
-   *
-   * @var string
-   */
-  const PAYER_DETAILS = 'payer';
-
-  /**
-   * The product details.
-   *
-   * @var string
-   */
-  const PRODUCT_DETAILS = 'product';
 
   /**
    * {@inheritdoc}
@@ -162,10 +149,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       'merchant_id' => static::MERCHANT_ID,
       'merchant_hash' => static::MERCHANT_HASH,
       'allow_ipn_create_payment' => FALSE,
-      'included_data' => [
-        static::PAYER_DETAILS => static::PAYER_DETAILS,
-        static::PRODUCT_DETAILS => static::PRODUCT_DETAILS,
-      ],
+      'collect_product_details' => FALSE,
       'bypass_mode' => FALSE,
     ] + parent::defaultConfiguration();
   }
@@ -215,8 +199,6 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
 
   /**
    * Allow plugin forms to log messages.
-   *
-   * @todo Should they just use \Drupal?
    *
    * @param string $message
    *   The message to log.
@@ -274,19 +256,13 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
   }
 
   /**
-   * Check if given data type should be delivered to Paytrail.
-   *
-   * @param string $type
-   *   The type.
+   * Checks whether to collect product details or not.
    *
    * @return bool
-   *   TRUE if data is included, FALSE if not.
+   *   TRUE if we're collecting product details, FALSE if not.
    */
-  public function isDataIncluded(string $type) : bool {
-    if (isset($this->configuration['included_data'][$type])) {
-      return $this->configuration['included_data'][$type] === $type;
-    }
-    return FALSE;
+  public function collectProductDetails() : bool {
+    return $this->configuration['collect_product_details'] === TRUE;
   }
 
   /**
@@ -308,7 +284,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
     $form['merchant_id'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Merchant ID'),
-      '#description' => $this->t('Merchant ID provided by PaytrailBase.'),
+      '#description' => $this->t('Merchant ID provided by Paytrail.'),
       '#required' => TRUE,
       '#default_value' => $this->configuration['merchant_id'],
     ];
@@ -321,14 +297,11 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
       '#default_value' => $this->configuration['merchant_hash'],
     ];
 
-    $form['included_data'] = [
-      '#type' => 'checkboxes',
-      '#title' => $this->t('Data to deliver'),
-      '#default_value' => $this->configuration['included_data'],
-      '#options' => [
-        static::PRODUCT_DETAILS => $this->t('Product details'),
-        static::PAYER_DETAILS => $this->t('Payer details'),
-      ],
+    $form['collect_product_details'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Collect product details'),
+      '#description' => $this->t('Deliver product details to Paytrail.'),
+      '#default_value' => $this->configuration['collect_product_details'],
     ];
 
     $form['culture'] = [

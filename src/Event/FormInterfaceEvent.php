@@ -10,9 +10,7 @@ use Drupal\commerce_paytrail\Repository\FormManager;
 use Symfony\Component\EventDispatcher\Event;
 
 /**
- * Class FormInterfaceEvent.
- *
- * @package Drupal\commerce_paytrail\Event\PaymentReposityEvent
+ * Provides an event to alter form interface values.
  */
 class FormInterfaceEvent extends Event {
 

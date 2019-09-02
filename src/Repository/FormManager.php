@@ -9,7 +9,6 @@ use Drupal\commerce_paytrail\AssertTrait;
 use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_price\Price;
-use Egulias\EmailValidator\EmailValidator;
 use Webmozart\Assert\Assert;
 
 /**
