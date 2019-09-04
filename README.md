@@ -1,5 +1,5 @@
 # Commerce paytrail
-[![Build Status](https://gitlab.com/tuutti/commerce_paytrail/badges/8.x-1.x/pipeline.svg)](https://gitlab.com/tuutti/commerce_paytrail)
+[![Build Status](https://gitlab.com/tuutti/commerce_paytrail/badges/8.x-2.x/pipeline.svg)](https://gitlab.com/tuutti/commerce_paytrail)
 
 ## Description
 This module integrates [Paytrail](https://www.paytrail.com/en) payment method with Drupal Commerce.
