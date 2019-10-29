@@ -316,7 +316,7 @@ class FormManagerTest extends UnitTestCase {
       ->setSuccessUrl('http://localhost/success')
       ->setCancelUrl('http://localhost/cancel')
       ->setNotifyUrl('http://localhost/notify')
-      ->setOrderNumber('123')
+      ->setOrderNumber('123.00')
       ->setMerchantPanelUiMessage('merchant_message')
       ->setPaymentMethodUiMessage('payment_ui_message')
       ->setPayerSettlementMessage('payment_settlement_message')
