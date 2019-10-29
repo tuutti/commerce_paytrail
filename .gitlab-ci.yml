@@ -25,11 +25,11 @@ test:7.1:
     - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME
 
 test:7.2:
-  image: registry.gitlab.com/tuutti/drupal-php-docker:7.1
+  image: registry.gitlab.com/tuutti/drupal-php-docker:7.2
   script:
     - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME
 
 test:7.3:
-  image: registry.gitlab.com/tuutti/drupal-php-docker:7.1
+  image: registry.gitlab.com/tuutti/drupal-php-docker:7.3
   script:
     - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME
