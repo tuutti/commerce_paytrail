@@ -30,7 +30,7 @@ class ResponseTest extends UnitTestCase {
    * @covers ::setPaymentStatus
    */
   public function testCreateFromRequest() {
-    $order = $this->getMock(OrderInterface::class);
+    $order = $this->getMockBuilder(OrderInterface::class)->getMock();
     $request = Request::createFromGlobals();
 
     try {
@@ -76,7 +76,8 @@ class ResponseTest extends UnitTestCase {
    * @covers \Drupal\commerce_paytrail\Repository\BaseResource
    */
   public function testIsValidResponse() {
-    $order = $this->getMock(OrderInterface::class);
+    $order = $this->getMockBuilder(OrderInterface::class)
+      ->getMock();
     $request = Request::createFromGlobals();
 
     $request->query = new ParameterBag([

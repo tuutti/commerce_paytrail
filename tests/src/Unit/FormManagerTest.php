@@ -6,7 +6,7 @@ use Drupal\commerce_paytrail\Entity\PaymentMethod;
 use Drupal\commerce_paytrail\Repository\FormManager;
 use Drupal\commerce_paytrail\Repository\Product\Product;
 use Drupal\commerce_price\Price;
-use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Tests\UnitTestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -293,7 +293,8 @@ class FormManagerTest extends UnitTestCase {
    * @covers \Drupal\commerce_paytrail\Entity\PaymentMethod
    */
   public function testBuild() {
-    $entityManager = $this->getMock(EntityManagerInterface::class);
+    $entityManager = $this->getMockBuilder(EntityTypeManagerInterface::class)
+      ->getMock();
     $container = new ContainerBuilder();
     $container->set('entity.manager', $entityManager);
 
