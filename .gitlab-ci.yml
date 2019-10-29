@@ -1,5 +1,4 @@
 # PHP7.2 + drush + composer
-image: registry.gitlab.com/tuutti/drupal-php-docker:7.2
 
 before_script:
 - ./.gitlab-ci/setup.sh
@@ -18,6 +17,19 @@ variables:
   MYSQL_ROOT_PASSWORD: drupal
   SIMPLETEST_DB: mysql://root:drupal@mariadb/drupal
 
-test:mysql:
+test:7.1:
+  image: registry.gitlab.com/tuutti/drupal-php-docker:7.1
+  variables:
+    DRUPAL_CORE: 8.7.x
+  script:
+    - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME
+
+test:7.2:
+  image: registry.gitlab.com/tuutti/drupal-php-docker:7.1
+  script:
+    - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME
+
+test:7.3:
+  image: registry.gitlab.com/tuutti/drupal-php-docker:7.1
   script:
     - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME

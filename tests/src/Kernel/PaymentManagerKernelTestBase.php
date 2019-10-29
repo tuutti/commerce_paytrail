@@ -67,6 +67,7 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     $this->installEntitySchema('commerce_promotion');
     $this->installConfig('path');
     $this->installConfig('commerce_order');
+    $this->installConfig('commerce_tax');
     $this->installConfig('commerce_product');
     $this->installConfig('commerce_checkout');
     $this->installConfig('commerce_payment');
