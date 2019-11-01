@@ -46,13 +46,20 @@ trait AssertTrait {
    *
    * @param \Drupal\commerce_price\Price $price
    *   The price.
-   * @param float $min
+   * @param string $min
    *   The minimum price.
-   * @param float $max
+   * @param string $max
    *   The maximum price.
    */
-  public function assertAmountBetween(Price $price, float $min, float $max) : void {
-    $this->assertBetween((float) $price->getNumber(), $min, $max);
+  public function assertAmountBetween(Price $price, string $min, string $max) : void {
+    $currency = $price->getCurrencyCode();
+
+    if (
+      !$price->greaterThanOrEqual(new Price($min, $currency)) ||
+      !$price->lessThanOrEqual(new Price($max, $currency))
+    ) {
+      throw new \InvalidArgumentException(sprintf('Value must be between %s and %s', $min, $max));
+    }
   }
 
   /**

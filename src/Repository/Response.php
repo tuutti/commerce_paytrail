@@ -234,10 +234,19 @@ class Response extends BaseResource {
   /**
    * Converts the values to array.
    *
+   * @deprecated use ::build() instead.
+   *
    * @return array
    *   The array of values.
    */
   public function getHashValues() : array {
+    return $this->build();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function build() : array {
     return [
       'ORDER_NUMBER' => $this->getOrderNumber(),
       'PAYMENT_ID' => $this->getPaymentId(),
@@ -253,7 +262,7 @@ class Response extends BaseResource {
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
   public function isValidResponse() : void {
-    $hash_values = $this->getHashValues();
+    $hash_values = $this->build();
 
     // Make sure payment status is paid.
     if ($this->getPaymentStatus() !== 'PAID') {

@@ -6,7 +6,6 @@ use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_paytrail\Event\FormInterfaceEvent;
 use Drupal\commerce_paytrail\Event\PaytrailEvents;
 use Drupal\commerce_paytrail\Repository\Product\Product;
-use Drupal\commerce_paytrail\SanitizeTrait;
 use Drupal\commerce_price\Price;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -15,8 +14,6 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
  * Includes required data for paytrail form interface.
  */
 final class FormAlterSubscriber implements EventSubscriberInterface {
-
-  use SanitizeTrait;
 
   protected $moduleHandler;
 
@@ -78,7 +75,7 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
     foreach ($order->getItems() as $delta => $item) {
       $product = (new Product())
         ->setQuantity((int) $item->getQuantity())
-        ->setTitle($this->sanitize($item->getTitle()))
+        ->setTitle($item->getTitle())
         ->setPrice($item->getUnitPrice());
 
       if ($purchasedEntity = $item->getPurchasedEntity()) {
@@ -102,7 +99,7 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
           continue;
         }
       }
-      $event->getFormInterface()->setProduct($product);
+      $event->getFormInterface()->addProduct($product);
     }
   }
 
