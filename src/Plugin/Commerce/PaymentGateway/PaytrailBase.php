@@ -366,7 +366,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
         'allow_ipn_create_payment' => $values['allow_ipn_create_payment'],
         'merchant_hash'  => $values['merchant_hash'],
         'bypass_mode' => $values['bypass_mode'],
-        'included_data' => $values['included_data'],
+        'collect_product_details' => $values['collect_product_details'],
         'culture' => $values['culture'],
       ]);
     }

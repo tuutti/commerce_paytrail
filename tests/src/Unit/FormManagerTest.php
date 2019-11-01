@@ -31,7 +31,7 @@ class FormManagerTest extends UnitTestCase {
   public function setUp() {
     parent::setUp();
 
-    $this->sut = new FormManager('12345', '12345');
+    $this->sut = new FormManager('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ');
   }
 
   /**
@@ -39,15 +39,12 @@ class FormManagerTest extends UnitTestCase {
    *
    * @covers ::build
    * @covers ::__construct
-   * @covers ::setParamsOut
-   * @covers ::setParamsIn
    */
   public function testDefaults() {
-    $manager = new FormManager('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ');
-    $build = $manager->build();
+    $build = $this->sut->build();
 
     $expected = [
-      'PARAMS_IN' => 'MERCHANT_ID,PARAMS_IN,PARAMS_OUT',
+      'PARAMS_IN' => 'PARAMS_IN,PARAMS_OUT,MERCHANT_ID',
       'MERCHANT_ID' => '13466',
       'PARAMS_OUT' => 'ORDER_NUMBER,PAYMENT_ID,PAYMENT_METHOD,TIMESTAMP,STATUS',
     ];
@@ -55,115 +52,124 @@ class FormManagerTest extends UnitTestCase {
   }
 
   /**
-   * Tests ::assertPhone().
+   * Tests ::setPayerPhone().
    *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertPhone
+   * @covers ::setPayerPhone
+   * @covers ::getPayerPhone
+   * @dataProvider getPhoneNumbers
    */
-  public function testAssertPhone() {
-    $data = [
-      '040213121_3123' => TRUE,
-      '033213:231' => TRUE,
-      'dsadsad0404' => TRUE,
-      '040123333' => FALSE,
-      '040-212333' => FALSE,
-      '044+3432312' => FALSE,
-      '040 423332' => FALSE,
-    ];
-    foreach ($data as $number => $expectedException) {
-      $exception = FALSE;
-      try {
-        $this->sut->assertPhone($number);
-      }
-      catch (\InvalidArgumentException $e) {
-        $exception = TRUE;
-      }
-      $this->assertEquals($expectedException, $exception);
+  public function testInvalidPayerPhone(string $phoneNumber, bool $catchException) {
+    if ($catchException) {
+      $this->setExpectedException(\InvalidArgumentException::class);
     }
+    $this->sut->setPayerPhone($phoneNumber);
+    $this->assertEquals($phoneNumber, $this->sut->getPayerPhone());
+  }
+
+  /**
+   * Data provider for testInvalidPayerPhone.
+   *
+   * @return array
+   *   An array of phone numbers.
+   */
+  public function getPhoneNumbers() : array {
+    return [
+      ['040213121_3123', TRUE],
+      ['033213:231', TRUE],
+      ['dsadsad0404', TRUE],
+      ['040123456', FALSE],
+      ['+3584012345', FALSE],
+    ];
   }
 
   /**
    * Tests ::assertPostalCode().
    *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertPostalCode
+   * @covers ::setPayerPostalCode
+   * @covers ::getPayerPostalCode
+   * @dataProvider getPostalCodes
    */
-  public function testAssertPostalCode() {
-    $data = [
-      'wwww:dsd' => TRUE,
-      'dasda//dsa' => TRUE,
-      'CR2 6XH' => FALSE,
-      '123456' => FALSE,
-      '12345AW' => FALSE,
-      'W134555A' => FALSE,
-      'w123Wa' => FALSE,
-    ];
-    foreach ($data as $code => $expectedException) {
-      $exception = FALSE;
-      try {
-        $this->sut->assertPostalCode($code);
-      }
-      catch (\InvalidArgumentException $e) {
-        $exception = TRUE;
-      }
-      $this->assertEquals($expectedException, $exception);
+  public function testPostalCodes(string $code, bool $catchException) {
+    if ($catchException) {
+      $this->setExpectedException(\InvalidArgumentException::class);
     }
+    $this->sut->setPayerPostalCode($code);
+    $this->assertEquals($code, $this->sut->getPayerPostalCode());
   }
 
   /**
-   * Tests ::assertValidUrl().
+   * Data provider for testAssertPostalCode().
    *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertValidUrl
+   * @return array
+   *   The data set.
    */
-  public function testAssertValidUrl() {
-    $data = [
-      'http://' => TRUE,
-      'localhost' => TRUE,
-      'http://localhost' => FALSE,
-      'http://example.com' => FALSE,
+  public function getPostalCodes() : array {
+    return [
+      ['wwww:dsd', TRUE],
+      ['dasda//dsa', TRUE],
+      ['CR2 6XH', FALSE],
+      ['123456', FALSE],
+      ['12345AW', FALSE],
+      ['W134555A', FALSE],
+      ['w123Wa', FALSE],
     ];
+  }
 
-    foreach ($data as $number => $expectedException) {
-      $exception = FALSE;
-      try {
-        $this->sut->assertValidUrl($number);
-      }
-      catch (\InvalidArgumentException $e) {
-        $exception = TRUE;
-      }
-      $this->assertEquals($expectedException, $exception);
+  /**
+   * Tests url validation.
+   *
+   * @covers ::setSuccessUrl
+   * @covers ::setCancelUrl
+   * @covers ::setNotifyUrl
+   * @covers ::getSuccessUrl
+   * @covers ::getCancelUrl
+   * @covers ::getNotifyUrl
+   * @dataProvider getUrlsets
+   */
+  public function testUrlsets(string $success, string $cancel, string $notify, bool $catchException) {
+    if ($catchException) {
+      $this->setExpectedException(\InvalidArgumentException::class);
     }
+
+    $this->sut->setSuccessUrl($success)
+      ->setCancelUrl($cancel)
+      ->setNotifyUrl($notify);
+
+    $this->assertEquals($success, $this->sut->getSuccessUrl());
+    $this->assertEquals($cancel, $this->sut->getCancelUrl());
+    $this->assertEquals($notify, $this->sut->getNotifyUrl());
+  }
+
+  /**
+   * Data provider for testUrlsets().
+   *
+   * @return array
+   *   The data.
+   */
+  public function getUrlsets() : array {
+    return [
+      ['http://', 'http://localhost', 'http://localhost', TRUE],
+      ['http://localhost', 'http://', 'http://localhost', TRUE],
+      ['http://localhost', 'http://localhost', 'http://', TRUE],
+      ['http://localhost', 'http://localhost', 'http://localhost', FALSE],
+    ];
   }
 
   /**
    * Tests ::assertBetween().
    *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertBetween
+   * @covers ::setAmount
+   * @covers ::getAmount
    * @covers \Drupal\commerce_paytrail\AssertTrait::assertAmountBetween
-   * @dataProvider assertBetweenData
+   * @dataProvider getAmountData
    */
-  public function testAssertBetween($data) {
-    list('exception' => $exception, 'num' => $num, 'min' => $min, 'max' => $max) = $data;
-
-    $exceptionThrown = FALSE;
-
-    try {
-      $this->sut->assertBetween($num, $min, $max);
+  public function testSetAmount(string $num, bool $catchException) {
+    if ($catchException) {
+      $this->setExpectedException(\InvalidArgumentException::class);
     }
-    catch (\InvalidArgumentException $e) {
-      $exceptionThrown = TRUE;
-    }
-
-    $this->assertEquals($exception, $exceptionThrown);
-
-    $exceptionThrown = FALSE;
-
-    try {
-      $this->sut->assertAmountBetween(new Price($num, 'EUR'), $min, $max);
-    }
-    catch (\InvalidArgumentException $e) {
-      $exceptionThrown = TRUE;
-    }
-
-    $this->assertEquals($exception, $exceptionThrown);
+    $price = new Price($num, 'EUR');
+    $this->sut->setAmount($price);
+    $this->assertEquals($price, $this->sut->getAmount());
   }
 
   /**
@@ -172,91 +178,13 @@ class FormManagerTest extends UnitTestCase {
    * @return array
    *   The data.
    */
-  public function assertBetweenData() {
+  public function getAmountData() {
     return [
-      [
-        [
-          'exception' => TRUE,
-          'num' => 0.1,
-          'min' => 0.65,
-          'max' => 65,
-        ],
-        [
-          'exception' => TRUE,
-          'num' => 66,
-          'min' => 0.65,
-          'max' => 65,
-        ],
-        [
-          'exception' => FALSE,
-          'num' => 0.65,
-          'min' => 0.65,
-          'max' => 65,
-        ],
-        [
-          'exception' => FALSE,
-          'num' => 65,
-          'min' => 0.65,
-          'max' => 65,
-        ],
-        [
-          'exception' => FALSE,
-          'num' => 1,
-          'min' => 0.65,
-          'max' => 65,
-        ],
-      ],
+      ['499999', FALSE],
+      ['500000', TRUE],
+      ['0.65', FALSE],
+      ['0.64', TRUE],
     ];
-  }
-
-  /**
-   * Tests ::assertText()
-   *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertStrictText
-   */
-  public function testAssertText() {
-    $data = [
-      'Test: test' => TRUE,
-      'T€st' => TRUE,
-      'Test test 1234' => FALSE,
-      'Test *test*, test "TEst" dsa' => FALSE,
-      "Test {test} [test] 'test' -_-" => FALSE,
-    ];
-    foreach ($data as $number => $expectedException) {
-      $exception = FALSE;
-      try {
-        $this->sut->assertStrictText($number);
-      }
-      catch (\InvalidArgumentException $e) {
-        $exception = TRUE;
-      }
-      $this->assertEquals($expectedException, $exception);
-    }
-  }
-
-  /**
-   * Tests ::assertNonStrictText()
-   *
-   * @covers \Drupal\commerce_paytrail\AssertTrait::assertText
-   */
-  public function testAssertNonStrictText() {
-    $data = [
-      'TEst (11 €)' => TRUE,
-      'Test: test $_,.:&!?@#$£' => FALSE,
-      'Test test 1234' => FALSE,
-      'Test *test*, test "TEst" dsa' => FALSE,
-      "Test {test} [test] 'test' -_-" => FALSE,
-    ];
-    foreach ($data as $number => $expectedException) {
-      $exception = FALSE;
-      try {
-        $this->sut->assertText($number);
-      }
-      catch (\InvalidArgumentException $e) {
-        $exception = TRUE;
-      }
-      $this->assertEquals($expectedException, $exception);
-    }
   }
 
   /**
@@ -311,35 +239,36 @@ class FormManagerTest extends UnitTestCase {
       ], 'paytrail_payment_method'),
     ];
 
-    $manager = new FormManager('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ');
-    $manager->setAmount(new Price('123', 'EUR'))
+    $this->sut->setAmount(new Price('123', 'EUR'))
       ->setMerchantId('12345')
       ->setSuccessUrl('http://localhost/success')
       ->setCancelUrl('http://localhost/cancel')
       ->setNotifyUrl('http://localhost/notify')
       ->setOrderNumber('123')
-      ->setMerchantPanelUiMessage('merchant_message')
-      ->setPaymentMethodUiMessage('payment_ui_message')
-      ->setPayerSettlementMessage('payment_settlement_message')
-      ->setMerchantSettlementMessage('merchant_settlement_message')
       ->setLocale('fi_FI')
       ->setCurrency('EUR')
       ->setReferenceNumber('234')
       ->setPaymentMethods($entities)
       ->setPayerPhone('040 123456')
       ->setPayerEmail('test@localhost')
-      ->setPayerFirstName('Firstname')
-      ->setPayerLastName('Lastname')
-      ->setPayerCompany('Company')
+      // Add random invalid characters to make sure text sanitization
+      // works as expected.
+      ->setPayerFirstName('Firstname<>%€')
+      ->setPayerLastName('Lastname<>%')
+      ->setPayerCompany('Company<>%€')
       ->setPayerAddress('Street 1')
       ->setPayerPostalCode('00100')
+      ->setMerchantPanelUiMessage('merchant_message<>%€')
+      ->setPaymentMethodUiMessage('payment_ui_message<>%€')
+      ->setPayerSettlementMessage('payment_settlement_message<>%€')
+      ->setMerchantSettlementMessage('merchant_settlement_message<>%€')
       ->setPayerCity('Helsinki')
       ->setPayerCountry('FI')
       ->setIsVatIncluded(TRUE)
       ->setAlg(1);
 
     $expected = [
-      'PARAMS_IN' => 'MERCHANT_ID,PARAMS_IN,AMOUNT,URL_SUCCESS,URL_CANCEL,URL_NOTIFY,ORDER_NUMBER,MSG_UI_MERCHANT_PANEL,MSG_UI_PAYMENT_METHOD,MSG_SETTLEMENT_PAYER,MSG_SETTLEMENT_MERCHANT,LOCALE,CURRENCY,REFERENCE_NUMBER,PAYMENT_METHODS,PAYER_PERSON_PHONE,PAYER_PERSON_EMAIL,PAYER_PERSON_FIRSTNAME,PAYER_PERSON_LASTNAME,PAYER_COMPANY_NAME,PAYER_PERSON_ADDR_STREET,PAYER_PERSON_ADDR_POSTAL_CODE,PAYER_PERSON_ADDR_TOWN,PAYER_PERSON_ADDR_COUNTRY,VAT_IS_INCLUDED,ALG,PARAMS_OUT',
+      'PARAMS_IN' => 'PARAMS_IN,PARAMS_OUT,MERCHANT_ID,AMOUNT,URL_SUCCESS,URL_CANCEL,URL_NOTIFY,ORDER_NUMBER,LOCALE,CURRENCY,REFERENCE_NUMBER,PAYMENT_METHODS,PAYER_PERSON_PHONE,PAYER_PERSON_EMAIL,PAYER_PERSON_FIRSTNAME,PAYER_PERSON_LASTNAME,PAYER_COMPANY_NAME,PAYER_PERSON_ADDR_STREET,PAYER_PERSON_ADDR_POSTAL_CODE,MSG_UI_MERCHANT_PANEL,MSG_UI_PAYMENT_METHOD,MSG_SETTLEMENT_PAYER,MSG_SETTLEMENT_MERCHANT,PAYER_PERSON_ADDR_TOWN,PAYER_PERSON_ADDR_COUNTRY,VAT_IS_INCLUDED,ALG',
       'MERCHANT_ID' => '12345',
       'PARAMS_OUT' => 'ORDER_NUMBER,PAYMENT_ID,PAYMENT_METHOD,TIMESTAMP,STATUS',
       'AMOUNT' => '123.00',
@@ -368,15 +297,15 @@ class FormManagerTest extends UnitTestCase {
       'ALG' => '1',
     ];
 
-    $this->assertEquals($expected, $manager->build());
+    $this->assertEquals($expected, $this->sut->build());
 
     // Make sure setting vat is included removes the value from params in.
-    $manager->setIsVatIncluded(FALSE);
+    $this->sut->setIsVatIncluded(FALSE);
 
     unset($expected['VAT_IS_INCLUDED']);
-    $expected['PARAMS_IN'] = 'MERCHANT_ID,PARAMS_IN,AMOUNT,URL_SUCCESS,URL_CANCEL,URL_NOTIFY,ORDER_NUMBER,MSG_UI_MERCHANT_PANEL,MSG_UI_PAYMENT_METHOD,MSG_SETTLEMENT_PAYER,MSG_SETTLEMENT_MERCHANT,LOCALE,CURRENCY,REFERENCE_NUMBER,PAYMENT_METHODS,PAYER_PERSON_PHONE,PAYER_PERSON_EMAIL,PAYER_PERSON_FIRSTNAME,PAYER_PERSON_LASTNAME,PAYER_COMPANY_NAME,PAYER_PERSON_ADDR_STREET,PAYER_PERSON_ADDR_POSTAL_CODE,PAYER_PERSON_ADDR_TOWN,PAYER_PERSON_ADDR_COUNTRY,ALG,PARAMS_OUT';
+    $expected['PARAMS_IN'] = str_replace('VAT_IS_INCLUDED,', '', $expected['PARAMS_IN']);
 
-    $this->assertEquals($expected, $manager->build());
+    $this->assertEquals($expected, $this->sut->build());
   }
 
   /**
@@ -387,85 +316,39 @@ class FormManagerTest extends UnitTestCase {
    */
   public function testProducts() {
     $product = (new Product())
-      ->setTitle('Title')
+      ->setTitle('Title<>€%')
       ->setItemId('1')
       ->setQuantity(1)
       ->setPrice(new Price('11', 'EUR'));
 
     $product2 = (new Product())
-      ->setTitle('Title 2')
+      ->setTitle('Title 2<>€%')
       ->setItemId('2')
       ->setQuantity(1)
       ->setPrice(new Price('23', 'EUR'));
 
-    $manager = new FormManager('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ');
-    $manager->setAmount(new Price('123', 'EUR'))
-      ->setProduct($product);
+    $this->sut->setAmount(new Price('123', 'EUR'))
+      ->addProduct($product);
 
     $expected = [
-      'PARAMS_IN' => 'MERCHANT_ID,PARAMS_IN,ITEM_TITLE[0],ITEM_QUANTITY[0],ITEM_UNIT_PRICE[0],ITEM_VAT_PERCENT[0],ITEM_DISCOUNT_PERCENT[0],ITEM_TYPE[0],ITEM_ID[0],PARAMS_OUT',
+      'PARAMS_IN' => 'PARAMS_IN,PARAMS_OUT,MERCHANT_ID,ITEM_TYPE[0],ITEM_TITLE[0],ITEM_ID[0],ITEM_QUANTITY[0],ITEM_UNIT_PRICE[0]',
       'MERCHANT_ID' => '13466',
       'PARAMS_OUT' => 'ORDER_NUMBER,PAYMENT_ID,PAYMENT_METHOD,TIMESTAMP,STATUS',
+      'ITEM_ID[0]' => '1',
       'ITEM_TITLE[0]' => 'Title',
       'ITEM_QUANTITY[0]' => '1',
-      'ITEM_UNIT_PRICE[0]' => '11.00',
-      'ITEM_VAT_PERCENT[0]' => '0.00',
-      'ITEM_DISCOUNT_PERCENT[0]' => '0',
       'ITEM_TYPE[0]' => '1',
-      'ITEM_ID[0]' => '1',
+      'ITEM_UNIT_PRICE[0]' => '11.00',
     ];
-    $this->assertEquals($expected, $manager->build());
+    $this->assertEquals($expected, $this->sut->build());
 
     // Make sure we can override products.
-    $manager->setProducts([$product2]);
+    $this->sut->setProducts([$product2]);
 
     $expected['ITEM_TITLE[0]'] = 'Title 2';
     $expected['ITEM_UNIT_PRICE[0]'] = '23.00';
     $expected['ITEM_ID[0]'] = '2';
-    $this->assertEquals($expected, $manager->build());
-  }
-
-  /**
-   * Tests validations.
-   */
-  public function testExceptions() {
-    $manager = new FormManager('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ');
-
-    $exception = FALSE;
-    try {
-      $manager->setLocale('en_GB');
-    }
-    catch (\InvalidArgumentException $e) {
-      $exception = TRUE;
-    }
-    $this->assertTrue($exception);
-
-    $exception = FALSE;
-    try {
-      $manager->setPaymentMethods([1]);
-    }
-    catch (\InvalidArgumentException $e) {
-      $exception = TRUE;
-    }
-    $this->assertTrue($exception);
-
-    $exception = FALSE;
-    try {
-      $manager->setPayerCountry('FIN');
-    }
-    catch (\InvalidArgumentException $e) {
-      $exception = TRUE;
-    }
-    $this->assertTrue($exception);
-
-    $exception = FALSE;
-    try {
-      $manager->setProducts([1]);
-    }
-    catch (\InvalidArgumentException $e) {
-      $exception = TRUE;
-    }
-    $this->assertTrue($exception);
+    $this->assertEquals($expected, $this->sut->build());
   }
 
   /**
@@ -475,8 +358,7 @@ class FormManagerTest extends UnitTestCase {
    * @dataProvider generateReturnChecksumProvider
    */
   public function testGenerateReturnChecksum($values, $expected) {
-    $manager = new FormManager('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ');
-    $return = $manager->generateReturnChecksum($values);
+    $return = $this->sut->generateReturnChecksum($values);
     $this->assertEquals($return, $expected);
   }
 
@@ -503,8 +385,7 @@ class FormManagerTest extends UnitTestCase {
    * @dataProvider generateAuthCodeProvider
    */
   public function testGenerateAuthCode($values, $expected) {
-    $manager = new FormManager('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ');
-    $return = $manager->generateAuthCode($values);
+    $return = $this->sut->generateAuthCode($values);
     $this->assertEquals($return, $expected);
   }
 

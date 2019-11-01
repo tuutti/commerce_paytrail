@@ -5,79 +5,29 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\Repository\Product;
 
 use Drupal\commerce_paytrail\AssertTrait;
+use Drupal\commerce_paytrail\Repository\ValueBase;
+use Drupal\commerce_paytrail\SanitizeTrait;
 use Drupal\commerce_price\Price;
 use Webmozart\Assert\Assert;
 
 /**
  * Provides an object for Paytrail product handling.
  */
-abstract class ProductBase {
+abstract class ProductBase extends ValueBase {
 
   use AssertTrait;
+  use SanitizeTrait;
 
   /**
-   * The product title.
-   *
-   * @var string
+   * {@inheritdoc}
    */
-  protected $title;
-
-  /**
-   * The product quantity.
-   *
-   * @var int
-   */
-  protected $quantity;
-
-  /**
-   * The price.
-   *
-   * @var \Drupal\commerce_price\Price
-   */
-  protected $price;
-
-  /**
-   * The tax amount.
-   *
-   * @var float
-   */
-  protected $tax = 0.00;
-
-  /**
-   * The discount amount.
-   *
-   * @var int
-   */
-  protected $discount = 0;
-
-  /**
-   * The product id.
-   *
-   * @var string
-   */
-  protected $id;
-
-  /**
-   * Builds item form array.
-   *
-   * @param int $index
-   *   The product index.
-   *
-   * @return array
-   *   The build array.
-   */
-  public function build(int $index) : array {
+  public function build() : array {
     $values = [
-      sprintf('ITEM_TITLE[%d]', $index) => $this->getTitle(),
-      sprintf('ITEM_QUANTITY[%d]', $index) => $this->getQuantity(),
-      sprintf('ITEM_UNIT_PRICE[%d]', $index) => $this->getPrice(),
-      sprintf('ITEM_VAT_PERCENT[%d]', $index) => $this->getTax(),
-      sprintf('ITEM_DISCOUNT_PERCENT[%d]', $index) => $this->getDiscount(),
-      sprintf('ITEM_TYPE[%d]', $index) => $this->getType(),
+      'ITEM_TYPE' => $this->getType(),
     ];
 
-    if ($this->getItemId()) {
-      $values[sprintf('ITEM_ID[%d]', $index)] = $this->getItemId();
+    foreach ($this->values as $key => $value) {
+      $values[$key] = $value->format();
     }
     return $values;
   }
@@ -95,18 +45,23 @@ abstract class ProductBase {
     Assert::numeric($id);
     Assert::maxLength($id, 16);
 
-    $this->id = $id;
+    $this->setValue('ITEM_ID', $id);
 
     return $this;
   }
 
   /**
+   * Gets the product id.
+   *
+   * @return string
+   *   The number.
+   */
+  public function getItemId() : string {
+    return $this->getValue('ITEM_ID');
+  }
+
+  /**
    * Sets the product title.
-   *
-   * Note: Paytrail has strict validation for this field. You might want to
-   * strip non-allowed characters from this field to avoid validation errors.
-   *
-   * See: SanitizeTrait::sanitize().
    *
    * @param string $title
    *   The title.
@@ -115,9 +70,9 @@ abstract class ProductBase {
    *   The self.
    */
   public function setTitle(string $title) : self {
-    $this->assertText($title);
-
-    $this->title = $title;
+    $this->setValue('ITEM_TITLE', $title, function (string $string) {
+      return $this->sanitizeText($string);
+    });
     return $this;
   }
 
@@ -128,7 +83,7 @@ abstract class ProductBase {
    *   The product title.
    */
   public function getTitle() : string {
-    return $this->title;
+    return $this->getValue('ITEM_TITLE');
   }
 
   /**
@@ -141,7 +96,7 @@ abstract class ProductBase {
    *   The self.
    */
   public function setQuantity(int $quantity) : self {
-    $this->quantity = $quantity;
+    $this->setValue('ITEM_QUANTITY', $quantity);
     return $this;
   }
 
@@ -152,7 +107,7 @@ abstract class ProductBase {
    *   The product quantity.
    */
   public function getQuantity() : int {
-    return (int) round($this->quantity);
+    return $this->getValue('ITEM_QUANTITY');
   }
 
   /**
@@ -165,10 +120,9 @@ abstract class ProductBase {
    *   The self.
    */
   public function setPrice(Price $price) : self {
-    Assert::oneOf($price->getCurrencyCode(), ['EUR']);
-    $this->assertAmountBetween($price, 0, 499999);
+    $this->assertAmountBetween($price, '0', '499999');
 
-    $this->price = $price;
+    $this->setValue('ITEM_UNIT_PRICE', $price, $this->formatPrice());
     return $this;
   }
 
@@ -179,7 +133,7 @@ abstract class ProductBase {
    *   The formatted price.
    */
   public function getPrice() : string {
-    return $this->formatPrice((float) $this->price->getNumber());
+    return $this->getValue('ITEM_UNIT_PRICE');
   }
 
   /**
@@ -194,7 +148,7 @@ abstract class ProductBase {
   public function setTax(float $tax) : self {
     $this->assertBetween($tax, 0, 100);
 
-    $this->tax = $tax;
+    $this->setValue('ITEM_VAT_PERCENT', $tax);
     return $this;
   }
 
@@ -202,17 +156,17 @@ abstract class ProductBase {
    * Gets the formatted tax.
    *
    * @return string
-   *   The formatted tax.
+   *   The tax percent.
    */
   public function getTax() : string {
-    return $this->formatPrice($this->tax);
+    return (string) $this->getValue('ITEM_VAT_PERCENT');
   }
 
   /**
    * Sets the discount.
    *
    * @param float $discount
-   *   The discount.
+   *   The discount percent.
    *
    * @return $this
    *   The self.
@@ -220,7 +174,7 @@ abstract class ProductBase {
   public function setDiscount(float $discount) : self {
     $this->assertBetween($discount, 0, 100);
 
-    $this->discount = $discount;
+    $this->setValue('ITEM_DISCOUNT_PERCENT', $discount);
     return $this;
   }
 
@@ -231,7 +185,7 @@ abstract class ProductBase {
    *   The discount amount.
    */
   public function getDiscount() : float {
-    return $this->discount;
+    return $this->getValue('ITEM_DISCOUNT_PERCENT');
   }
 
   /**
@@ -241,28 +195,5 @@ abstract class ProductBase {
    *   The product type.
    */
   abstract public function getType() : int;
-
-  /**
-   * Gets the product id.
-   *
-   * @return string
-   *   The number.
-   */
-  public function getItemId() : string {
-    return $this->id;
-  }
-
-  /**
-   * Formats the price.
-   *
-   * @param float $price
-   *   The price.
-   *
-   * @return string
-   *   Formatted price component.
-   */
-  protected function formatPrice(float $price) : string {
-    return number_format($price, 2, '.', '');
-  }
 
 }

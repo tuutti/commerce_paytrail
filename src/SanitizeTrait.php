@@ -35,4 +35,32 @@ trait SanitizeTrait {
     return preg_replace($regex, '', $string);
   }
 
+  /**
+   * Sanitizes the given string.
+   *
+   * @param string $string
+   *   The string to sanitize.
+   *
+   * @return string
+   *   The sanitized string.
+   */
+  public function sanitizeText(string $string) : string {
+    return $this->sanitize($string, 'default');
+  }
+
+  /**
+   * Sanitizes the given string.
+   *
+   * Uses strict regexp.
+   *
+   * @param string $string
+   *   The string to sanitize.
+   *
+   * @return string
+   *   The sanitized string.
+   */
+  public function sanitizeTextStrict(string $string) : string {
+    return $this->sanitize($string, 'strict');
+  }
+
 }

@@ -11,6 +11,7 @@ final class FormValue {
 
   protected $key;
   protected $value;
+  protected $formatter;
 
   /**
    * Constructs a new instance.
@@ -19,11 +20,13 @@ final class FormValue {
    *   The form key.
    * @param string $value
    *   The form value.
+   * @param callable $formatter
+   *   The formatter callback.
    */
-  public function __construct(string $key, $value) {
+  public function __construct(string $key, $value, callable $formatter = NULL) {
     $this->key = $key;
-    // @todo Should we just urlencode everything?
-    $this->value = str_replace('|', '', $value);
+    $this->value = $value;
+    $this->formatter = $formatter;
   }
 
   /**
@@ -39,11 +42,27 @@ final class FormValue {
   /**
    * Gets the value.
    *
-   * @return string
+   * @return mixed
    *   The value.
    */
-  public function value() : string {
+  public function value() {
     return $this->value;
+  }
+
+  /**
+   * Gets the formatted value.
+   *
+   * @return string
+   *   The formatted value.
+   */
+  public function format() : string {
+    if (!$this->formatter) {
+      if (!is_scalar($this->value)) {
+        throw new \LogicException(sprintf('Cannot convert "%s" value to string.', $this->key));
+      }
+      return (string) $this->value;
+    }
+    return ($this->formatter)($this->value);
   }
 
 }

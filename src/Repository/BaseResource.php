@@ -7,7 +7,7 @@ namespace Drupal\commerce_paytrail\Repository;
 /**
  * Defines the base resource.
  */
-abstract class BaseResource {
+abstract class BaseResource extends ValueBase {
 
   /**
    * The merchant hash.
