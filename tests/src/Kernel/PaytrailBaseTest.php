@@ -4,7 +4,6 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Drupal\Tests\commerce\Kernel\CommerceKernelTestBase;
 
 /**
  * PaytrailBaseTest unit tests.
@@ -12,7 +11,7 @@ use Drupal\Tests\commerce\Kernel\CommerceKernelTestBase;
  * @group commerce_paytrail
  * @coversDefaultClass \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase
  */
-class PaytrailBaseTest extends CommerceKernelTestBase {
+class PaytrailBaseTest extends PaytrailKernelTestBase {
 
   /**
    * The paytrail base.
@@ -31,7 +30,7 @@ class PaytrailBaseTest extends CommerceKernelTestBase {
   public static $modules = [
     'language',
     'state_machine',
-    'address',
+    'path',
     'profile',
     'entity_reference_revisions',
     'commerce_order',

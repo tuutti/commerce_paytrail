@@ -38,7 +38,6 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
 
   public static $modules = [
     'state_machine',
-    'address',
     'profile',
     'entity_reference_revisions',
     'path',
