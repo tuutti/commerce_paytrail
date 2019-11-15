@@ -21,6 +21,7 @@ abstract class PaytrailKernelTestBase extends EntityKernelTestBase {
     'views',
     'commerce',
     'commerce_price',
+    'commerce_number_pattern',
     'commerce_store',
   ];
 
@@ -41,6 +42,7 @@ abstract class PaytrailKernelTestBase extends EntityKernelTestBase {
     $this->installEntitySchema('commerce_currency');
     $this->installEntitySchema('commerce_store');
     $this->installConfig(['commerce_store']);
+    $this->installSchema('commerce_number_pattern', ['commerce_number_pattern_sequence']);
 
     $currency_importer = \Drupal::service('commerce_price.currency_importer');
     $currency_importer->import('EUR');
