@@ -3,26 +3,18 @@
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_store\StoreCreationTrait;
-use Drupal\KernelTests\Core\Entity\EntityKernelTestBase;
+use Drupal\Tests\commerce\Kernel\CommerceKernelTestBase;
 
 /**
  * Provides a base class for Paytrail kernel tests.
  */
-abstract class PaytrailKernelTestBase extends EntityKernelTestBase {
+abstract class PaytrailKernelTestBase extends CommerceKernelTestBase {
 
   use StoreCreationTrait;
 
   public static $modules = [
-    'address',
-    'datetime',
-    'entity',
-    'options',
-    'inline_entity_form',
-    'views',
-    'commerce',
-    'commerce_price',
     'commerce_number_pattern',
-    'commerce_store',
+    'commerce_paytrail',
   ];
 
   /**
@@ -44,11 +36,7 @@ abstract class PaytrailKernelTestBase extends EntityKernelTestBase {
     $this->installConfig(['commerce_store']);
     $this->installSchema('commerce_number_pattern', ['commerce_number_pattern_sequence']);
 
-    $currency_importer = \Drupal::service('commerce_price.currency_importer');
-    $currency_importer->import('EUR');
-
     $this->store = $this->createStore('Default store', 'admin@example.com', 'online', TRUE, 'FI', 'EUR');
-    \Drupal::entityTypeManager()->getStorage('commerce_store')->markAsDefault($this->store);
   }
 
 }

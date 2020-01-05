@@ -35,7 +35,6 @@ class PaytrailBaseTest extends PaytrailKernelTestBase {
     'entity_reference_revisions',
     'commerce_order',
     'commerce_payment',
-    'commerce_paytrail',
   ];
 
   /**

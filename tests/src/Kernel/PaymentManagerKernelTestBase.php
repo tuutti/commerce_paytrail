@@ -46,7 +46,6 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     'commerce_checkout',
     'commerce_order',
     'commerce_payment',
-    'commerce_paytrail',
     'commerce_promotion',
   ];
 
@@ -73,8 +72,6 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     $this->installConfig('commerce_promotion');
     $this->installConfig('commerce_paytrail');
 
-    $this->store->set('prices_include_tax', TRUE)->save();
-
     TaxType::create([
       'id' => 'vat',
       'label' => 'VAT',
@@ -83,6 +80,8 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
         'display_inclusive' => TRUE,
       ],
     ])->save();
+
+    $this->store->set('prices_include_tax', TRUE)->save();
 
     $this->gateway = PaymentGateway::create(
       [
