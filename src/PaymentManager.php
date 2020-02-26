@@ -29,7 +29,19 @@ class PaymentManager implements PaymentManagerInterface {
    * @var \Drupal\commerce_payment\PaymentStorageInterface
    */
   protected $paymentStorage;
+
+  /**
+   * The event dispatcher.
+   *
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   */
   protected $eventDispatcher;
+
+  /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
   protected $time;
 
   /**
@@ -105,6 +117,7 @@ class PaymentManager implements PaymentManagerInterface {
 
     $form->setOrderNumber($order->id())
       ->setAmount($order->getBalance())
+      ->setLocale($plugin->getCulture())
       ->setSuccessUrl($this->buildReturnUrl($order, 'commerce_payment.checkout.return'))
       ->setCancelUrl($this->buildReturnUrl($order, 'commerce_payment.checkout.cancel'))
       ->setNotifyUrl($this->buildReturnUrl($order, 'commerce_payment.notify', [
