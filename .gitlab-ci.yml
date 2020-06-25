@@ -20,7 +20,7 @@ variables:
 test:7.1:
   image: registry.gitlab.com/tuutti/drupal-php-docker:7.1
   variables:
-    DRUPAL_CORE: 8.7.x
+    DRUPAL_CORE: 8.8.x
   script:
     - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME
 
