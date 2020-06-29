@@ -56,12 +56,31 @@ class FormManagerTest extends UnitTestCase {
    *
    * @covers ::setPayerPhone
    * @covers ::getPayerPhone
-   * @dataProvider getPhoneNumbers
+   * @dataProvider getInvalidPhoneNumbers
    */
-  public function testInvalidPayerPhone(string $phoneNumber, bool $catchException) {
-    if ($catchException) {
-      $this->setExpectedException(\InvalidArgumentException::class);
-    }
+  public function testInvalidPayerPhone(string $phoneNumber) {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->assertValidPayerPhone($phoneNumber);
+  }
+
+  /**
+   * Tests ::setPayerPhone().
+   *
+   * @covers ::setPayerPhone
+   * @covers ::getPayerPhone
+   * @dataProvider getValidPhoneNumbers
+   */
+  public function testValidPayerPhone(string $phoneNumber) {
+    $this->assertValidPayerPhone($phoneNumber);
+  }
+
+  /**
+   * Asserts valid phone number.
+   *
+   * @param string $phoneNumber
+   *   The phone number.
+   */
+  private function assertValidPayerPhone(string $phoneNumber) : void {
     $this->sut->setPayerPhone($phoneNumber);
     $this->assertEquals($phoneNumber, $this->sut->getPayerPhone());
   }
@@ -72,13 +91,24 @@ class FormManagerTest extends UnitTestCase {
    * @return array
    *   An array of phone numbers.
    */
-  public function getPhoneNumbers() : array {
+  public function getInvalidPhoneNumbers() : array {
     return [
-      ['040213121_3123', TRUE],
-      ['033213:231', TRUE],
-      ['dsadsad0404', TRUE],
-      ['040123456', FALSE],
-      ['+3584012345', FALSE],
+      ['040213121_3123'],
+      ['033213:231'],
+      ['dsadsad0404'],
+    ];
+  }
+
+  /**
+   * Data provider for testValidPayerPhone.
+   *
+   * @return array
+   *   An array of phone numbers.
+   */
+  public function getValidPhoneNumbers() : array {
+    return [
+      ['040123456'],
+      ['+3584012345'],
     ];
   }
 
@@ -87,12 +117,31 @@ class FormManagerTest extends UnitTestCase {
    *
    * @covers ::setPayerPostalCode
    * @covers ::getPayerPostalCode
-   * @dataProvider getPostalCodes
+   * @dataProvider getInvalidPostalCodes
    */
-  public function testPostalCodes(string $code, bool $catchException) {
-    if ($catchException) {
-      $this->setExpectedException(\InvalidArgumentException::class);
-    }
+  public function testInvalidPostalCodes(string $code) {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->assertPostalCode($code);
+  }
+
+  /**
+   * Tests ::assertPostalCode().
+   *
+   * @covers ::setPayerPostalCode
+   * @covers ::getPayerPostalCode
+   * @dataProvider getValidPostalCodes
+   */
+  public function testValidPostalCodes(string $code) {
+    $this->assertPostalCode($code);
+  }
+
+  /**
+   * Asserts postal code.
+   *
+   * @param string $code
+   *   The postal code.
+   */
+  private function assertPostalCode(string $code) : void {
     $this->sut->setPayerPostalCode($code);
     $this->assertEquals($code, $this->sut->getPayerPostalCode());
   }
@@ -103,15 +152,26 @@ class FormManagerTest extends UnitTestCase {
    * @return array
    *   The data set.
    */
-  public function getPostalCodes() : array {
+  public function getInvalidPostalCodes() : array {
     return [
-      ['wwww:dsd', TRUE],
-      ['dasda//dsa', TRUE],
-      ['CR2 6XH', FALSE],
-      ['123456', FALSE],
-      ['12345AW', FALSE],
-      ['W134555A', FALSE],
-      ['w123Wa', FALSE],
+      ['wwww:dsd'],
+      ['dasda//dsa'],
+    ];
+  }
+
+  /**
+   * Data provider for testAssertPostalCode().
+   *
+   * @return array
+   *   The data set.
+   */
+  public function getValidPostalCodes() : array {
+    return [
+      ['CR2 6XH'],
+      ['123456'],
+      ['12345AW'],
+      ['W134555A'],
+      ['w123Wa'],
     ];
   }
 
@@ -124,13 +184,39 @@ class FormManagerTest extends UnitTestCase {
    * @covers ::getSuccessUrl
    * @covers ::getCancelUrl
    * @covers ::getNotifyUrl
-   * @dataProvider getUrlsets
+   * @dataProvider getValidUrlSets
    */
-  public function testUrlsets(string $success, string $cancel, string $notify, bool $catchException) {
-    if ($catchException) {
-      $this->setExpectedException(\InvalidArgumentException::class);
-    }
+  public function testValidUrlsets(string $success, string $cancel, string $notify) {
+    $this->assertUrlSet($success, $cancel, $notify);
+  }
 
+  /**
+   * Tests url validation.
+   *
+   * @covers ::setSuccessUrl
+   * @covers ::setCancelUrl
+   * @covers ::setNotifyUrl
+   * @covers ::getSuccessUrl
+   * @covers ::getCancelUrl
+   * @covers ::getNotifyUrl
+   * @dataProvider getInvalidUrlSets
+   */
+  public function testInvalidUrlsets(string $success, string $cancel, string $notify) {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->assertUrlSet($success, $cancel, $notify);
+  }
+
+  /**
+   * Asserts the url set.
+   *
+   * @param string $success
+   *   The success url.
+   * @param string $cancel
+   *   The cancel url.
+   * @param string $notify
+   *   The notify url.
+   */
+  private function assertUrlSet(string $success, string $cancel, string $notify) : void {
     $this->sut->setSuccessUrl($success)
       ->setCancelUrl($cancel)
       ->setNotifyUrl($notify);
@@ -141,32 +227,63 @@ class FormManagerTest extends UnitTestCase {
   }
 
   /**
-   * Data provider for testUrlsets().
+   * Data provider for testValidUrlsets().
    *
    * @return array
    *   The data.
    */
-  public function getUrlsets() : array {
+  public function getValidUrlSets() : array {
     return [
-      ['http://', 'http://localhost', 'http://localhost', TRUE],
-      ['http://localhost', 'http://', 'http://localhost', TRUE],
-      ['http://localhost', 'http://localhost', 'http://', TRUE],
       ['http://localhost', 'http://localhost', 'http://localhost', FALSE],
     ];
   }
 
   /**
-   * Tests ::assertBetween().
+   * Data provider for testInvalidUrlsets().
+   *
+   * @return array
+   *   The data.
+   */
+  public function getInvalidUrlSets() : array {
+    return [
+      ['http://', 'http://localhost', 'http://localhost'],
+      ['http://localhost', 'http://', 'http://localhost'],
+      ['http://localhost', 'http://localhost', 'http://'],
+    ];
+  }
+
+  /**
+   * Tests ::setAmount().
    *
    * @covers ::setAmount
    * @covers ::getAmount
    * @covers \Drupal\commerce_paytrail\AssertTrait::assertAmountBetween
-   * @dataProvider getAmountData
+   * @dataProvider getInvalidAmountData
    */
-  public function testSetAmount(string $num, bool $catchException) {
-    if ($catchException) {
-      $this->setExpectedException(\InvalidArgumentException::class);
-    }
+  public function testInvalidSetAmount(string $num) {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->assertAmount($num);
+  }
+
+  /**
+   * Tests ::setAmount().
+   *
+   * @covers ::setAmount
+   * @covers ::getAmount
+   * @covers \Drupal\commerce_paytrail\AssertTrait::assertAmountBetween
+   * @dataProvider getValidAmountData
+   */
+  public function testValidSetAmount(string $num) {
+    $this->assertAmount($num);
+  }
+
+  /**
+   * Asserts amount.
+   *
+   * @param string $num
+   *   The amount.
+   */
+  private function assertAmount(string $num) : void {
     $price = new Price($num, 'EUR');
     $this->sut->setAmount($price);
     $this->assertEquals($price, $this->sut->getAmount());
@@ -178,12 +295,23 @@ class FormManagerTest extends UnitTestCase {
    * @return array
    *   The data.
    */
-  public function getAmountData() {
+  public function getInvalidAmountData() {
     return [
-      ['499999', FALSE],
-      ['500000', TRUE],
-      ['0.65', FALSE],
-      ['0.64', TRUE],
+      ['500000'],
+      ['0.64'],
+    ];
+  }
+
+  /**
+   * Provides assert between data.
+   *
+   * @return array
+   *   The data.
+   */
+  public function getValidAmountData() {
+    return [
+      ['499999'],
+      ['0.65'],
     ];
   }
 

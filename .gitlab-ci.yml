@@ -11,7 +11,7 @@ variables:
   DRUPAL_MODULE_NAME: commerce_paytrail
   DRUPAL_SERVER_HOST: http://127.0.0.1
   DRUPAL_SERVER_PORT: 8080
-  DRUPAL_CORE: 8.8.x
+  DRUPAL_CORE: 8.9.x
   DRUPAL_INSTALL_PROFILE: minimal
   MYSQL_DATABASE: drupal
   MYSQL_ROOT_PASSWORD: drupal
@@ -31,5 +31,12 @@ test:7.2:
 
 test:7.3:
   image: registry.gitlab.com/tuutti/drupal-php-docker:7.3
+  script:
+    - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME
+
+test:7.4:
+  image: registry.gitlab.com/tuutti/drupal-php-docker:7.4
+  variables:
+    DRUPAL_CORE: 9.0.x
   script:
     - php ~/drupal/core/scripts/run-tests.sh --verbose --color --url "$DRUPAL_SERVER_HOST:$DRUPAL_SERVER_PORT" $DRUPAL_MODULE_NAME

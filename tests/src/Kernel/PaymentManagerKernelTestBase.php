@@ -25,7 +25,7 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
   /**
    * The event dispatcher.
    *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
    */
   protected $eventDispatcher;
 
@@ -36,6 +36,9 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
    */
   protected $gateway;
 
+  /**
+   * {@inheritdoc}
+   */
   public static $modules = [
     'state_machine',
     'profile',
