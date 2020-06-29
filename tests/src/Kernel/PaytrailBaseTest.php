@@ -68,7 +68,7 @@ class PaytrailBaseTest extends PaytrailKernelTestBase {
     $this->sut = $this->gateway->getPlugin();
 
     foreach (['fi', 'de'] as $langcode) {
-      $language = $this->container->get('entity.manager')->getStorage('configurable_language')->create([
+      $language = $this->container->get('entity_type.manager')->getStorage('configurable_language')->create([
         'id' => $langcode,
       ]);
       $language->save();
