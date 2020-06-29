@@ -17,6 +17,12 @@ use Drupal\Core\Config\Entity\ConfigEntityBase;
  *     "label" = "label",
  *     "uuid" = "uuid"
  *   },
+ *   config_export = {
+ *     "id",
+ *     "label",
+ *     "uuid",
+ *     "adminLabel"
+ *   },
  * )
  */
 class PaymentMethod extends ConfigEntityBase {

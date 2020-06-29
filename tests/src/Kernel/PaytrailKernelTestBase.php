@@ -12,6 +12,9 @@ abstract class PaytrailKernelTestBase extends CommerceKernelTestBase {
 
   use StoreCreationTrait;
 
+  /**
+   * {@inheritdoc}
+   */
   public static $modules = [
     'commerce_number_pattern',
     'commerce_paytrail',
@@ -30,10 +33,6 @@ abstract class PaytrailKernelTestBase extends CommerceKernelTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->installSchema('system', 'router');
-    $this->installEntitySchema('commerce_currency');
-    $this->installEntitySchema('commerce_store');
-    $this->installConfig(['commerce_store']);
     $this->installSchema('commerce_number_pattern', ['commerce_number_pattern_sequence']);
 
     $this->store = $this->createStore('Default store', 'admin@example.com', 'online', TRUE, 'FI', 'EUR');
