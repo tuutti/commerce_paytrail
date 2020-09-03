@@ -88,16 +88,6 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
 
           continue;
         }
-
-        if ($adjustment->getType() === 'promotion') {
-          $percentage = $this->collectPromotions($adjustment, $item->getUnitPrice());
-          // We only support one discount type per product row.
-          // This means that you can't add -5% discount to a product
-          // and a flat -20€ to a second product.
-          $product->setDiscount(round($percentage * 100, 3));
-
-          continue;
-        }
       }
       $event->getFormInterface()->addProduct($product);
     }

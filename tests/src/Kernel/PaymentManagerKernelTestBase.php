@@ -131,6 +131,7 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     $orderItem = $this->reloadEntity($orderItem);
 
     $orderItem->setUnitPrice(new Price('11', 'EUR'))
+      ->setTitle('Title')
       ->setQuantity(2);
 
     $order = Order::create([

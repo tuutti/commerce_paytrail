@@ -447,6 +447,7 @@ class FormManagerTest extends UnitTestCase {
       ->setTitle('Title<>€%')
       ->setItemId('1')
       ->setQuantity(1)
+      ->setDiscount(1.5)
       ->setPrice(new Price('11', 'EUR'));
 
     $product2 = (new Product())
@@ -459,13 +460,14 @@ class FormManagerTest extends UnitTestCase {
       ->addProduct($product);
 
     $expected = [
-      'PARAMS_IN' => 'PARAMS_IN,PARAMS_OUT,MERCHANT_ID,ITEM_TYPE[0],ITEM_TITLE[0],ITEM_ID[0],ITEM_QUANTITY[0],ITEM_UNIT_PRICE[0]',
+      'PARAMS_IN' => 'PARAMS_IN,PARAMS_OUT,MERCHANT_ID,ITEM_TYPE[0],ITEM_TITLE[0],ITEM_ID[0],ITEM_QUANTITY[0],ITEM_UNIT_DISCOUNT[0],ITEM_UNIT_PRICE[0]',
       'MERCHANT_ID' => '13466',
       'PARAMS_OUT' => 'ORDER_NUMBER,PAYMENT_ID,PAYMENT_METHOD,TIMESTAMP,STATUS',
       'ITEM_ID[0]' => '1',
       'ITEM_TITLE[0]' => 'Title',
       'ITEM_QUANTITY[0]' => '1',
       'ITEM_TYPE[0]' => '1',
+      'ITEM_DISCOUNT[0]' => '1.5',
       'ITEM_UNIT_PRICE[0]' => '11.00',
     ];
     $this->assertEquals($expected, $this->sut->build());
