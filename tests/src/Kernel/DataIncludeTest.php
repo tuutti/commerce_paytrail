@@ -3,8 +3,6 @@
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_order\Adjustment;
-use Drupal\commerce_order\Entity\Order;
-use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_product\Entity\Product;
 use Drupal\commerce_product\Entity\ProductVariation;
@@ -19,73 +17,114 @@ use Drupal\profile\Entity\Profile;
 class DataIncludeTest extends PaymentManagerKernelTestBase {
 
   /**
-   * @covers ::__construct
-   * @covers ::addBillingDetails
-   * @covers ::addProductDetails
+   * The product.
+   *
+   * @var \Drupal\commerce_product\Entity\ProductInterface
    */
-  public function testDataIncludes() {
-    $this->gateway->getPlugin()->setConfiguration(
-      [
-        'collect_product_details' => TRUE,
-      ]
-    );
-    $this->gateway->save();
+  protected $product;
 
-    $variation = ProductVariation::create([
+  /**
+   * The product variation.
+   *
+   * @var \Drupal\commerce_product\Entity\ProductVariationInterface
+   */
+  protected $variation;
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    parent::setUp();
+
+    $this->variation = ProductVariation::create([
       'type' => 'default',
       'sku' => 'test_product',
       'title' => 'Test title',
     ]);
-    $variation->setPrice(new Price('123', 'EUR'));
-    $variation->save();
+    $this->variation->setPrice(new Price('123', 'EUR'));
+    $this->variation->save();
 
-    $product = Product::create([
+    $this->product = Product::create([
       'type' => 'default',
       'title' => 'Test product',
     ]);
-    $product->addVariation($variation)
+    $this->product->addVariation($this->variation)
       ->save();
+  }
 
-    $adjustments = [
-      new Adjustment([
-        'type' => 'promotion',
-        'label' => 'Promotion 1',
-        'amount' => new Price('-10', 'EUR'),
-        'locked' => TRUE,
-      ]),
-      new Adjustment([
-        'type' => 'promotion',
-        'label' => 'Promotion 2',
-        'amount' => new Price('-6.15', 'EUR'),
-        'percentage' => '0.05',
-        'locked' => TRUE,
-      ]),
-    ];
+  /**
+   * Tests payment gateway with no data includes.
+   */
+  public function testNoIncludes() {
+    $this->gateway->getPlugin()->setConfiguration(
+      [
+        'collect_product_details' => FALSE,
+        'collect_billing_information' => FALSE,
+      ]
+    );
+    $this->gateway->save();
 
-    $order = Order::create([
-      'type' => 'default',
-      'store_id' => $this->store,
-      'mail' => 'admin@example.com',
-    ]);
-    foreach ($adjustments as $index => $adjustment) {
-      $orderItem = OrderItem::create([
-        'type' => 'default',
-        'purchased_entity' => $variation,
-        'title' => 'Title ' . $index,
-      ]);
-      $orderItem->setUnitPrice($variation->getPrice());
-      $orderItem->addAdjustment($adjustment);
-      $orderItem->save();
+    $order = $this->createOrder();
 
-      $order->addItem($orderItem);
-    }
-    $order->save();
-
-    // Make sure we can build form with empty billing profile.
     $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
     $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
-    $this->assertTrue(empty($alter['PAYER_PERSON_ADDR_COUNTRY']));
 
+    $this->assertNotEmpty($alter['AUTHCODE']);
+
+    // Make sure we don't send billing or product details when disabled.
+    foreach ($alter as $key => $value) {
+      $this->assertTrue(strpos('PAYER_', $key) === FALSE);
+      $this->assertTrue(strpos('ITEM_', $key) === FALSE);
+    }
+  }
+
+  /**
+   * @covers ::addProductDetails
+   */
+  public function testProductDetails() {
+    $this->gateway->getPlugin()->setConfiguration(
+      [
+        'collect_product_details' => TRUE,
+        'collect_billing_information' => FALSE,
+      ]
+    );
+    $this->gateway->save();
+
+    $order = $this->createOrder();
+
+    $required = [
+      'ITEM_TYPE[0]',
+      'ITEM_QUANTITY[0]',
+      'ITEM_TITLE[0]',
+      'ITEM_UNIT_PRICE[0]',
+      'ITEM_VAT_PERCENT[0]',
+    ];
+
+
+    $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
+    $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
+
+    foreach ($required as $key) {
+      $this->assertNotEmpty($alter[$key]);
+    }
+    $this->assertEquals('11', $alter['ITEM_UNIT_PRICE[0]']);
+    $this->assertEquals('24', $alter['ITEM_VAT_PERCENT[0]']);
+  }
+
+  /**
+   * @covers ::addBillingDetails
+   */
+  public function testBillingDetails() {
+    $this->gateway->getPlugin()->setConfiguration(
+      [
+        'collect_product_details' => TRUE,
+        'collect_billing_information' => TRUE,
+      ]
+    );
+    $this->gateway->save();
+
+
+    $order = $this->createOrder();
     $profile = Profile::create([
       'type' => 'customer',
       'uid' => $order->getCustomerId(),
@@ -102,13 +141,6 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
     $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
 
     $this->assertEquals('FI', $alter['PAYER_PERSON_ADDR_COUNTRY']);
-    $this->assertEquals('1', $alter['ITEM_ID[0]']);
-    $this->assertEquals('24', $alter['ITEM_VAT_PERCENT[0]']);
-    $this->assertEquals('8.85', $alter['ITEM_DISCOUNT_PERCENT[0]']);
-
-    $this->assertEquals('1', $alter['ITEM_ID[1]']);
-    $this->assertEquals('24', $alter['ITEM_VAT_PERCENT[1]']);
-    $this->assertEquals('5', $alter['ITEM_DISCOUNT_PERCENT[1]']);
   }
 
 }
