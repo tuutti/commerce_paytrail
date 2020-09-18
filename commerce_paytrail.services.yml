@@ -9,7 +9,6 @@ services:
 
   commerce_paytrail.data_includes:
     class: Drupal\commerce_paytrail\EventSubscriber\FormAlterSubscriber
-    arguments: ["@module_handler"]
     tags:
       - { name: event_subscriber }
 
