@@ -57,13 +57,12 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
       }
     }
 
-    $has_order_promotions = $order->getAdjustments(['promotion']);
+    $has_order_promotions = $order->getAdjustments();
 
     if (count($has_order_promotions) > 0) {
-      // Paytrail doesn't support order level discounts, meaning
-      // that we shouldn't send product details to Paytrail because
-      // order total calculated from individual unit prices won't
-      // match with the real order total.
+      // We cannot send product details if order has any adjustments, because
+      // Paytrail calculates the total price from individual unit prices and
+      // it won't match with the actual order total price.
       // @see #3169157.
       return;
     }

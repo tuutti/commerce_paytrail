@@ -106,6 +106,21 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
     foreach ($required as $key => $value) {
       $this->assertEqual($value, $alter[$key]);
     }
+
+    // Make sure adding order level adjustment removes product details.
+    $order->addAdjustment(new Adjustment([
+      'type' => 'promotion',
+      'label' => 'Discount',
+      'amount' => new Price('-5', 'EUR'),
+    ]));
+    $order->save();
+
+    $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
+    $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
+
+    foreach ($alter as $key => $value) {
+      $this->assertTrue(strpos('ITEM_', $key) === FALSE);
+    }
   }
 
   /**
@@ -124,7 +139,6 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
         'type' => 'custom',
         'label' => 'Discount',
         'amount' => new Price('-5', 'EUR'),
-        'percentage' => NULL,
       ]),
     ]);
 
