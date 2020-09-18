@@ -57,10 +57,10 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
       }
     }
 
-    $has_order_promotions = $order->getAdjustments();
+    $order_has_adjustments = $order->getAdjustments();
 
-    if (count($has_order_promotions) > 0) {
-      // We cannot send product details if order has any adjustments, because
+    if (count($order_has_adjustments) > 0) {
+      // We cannot send product details if order has any adjustments because
       // Paytrail calculates the total price from individual unit prices and
       // it won't match with the actual order total price.
       // @see #3169157.
