@@ -93,22 +93,57 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
     $order = $this->createOrder();
 
     $required = [
-      'ITEM_TYPE[0]',
-      'ITEM_QUANTITY[0]',
-      'ITEM_TITLE[0]',
-      'ITEM_UNIT_PRICE[0]',
-      'ITEM_VAT_PERCENT[0]',
+      'ITEM_TYPE[0]' => 1,
+      'ITEM_QUANTITY[0]' => '2',
+      'ITEM_TITLE[0]' => 'Title',
+      'ITEM_UNIT_PRICE[0]' => '11',
+      'ITEM_VAT_PERCENT[0]' => '24',
     ];
-
 
     $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
     $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
 
-    foreach ($required as $key) {
-      $this->assertNotEmpty($alter[$key]);
+    foreach ($required as $key => $value) {
+      $this->assertEqual($value, $alter[$key]);
     }
-    $this->assertEquals('11', $alter['ITEM_UNIT_PRICE[0]']);
-    $this->assertEquals('24', $alter['ITEM_VAT_PERCENT[0]']);
+  }
+
+  /**
+   * Make sure we can add discounts.
+   */
+  public function testDiscount() {
+    $this->gateway->getPlugin()->setConfiguration(
+      [
+        'collect_product_details' => TRUE,
+      ]
+    );
+    $this->gateway->save();
+
+    $order = $this->createOrder([
+      new Adjustment([
+        'type' => 'custom',
+        'label' => 'Discount',
+        'amount' => new Price('-5', 'EUR'),
+        'percentage' => NULL,
+      ]),
+    ]);
+
+    $required = [
+      'ITEM_TYPE[0]' => 1,
+      'ITEM_QUANTITY[0]' => '2',
+      'ITEM_TITLE[0]' => 'Title',
+      // The adjustment is split between two items (see quantity) and
+      // substracted before taxes = (total price-discount)/quantity = (22-5)/2.
+      'ITEM_UNIT_PRICE[0]' => '8.5',
+      'ITEM_VAT_PERCENT[0]' => '24',
+    ];
+
+    $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
+    $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
+
+    foreach ($required as $key => $value) {
+      $this->assertEqual($value, $alter[$key]);
+    }
   }
 
   /**
@@ -122,7 +157,6 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
       ]
     );
     $this->gateway->save();
-
 
     $order = $this->createOrder();
     $profile = Profile::create([
@@ -141,6 +175,29 @@ class DataIncludeTest extends PaymentManagerKernelTestBase {
     $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
 
     $this->assertEquals('FI', $alter['PAYER_PERSON_ADDR_COUNTRY']);
+  }
+
+  /**
+   * Make sure taxes are collected correctly when prices don't include taxes.
+   */
+  public function testPricesNotIncludingTaxes() {
+    $this->gateway->getPlugin()->setConfiguration(
+      [
+        'collect_product_details' => TRUE,
+        'collect_billing_information' => TRUE,
+      ]
+    );
+    $this->gateway->save();
+    $this->store->set('prices_include_tax', FALSE)->save();
+
+    $order = $this->createOrder();
+    $form = $this->sut->buildFormInterface($order, $this->gateway->getPlugin());
+    $alter = $this->sut->dispatch($form, $this->gateway->getPlugin(), $order);
+
+    // Make sure taxes are added correctly when taxes are not included
+    // in prices.
+    $this->assertEqual('13.64', $alter['ITEM_UNIT_PRICE[0]']);
+    $this->assertEquals('2', $alter['ITEM_QUANTITY[0]']);
   }
 
 }

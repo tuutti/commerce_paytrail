@@ -119,20 +119,27 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
   /**
    * Creates new order.
    *
+   * @param \Drupal\commerce_order\Adjustment[] $itemAdjustments
+   *   The order item adjustments.
+   *
    * @return \Drupal\commerce_order\Entity\OrderInterface
    *   The order.
    */
-  protected function createOrder(): OrderInterface {
+  protected function createOrder(array $itemAdjustments = []): OrderInterface {
     /** @var \Drupal\commerce_order\Entity\OrderItemInterface $orderItem */
     $orderItem = OrderItem::create([
       'type' => 'default',
     ]);
-    $orderItem->save();
-    $orderItem = $this->reloadEntity($orderItem);
-
     $orderItem->setUnitPrice(new Price('11', 'EUR'))
       ->setTitle('Title')
       ->setQuantity(2);
+
+    if ($itemAdjustments) {
+      foreach ($itemAdjustments as $adjustment) {
+        $orderItem->addAdjustment($adjustment);
+      }
+    }
+    $orderItem->save();
 
     $order = Order::create([
       'type' => 'default',
