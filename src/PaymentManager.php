@@ -138,7 +138,7 @@ class PaymentManager implements PaymentManagerInterface {
     $event = $this->eventDispatcher->dispatch(PaytrailEvents::FORM_ALTER, $form_alter);
 
     $values = $event->getFormInterface()->build();
-    // Generate authcode based on values submitted.
+    // Generate authcode based on submitted values.
     $values['AUTHCODE'] = $form->generateAuthCode($values);
 
     return $values;

@@ -161,7 +161,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    *   The entity id.
    */
   public function getEntityId() : string {
-    return $this->entityId;
+    return $this->parentEntity->id();
   }
 
   /**
@@ -205,7 +205,7 @@ class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsNotifica
    * @param int $severity
    *   The severity.
    */
-  public function log($message, $severity = RfcLogLevel::CRITICAL) : void {
+  public function log(string $message, $severity = RfcLogLevel::CRITICAL) : void {
     $this->logger->log($severity, $message);
   }
 

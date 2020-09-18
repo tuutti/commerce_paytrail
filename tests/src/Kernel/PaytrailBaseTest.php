@@ -27,6 +27,9 @@ class PaytrailBaseTest extends PaytrailKernelTestBase {
    */
   protected $gateway;
 
+  /**
+   * {@inheritdoc}
+   */
   public static $modules = [
     'language',
     'state_machine',
