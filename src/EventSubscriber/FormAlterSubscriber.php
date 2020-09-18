@@ -25,12 +25,13 @@ final class FormAlterSubscriber implements EventSubscriberInterface {
     if (!$billing_data = $order->getBillingProfile()) {
       return;
     }
-    /** @var \Drupal\address\AddressInterface $address */
-    $address = $billing_data->get('address')->first();
-
     $event->getFormInterface()
-      ->setPayerEmail($order->getEmail())
-      ->setPayerFromAddress($address);
+      ->setPayerEmail($order->getEmail());
+
+    /** @var \Drupal\address\AddressInterface $address */
+    if ($address = $billing_data->get('address')->first()) {
+      $event->getFormInterface()->setPayerFromAddress($address);
+    }
   }
 
   /**
