@@ -1,0 +1,11 @@
+{
+    "name": "drupal/commerce_paytrail",
+    "type": "drupal-module",
+    "homepage": "http://drupal.org/project/commerce_paytrail",
+    "license": "GPL-2.0+",
+    "require": {
+        "php": ">=8.0",
+        "drupal/commerce": "^2",
+        "tuutti/php-paytrail-payment-api": "^1.0"
+    }
+}

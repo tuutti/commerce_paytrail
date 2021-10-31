@@ -1,0 +1,12 @@
+services:
+  logger.channel.commerce_paytrail:
+    parent: logger.channel_base
+    arguments: ['commerce_paytrail']
+
+  commerce_paytrail.payment_manager:
+    class: Drupal\commerce_paytrail\PaymentManager
+    arguments: ['@entity_type.manager', '@event_dispatcher', '@datetime.time', '@http_client']
+
+  commerce_paytrail.payment_request:
+    class: Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+    arguments: ['@event_dispatcher', '@http_client', '@uuid']

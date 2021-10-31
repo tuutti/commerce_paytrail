@@ -1,0 +1,30 @@
+variables:
+  DRUPAL_MODULE_NAME: commerce_paytrail
+  SIMPLETEST_BASE_URL: http://127.0.0.1:8080
+  DRUPAL_CORE_VERSION: 9.1.x
+  DRUPAL_INSTALL_PROFILE: minimal
+  MYSQL_DATABASE: drupal
+  MYSQL_ROOT_PASSWORD: drupal
+  SIMPLETEST_DB: mysql://root:drupal@mariadb/drupal
+  MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","chromeOptions":{"w3c": false, "args":["--disable-gpu","--headless", "--no-sandbox"]}}, "http://127.0.0.1:4444"]'
+
+services:
+- mariadb:latest
+
+before_script:
+  - export PATH=$HOME/.composer/vendor/bin:$PATH
+  - composer global require tuutti/drupal-test-runner ^1.0
+  - drupal-tr
+  - drupal-tr run-drush-server &
+  - chromedriver --port=4444 > /dev/null 2>&1 &
+  - cp phpunit.xml.dist ../drupal
+
+test:8.0:
+  image: registry.gitlab.com/tuutti/drupal-php-docker:8.0
+  variables:
+    # Disable deprecations until we figure out how to deal with
+    # event dispatcher.
+    SYMFONY_DEPRECATIONS_HELPER: disabled
+    DRUPAL_CORE_VERSION: 9.2.x
+  script:
+    - drupal-tr run-tests
