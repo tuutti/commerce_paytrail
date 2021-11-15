@@ -1,45 +1,31 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItem;
-use Drupal\commerce_payment\Entity\PaymentGateway;
-use Drupal\commerce_paytrail\PaymentManager;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_tax\Entity\TaxType;
+use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
+use GuzzleHttp\Psr7\Response;
+use Paytrail\Payment\Model\PaymentRequestResponse;
+use Paytrail\Payment\ObjectSerializer;
 
 /**
- * Provides a base class to test PaymentManager.
+ * Tests Payment requests.
  */
-abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
+class PaymentRequestTest extends PaytrailKernelTestBase {
 
-  /**
-   * The payment manager.
-   *
-   * @var \Drupal\commerce_paytrail\PaymentManager
-   */
-  protected $sut;
-
-  /**
-   * The event dispatcher.
-   *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
-   */
-  protected $eventDispatcher;
-
-  /**
-   * The payment gateway.
-   *
-   * @var \Drupal\commerce_payment\Entity\PaymentGateway
-   */
-  protected $gateway;
+  use ApiTestTrait;
 
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'state_machine',
     'profile',
     'entity_reference_revisions',
@@ -85,32 +71,6 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     ])->save();
 
     $this->store->set('prices_include_tax', TRUE)->save();
-
-    $this->gateway = PaymentGateway::create(
-      [
-        'id' => 'paytrail',
-        'label' => 'Paytrail',
-        'plugin' => 'paytrail',
-      ]
-    );
-    $this->gateway->getPlugin()->setConfiguration(
-      [
-        'culture' => 'automatic',
-        'merchant_id' => '13466',
-        'merchant_hash' => '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ',
-        'allow_ipn_create_payment' => FALSE,
-        'bypass_mode' => FALSE,
-        'collect_product_details' => FALSE,
-      ]
-    );
-    $this->gateway->save();
-
-    $entityTypeManager = $this->container->get('entity_type.manager');
-    $this->eventDispatcher = $this->container->get('event_dispatcher');
-    $time = $this->container->get('datetime.time');
-
-    $this->sut = new PaymentManager($entityTypeManager, $this->eventDispatcher, $time);
-
     $account = $this->createUser([]);
 
     \Drupal::currentUser()->setAccount($account);
@@ -144,11 +104,28 @@ abstract class PaymentManagerKernelTestBase extends PaytrailKernelTestBase {
     $order = Order::create([
       'type' => 'default',
       'store_id' => $this->store,
+      'payment_gateway' => $this->gateway,
     ]);
     $order->addItem($orderItem);
     $order->save();
 
     return $order;
+  }
+
+  public function testCreateNoTaxes() : void {
+    $client = $this->createMockHttpClient([
+      new Response(200, ''),
+      new Response(200, body: '{"transactionId":"ab4713c2-3a37-11ec-a94f-cbbf734f44ee","status":"ok","amount":12300,"currency":"EUR","reference":"124","stamp":"3cbc14b8-5c50-4cfb-a5c0-7ed398ef77c2","createdAt":"2021-10-31T10:45:31.257Z","provider":"osuuspankki","filingCode":"202110315934970000","paidAt":"2021-10-31T10:45:43.366Z"}'),
+    ]);
+
+    $sut = new PaymentRequestBuilder(
+      $this->container->get('event_dispatcher'),
+      $client,
+      $this->container->get('uuid'),
+      $this->container->get('commerce_price.minor_units_converter')
+    );
+    $response = $sut->create($this->createOrder());
+    $this->assertInstanceOf(PaymentRequestResponse::class, $response);
   }
 
 }

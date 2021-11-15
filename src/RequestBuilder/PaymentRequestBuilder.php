@@ -9,7 +9,10 @@ use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_price\Calculator;
+use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
+use Drupal\Component\Uuid\UuidInterface;
+use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Api\PaymentsApi;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Address;
@@ -20,6 +23,7 @@ use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\PaymentRequest;
 use Paytrail\Payment\Model\PaymentRequestResponse;
 use Paytrail\Payment\ObjectSerializer;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * The payment request builder.
@@ -30,6 +34,27 @@ class PaymentRequestBuilder extends RequestBuilderBase {
 
   protected const TRANSACTION_ID_KEY = 'commerce_paytrail_transaction_id';
   protected const STAMP_KEY = 'commerce_paytrail_stamp';
+
+  /**
+   * Constructs a new instance.
+   *
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   *   The event dispatcher.
+   * @param \GuzzleHttp\ClientInterface $client
+   *   The HTTP client.
+   * @param \Drupal\Component\Uuid\UuidInterface $uuidService
+   *   The uuid service.
+   * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
+   *   The minor units converter.
+   */
+  public function __construct(
+    EventDispatcherInterface $eventDispatcher,
+    ClientInterface $client,
+    UuidInterface $uuidService,
+    protected MinorUnitsConverterInterface $converter
+  ) {
+    parent::__construct($eventDispatcher, $client, $uuidService);
+  }
 
   /**
    * Creates a Paytrail order item for given commerce order item.
@@ -51,7 +76,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
       if (count($taxes) > 1) {
         throw new \InvalidArgumentException('Order contains more than one tax adjustment.');
       }
-      $item->setVatPercentage(Calculator::multiply(
+      $item->setVatPercentage((int) Calculator::multiply(
         reset($taxes)->getPercentage(),
         '100'
       ));
@@ -122,7 +147,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
     $plugin = $this->getPlugin($order);
 
     $request = (new PaymentRequest())
-      ->setAmount($this->converter->toMinorUnits($order->getBalance()))
+      ->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
       ->setReference($order->id())
       ->setStamp($this->uuidService->generate())
       ->setLanguage($plugin->getLanguage())
@@ -135,12 +160,12 @@ class PaymentRequestBuilder extends RequestBuilderBase {
       // Only EUR is supported at the moment.
       ->setCurrency('EUR')
       ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl(),
-        'cancel' => $plugin->getNotifyUrl(),
+        'success' => $plugin->getNotifyUrl()->toString(),
+        'cancel' => $plugin->getNotifyUrl()->toString(),
       ]))
       ->setRedirectUrls(new Callbacks([
-        'success' => $plugin->getReturnUrl($order),
-        'cancel' => $plugin->getCancelUrl($order),
+        'success' => $plugin->getReturnUrl($order)->toString(),
+        'cancel' => $plugin->getCancelUrl($order)->toString(),
       ]));
 
     $customer = (new Customer())
@@ -189,6 +214,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
       );
     /** @var \Paytrail\Payment\Model\PaymentRequestResponse $response */
     $response = $this->getResponse($order, $response);
+
     // Save stamp and transaction id for later validation.
     $order->setData(static::TRANSACTION_ID_KEY, $response->getTransactionId())
       ->setData(static::STAMP_KEY, $request->getStamp())

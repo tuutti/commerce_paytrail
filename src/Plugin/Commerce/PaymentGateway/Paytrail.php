@@ -118,8 +118,8 @@ class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotification
    */
   public function getClientConfiguration() : Configuration {
     return (new Configuration())
-      ->setApiKey('account', $this->configuration['merchant_id'])
-      ->setApiKey('secret', $this->configuration['merchant_hash'])
+      ->setApiKey('account', $this->configuration['account'])
+      ->setApiKey('secret', $this->configuration['secret'])
       ->setUserAgent('drupal/commerce_paytrail');
   }
 
@@ -133,17 +133,16 @@ class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotification
    * @param array $arguments
    *   The additional arguments.
    *
-   * @return string
+   * @return \Drupal\Core\Url
    *   The return url.
    */
-  protected function buildReturnUrl(OrderInterface $order, string $type, array $arguments = []) : string {
+  protected function buildReturnUrl(OrderInterface $order, string $type, array $arguments = []) : Url {
     $arguments = array_merge([
       'commerce_order' => $order->id(),
       'step' => $arguments['step'] ?? 'payment',
     ], $arguments);
 
-    return (new Url($type, $arguments, ['absolute' => TRUE]))
-      ->toString();
+    return (new Url($type, $arguments, ['absolute' => TRUE]));
   }
 
   /**
@@ -152,10 +151,10 @@ class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotification
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    *
-   * @return string
+   * @return \Drupal\Core\Url
    *   The return url.
    */
-  public function getReturnUrl(OrderInterface $order) : string {
+  public function getReturnUrl(OrderInterface $order) : Url {
     return $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
   }
 
@@ -165,10 +164,10 @@ class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotification
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    *
-   * @return string
+   * @return \Drupal\Core\Url
    *   The cancel url.
    */
-  public function getCancelUrl(OrderInterface $order) : string {
+  public function getCancelUrl(OrderInterface $order) : Url {
     return $this->buildReturnUrl($order, 'commerce_payment.checkout.cancel');
   }
 

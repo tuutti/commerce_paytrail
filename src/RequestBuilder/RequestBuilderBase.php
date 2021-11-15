@@ -9,12 +9,8 @@ use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\Header;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
-use Drupal\commerce_price\Calculator;
-use Drupal\commerce_price\MinorUnitsConverterInterface;
-use Drupal\commerce_price\Price;
 use Drupal\Component\Uuid\UuidInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
-use Drupal\Core\Url;
 use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\ModelInterface;
@@ -38,8 +34,7 @@ abstract class RequestBuilderBase {
   public function __construct(
     protected EventDispatcherInterface $eventDispatcher,
     protected ClientInterface $client,
-    protected UuidInterface $uuidService,
-    protected MinorUnitsConverterInterface $converter
+    protected UuidInterface $uuidService
   ) {
   }
 

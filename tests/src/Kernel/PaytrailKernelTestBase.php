@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_store\StoreCreationTrait;
 use Drupal\KernelTests\Core\Entity\EntityKernelTestBase;
 
@@ -17,7 +18,7 @@ abstract class PaytrailKernelTestBase extends EntityKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'commerce_number_pattern',
     'commerce_paytrail',
     'address',
@@ -32,6 +33,13 @@ abstract class PaytrailKernelTestBase extends EntityKernelTestBase {
     'path',
     'path_alias',
   ];
+
+  /**
+   * The payment gateway.
+   *
+   * @var \Drupal\commerce_payment\Entity\PaymentGateway
+   */
+  protected $gateway;
 
   /**
    * The default store.
@@ -53,6 +61,14 @@ abstract class PaytrailKernelTestBase extends EntityKernelTestBase {
     $this->installSchema('commerce_number_pattern', ['commerce_number_pattern_sequence']);
 
     $this->store = $this->createStore('Default store', 'admin@example.com', 'online', TRUE, 'FI', 'EUR');
+    $this->gateway = PaymentGateway::create(
+      [
+        'id' => 'paytrail',
+        'label' => 'Paytrail',
+        'plugin' => 'paytrail',
+      ]
+    );
+    $this->gateway->save();
   }
 
 }
