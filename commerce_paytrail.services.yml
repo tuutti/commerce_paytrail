@@ -5,4 +5,4 @@ services:
 
   commerce_paytrail.payment_request:
     class: Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
-    arguments: ['@event_dispatcher', '@http_client', '@uuid', '@commerce_price.minor_units_converter']
+    arguments: ['@event_dispatcher', '@http_client', '@uuid', '@datetime.time', '@commerce_price.minor_units_converter']

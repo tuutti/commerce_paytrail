@@ -9,8 +9,8 @@ use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\Header;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
-use Drupal\Core\Datetime\DrupalDateTime;
 use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\ModelInterface;
@@ -30,11 +30,14 @@ abstract class RequestBuilderBase {
    *   The HTTP client.
    * @param \Drupal\Component\Uuid\UuidInterface $uuidService
    *   The uuid service.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    */
   public function __construct(
     protected EventDispatcherInterface $eventDispatcher,
     protected ClientInterface $client,
-    protected UuidInterface $uuidService
+    protected UuidInterface $uuidService,
+    protected TimeInterface $time
   ) {
   }
 
@@ -55,7 +58,7 @@ abstract class RequestBuilderBase {
       'sha512',
       $method,
       $this->uuidService->generate(),
-      (new DrupalDateTime())->format('c')
+      (string) $this->time->getCurrentTime()
     );
   }
 

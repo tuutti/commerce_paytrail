@@ -10,10 +10,11 @@ use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_tax\Entity\TaxType;
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Component\Uuid\UuidInterface;
 use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
 use GuzzleHttp\Psr7\Response;
 use Paytrail\Payment\Model\PaymentRequestResponse;
-use Paytrail\Payment\ObjectSerializer;
 
 /**
  * Tests Payment requests.
@@ -112,20 +113,72 @@ class PaymentRequestTest extends PaytrailKernelTestBase {
     return $order;
   }
 
-  public function testCreateNoTaxes() : void {
+  /**
+   * Tests ::create().
+   */
+  public function testCreate() : void {
+    $expectedStamp = '37cd1507-c5be-4102-9855-2a26387fac7f';
+
+    $uuid = $this->getMockBuilder(UuidInterface::class)
+      ->getMock();
+    $uuid
+      ->method('generate')
+      ->willReturn($expectedStamp);
+
+    $time = $this->getMockBuilder(TimeInterface::class)
+      ->getMock();
+    $time->method('getCurrentTime')
+      ->willReturn('1637332706');
+
+    $expectedTransactionId = '5770642a-9a02-4ca2-8eaa-cc6260a78eb6';
+
+    $order = $this->createOrder();
+
+    $headers = [
+      'checkout-account' => ['375917'],
+      'checkout-method' => ['POST'],
+      'checkout-algorithm' => ['sha512'],
+      'checkout-transaction-id' => [$expectedTransactionId],
+      // Pre-calculated signature.
+      'signature' => '023f3659ad6a1abb71351793b561df1e89f004084768d5702d6037a059c0c45154871756a77b5ddffd61acc516d74981aa7fd4cf414f97d94c1f9df084a48b4b',
+    ];
+    $body = [
+      'transactionId' => $expectedTransactionId,
+      'href' => 'https://services.paytrail.com/pay/5770642a-9a02-4ca2-8eaa-cc6260a78eb6',
+      'reference' => $order->id(),
+      'groups' => [
+        [
+          'id' => 'mobile',
+          'name' => 'Mobile payment methods',
+        ],
+      ],
+      'providers' => [
+        [
+          'url' => 'https://maksu.pivo.fi/api/payments',
+          'parameters' => [
+            [
+              'name' => 'amount',
+              'value' => 'base64 MTUyNQ==',
+            ],
+          ],
+        ],
+      ],
+    ];
     $client = $this->createMockHttpClient([
-      new Response(200, ''),
-      new Response(200, body: '{"transactionId":"ab4713c2-3a37-11ec-a94f-cbbf734f44ee","status":"ok","amount":12300,"currency":"EUR","reference":"124","stamp":"3cbc14b8-5c50-4cfb-a5c0-7ed398ef77c2","createdAt":"2021-10-31T10:45:31.257Z","provider":"osuuspankki","filingCode":"202110315934970000","paidAt":"2021-10-31T10:45:43.366Z"}'),
+      new Response(201, $headers, json_encode($body)),
     ]);
 
     $sut = new PaymentRequestBuilder(
       $this->container->get('event_dispatcher'),
       $client,
-      $this->container->get('uuid'),
+      $uuid,
+      $time,
       $this->container->get('commerce_price.minor_units_converter')
     );
-    $response = $sut->create($this->createOrder());
+    $response = $sut->create($order);
     $this->assertInstanceOf(PaymentRequestResponse::class, $response);
+    $this->assertEquals($expectedTransactionId, $order->getData(PaymentRequestBuilder::TRANSACTION_ID_KEY));
+    $this->assertEquals($expectedStamp, $order->getData(PaymentRequestBuilder::STAMP_KEY));
   }
 
 }

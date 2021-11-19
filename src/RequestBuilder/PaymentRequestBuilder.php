@@ -11,6 +11,7 @@ use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
 use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Api\PaymentsApi;
@@ -32,8 +33,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  */
 class PaymentRequestBuilder extends RequestBuilderBase {
 
-  protected const TRANSACTION_ID_KEY = 'commerce_paytrail_transaction_id';
-  protected const STAMP_KEY = 'commerce_paytrail_stamp';
+  public const TRANSACTION_ID_KEY = 'commerce_paytrail_transaction_id';
+  public const STAMP_KEY = 'commerce_paytrail_stamp';
 
   /**
    * Constructs a new instance.
@@ -51,9 +52,10 @@ class PaymentRequestBuilder extends RequestBuilderBase {
     EventDispatcherInterface $eventDispatcher,
     ClientInterface $client,
     UuidInterface $uuidService,
+    protected TimeInterface $time,
     protected MinorUnitsConverterInterface $converter
   ) {
-    parent::__construct($eventDispatcher, $client, $uuidService);
+    parent::__construct($eventDispatcher, $client, $uuidService, $time);
   }
 
   /**
@@ -73,9 +75,6 @@ class PaymentRequestBuilder extends RequestBuilderBase {
       ->setProductCode($orderItem->getPurchasedEntityId());
 
     if ($taxes = $orderItem->getAdjustments(['tax'])) {
-      if (count($taxes) > 1) {
-        throw new \InvalidArgumentException('Order contains more than one tax adjustment.');
-      }
       $item->setVatPercentage((int) Calculator::multiply(
         reset($taxes)->getPercentage(),
         '100'
@@ -157,7 +156,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
           $order->getItems()
         )
       )
-      // Only EUR is supported at the moment.
+      // Only EUR is supported.
       ->setCurrency('EUR')
       ->setCallbackUrls(new Callbacks([
         'success' => $plugin->getNotifyUrl()->toString(),

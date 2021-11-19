@@ -51,11 +51,10 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
   /**
    * {@inheritdoc}
    */
-  public function buildConfigurationForm(array $form, FormStateInterface $formState) : array {
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) : array {
     $form = [
+      // @todo Can we cache this?
       '#cache' => ['max-age' => 0],
-      '#prefix' => '<div id="payment-form">',
-      '#suffix' => '</div>',
     ];
 
     if (!$order = $this->entity->getOrder()) {
@@ -67,13 +66,13 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
     }
 
     /** @var \Paytrail\Payment\Model\PaymentMethodProvider $selectedProvider */
-    if ($selectedProvider = $formState->getTemporaryValue('provider')) {
+    if ($selectedProvider = $form_state->getTemporaryValue('provider')) {
       $data = [];
 
       foreach ($selectedProvider->getParameters() as $parameter) {
         $data[$parameter->getName()] = $parameter->getValue();
       }
-      return $this->buildRedirectForm($form, $formState, $selectedProvider->getUrl(), $data, self::REDIRECT_POST);
+      return $this->buildRedirectForm($form, $form_state, $selectedProvider->getUrl(), $data, self::REDIRECT_POST);
     }
 
     $response = $this->paymentRequest->create($order);
