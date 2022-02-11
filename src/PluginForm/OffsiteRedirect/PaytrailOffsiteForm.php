@@ -53,7 +53,6 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) : array {
     $form = [
-      // @todo Can we cache this?
       '#cache' => ['max-age' => 0],
     ];
 

@@ -11,10 +11,9 @@ use Drupal\commerce_paytrail\Header;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
-use GuzzleHttp\ClientInterface;
+use Drupal\Core\Datetime\DrupalDateTime;
 use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\ModelInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * A base class for request builders.
@@ -24,18 +23,12 @@ abstract class RequestBuilderBase {
   /**
    * Constructs a new instance.
    *
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
-   *   The event dispatcher.
-   * @param \GuzzleHttp\ClientInterface $client
-   *   The HTTP client.
    * @param \Drupal\Component\Uuid\UuidInterface $uuidService
    *   The uuid service.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
    */
   public function __construct(
-    protected EventDispatcherInterface $eventDispatcher,
-    protected ClientInterface $client,
     protected UuidInterface $uuidService,
     protected TimeInterface $time
   ) {
@@ -48,17 +41,28 @@ abstract class RequestBuilderBase {
    *   The HTTP method.
    * @param \Paytrail\Payment\Configuration $configuration
    *   The configuration.
+   * @param string|null $transactionId
+   *   The (optional) transaction id.
+   * @param string|null $platformName
+   *   The (optional) platform name.
    *
    * @return \Drupal\commerce_paytrail\Header
    *   The header.
    */
-  public function getHeaders(string $method, Configuration $configuration) : Header {
+  public function getHeaders(
+    string $method,
+    Configuration $configuration,
+    ?string $transactionId = NULL,
+    ?string $platformName = NULL,
+  ) : Header {
     return new Header(
       $configuration,
       'sha512',
       $method,
       $this->uuidService->generate(),
-      (string) $this->time->getCurrentTime()
+      (new DrupalDateTime('@' . $this->time->getCurrentTime()))->format('c'),
+      $transactionId,
+      $platformName
     );
   }
 
@@ -104,7 +108,7 @@ abstract class RequestBuilderBase {
    * @return string
    *   The signature.
    */
-  public function signature(string $secret, array $headers = [], ?string $body = '') : string {
+  public function signature(string $secret, array $headers, ?string $body = '') : string {
     // Filter non-checkout headers.
     $headers = array_filter(
       $headers,
@@ -150,7 +154,7 @@ abstract class RequestBuilderBase {
     }
     ['signature' => $expected] = $headers;
 
-    // Guzzle response header is alwas an array.
+    // Guzzle response header is always an array.
     if (is_array($expected)) {
       $expected = reset($expected);
     }
@@ -175,7 +179,7 @@ abstract class RequestBuilderBase {
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
   protected function getResponse(OrderInterface $order, array $data) : ModelInterface {
-    [$body, $response,, $headers] = $data;
+    [$response, $body,, $headers] = $data;
     $plugin = $this->getPlugin($order);
     $this->validateSignature($plugin, $headers, $body);
 

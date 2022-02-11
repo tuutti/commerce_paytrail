@@ -48,7 +48,7 @@ final class Header {
    */
   public function toArray() : array {
     $array = [
-      'checkout-account' => $this->configuration?->getApiKey('account'),
+      'checkout-account' => $this->configuration->getApiKey('account'),
       'checkout-algorithm' => $this->hashAlgorithm,
       'checkout-method' => $this->method,
       'checkout-nonce' => $this->nonce,

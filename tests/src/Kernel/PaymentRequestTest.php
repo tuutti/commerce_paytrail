@@ -26,7 +26,7 @@ class PaymentRequestTest extends PaytrailKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = [
+  public static $modules = [
     'state_machine',
     'profile',
     'entity_reference_revisions',
@@ -53,14 +53,16 @@ class PaymentRequestTest extends PaytrailKernelTestBase {
     $this->installEntitySchema('commerce_payment');
     $this->installEntitySchema('commerce_payment_method');
     $this->installEntitySchema('commerce_promotion');
-    $this->installConfig('path');
-    $this->installConfig('commerce_order');
-    $this->installConfig('commerce_tax');
-    $this->installConfig('commerce_product');
-    $this->installConfig('commerce_checkout');
-    $this->installConfig('commerce_payment');
-    $this->installConfig('commerce_promotion');
-    $this->installConfig('commerce_paytrail');
+    $this->installConfig([
+      'path',
+      'commerce_order',
+      'commerce_tax',
+      'commerce_product',
+      'commerce_checkout',
+      'commerce_payment',
+      'commerce_promotion',
+      'commerce_paytrail',
+    ]);
 
     TaxType::create([
       'id' => 'vat',
@@ -139,12 +141,11 @@ class PaymentRequestTest extends PaytrailKernelTestBase {
       'checkout-method' => ['POST'],
       'checkout-algorithm' => ['sha512'],
       'checkout-transaction-id' => [$expectedTransactionId],
-      // Pre-calculated signature.
       'signature' => '023f3659ad6a1abb71351793b561df1e89f004084768d5702d6037a059c0c45154871756a77b5ddffd61acc516d74981aa7fd4cf414f97d94c1f9df084a48b4b',
     ];
     $body = [
       'transactionId' => $expectedTransactionId,
-      'href' => 'https://services.paytrail.com/pay/5770642a-9a02-4ca2-8eaa-cc6260a78eb6',
+      'href' => 'https://services.paytrail.com/pay/' . $expectedTransactionId,
       'reference' => $order->id(),
       'groups' => [
         [

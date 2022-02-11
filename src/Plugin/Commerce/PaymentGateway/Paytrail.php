@@ -7,19 +7,14 @@ namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
-use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
-use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Language\LanguageManagerInterface;
-use Drupal\Core\Messenger\MessengerTrait;
+use Drupal\commerce_price\Price;
 use Drupal\Core\Url;
 use Paytrail\Payment\ApiException;
-use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\Payment;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Paytrail\Payment\Model\RefundResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,116 +28,18 @@ use Symfony\Component\HttpFoundation\Response;
  *   forms = {
  *     "offsite-payment" = "Drupal\commerce_paytrail\PluginForm\OffsiteRedirect\PaytrailOffsiteForm",
  *   },
- *   requires_billing_information = FALSE
+ *   payment_method_types = {"paytrail"},
+ *   requires_billing_information = FALSE,
  * )
  */
-class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotificationsInterface {
-
-  use MessengerTrait;
-
-  /**
-   * The language manager.
-   *
-   * @var \Drupal\Core\Language\LanguageManagerInterface
-   */
-  protected LanguageManagerInterface $languageManager;
-
-  /**
-   * The logger.
-   *
-   * @var \Psr\Log\LoggerInterface
-   */
-  protected LoggerInterface $logger;
-
-  /**
-   * The payment request builder.
-   *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
-   */
-  protected PaymentRequestBuilder $paymentRequestBuilder;
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
-    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $instance */
-    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
-
-    // Populate via setters to avoid overriding the parent constructor.
-    $instance->languageManager = $container->get('language_manager');
-    $instance->logger = $container->get('logger.channel.commerce_paytrail');
-    $instance->paymentRequestBuilder = $container->get('commerce_paytrail.payment_request');
-
-    return $instance;
-  }
-
+final class Paytrail extends PaytrailBase implements SupportsNotificationsInterface, SupportsRefundsInterface {
   /**
    * {@inheritdoc}
    */
   public function defaultConfiguration() : array {
     return [
-      'language' => 'automatic',
-      'account' => '375917',
-      'secret' => 'SAIPPUAKAUPPIAS',
+      'payment_method_types' => ['paytrail'],
     ] + parent::defaultConfiguration();
-  }
-
-  /**
-   * Get used langcode.
-   */
-  public function getLanguage() : string {
-    // Attempt to autodetect.
-    if ($this->configuration['language'] === 'automatic') {
-      $langcode = $this->languageManager->getCurrentLanguage()->getId();
-
-      return in_array($langcode, ['fi', 'sv', 'en']) ? strtoupper($langcode) : 'EN';
-    }
-    return $this->configuration['language'];
-  }
-
-  /**
-   * Gets the live mode status.
-   *
-   * @return bool
-   *   Boolean indicating whether we are operating in live mode.
-   */
-  public function isLive() : bool {
-    return $this->configuration['mode'] === 'live';
-  }
-
-  /**
-   * Gets the client configuration.
-   *
-   * @return \Paytrail\Payment\Configuration
-   *   The client configuration.
-   */
-  public function getClientConfiguration() : Configuration {
-    return (new Configuration())
-      ->setApiKey('account', $this->configuration['account'])
-      ->setApiKey('secret', $this->configuration['secret'])
-      ->setUserAgent('drupal/commerce_paytrail');
-  }
-
-  /**
-   * Builds the return url.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param string $type
-   *   The return url type.
-   * @param array $arguments
-   *   The additional arguments.
-   *
-   * @return \Drupal\Core\Url
-   *   The return url.
-   */
-  protected function buildReturnUrl(OrderInterface $order, string $type, array $arguments = []) : Url {
-    $arguments = array_merge([
-      'commerce_order' => $order->id(),
-      'step' => $arguments['step'] ?? 'payment',
-    ], $arguments);
-
-    return (new Url($type, $arguments, ['absolute' => TRUE]));
   }
 
   /**
@@ -172,54 +69,6 @@ class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotification
   }
 
   /**
-   * {@inheritdoc}
-   */
-  public function buildConfigurationForm(array $form, FormStateInterface $form_state) : array {
-    $form = parent::buildConfigurationForm($form, $form_state);
-
-    $form['account'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Account'),
-      '#required' => TRUE,
-      '#default_value' => $this->configuration['account'],
-    ];
-
-    $form['secret'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Secret'),
-      '#required' => TRUE,
-      '#default_value' => $this->configuration['secret'],
-    ];
-
-    $form['language'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Language'),
-      '#options' => [
-        'automatic' => $this->t('Automatic'),
-        'FI' => $this->t('Finnish'),
-        'SV' => $this->t('Swedish'),
-        'EN' => $this->t('English'),
-      ],
-      '#default_value' => $this->configuration['language'],
-    ];
-
-    return $form;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    parent::submitConfigurationForm($form, $form_state);
-
-    if (!$form_state->getErrors()) {
-      $values = $form_state->getValue($form['#parents']);
-
-      $this->configuration = $values;
-    }
-  }
-
-  /**
    * Notify callback.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
@@ -242,7 +91,7 @@ class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotification
     }
     catch (PaymentGatewayException | SecurityHashMismatchException $e) {
     }
-    return new Response('', Response::HTTP_FORBIDDEN);
+    return new Response(status: Response::HTTP_FORBIDDEN);
   }
 
   /**
@@ -325,6 +174,46 @@ class Paytrail extends OffsitePaymentGatewayBase implements SupportsNotification
     }
 
     return $payment;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @todo Refunds can be asynchronous in the future.
+   * @see https://docs.paytrail.com/#/?id=refund
+   */
+  public function refundPayment(PaymentInterface $payment, Price $amount = NULL) : void {
+    $this->assertPaymentState($payment, ['completed', 'partially_refunded']);
+    // If not specified, refund the entire amount.
+    $amount = $amount ?: $payment->getAmount();
+    // Validate the requested amount.
+    $this->assertRefundAmount($payment, $amount);
+    $order = $payment->getOrder();
+
+    $oldRefundedAmount = $payment->getRefundedAmount();
+    $newRefundedAmount = $oldRefundedAmount->add($amount);
+
+    try {
+      $response = $this->paymentRequestBuilder->refund($order, $amount);
+
+      $allowedStatuses = [
+        RefundResponse::STATUS_OK,
+        RefundResponse::STATUS_PENDING,
+      ];
+
+      if (!in_array($response->getStatus(), $allowedStatuses)) {
+        throw new PaymentGatewayException('Refund failed.');
+      }
+      $newRefundedAmount->lessThan($payment->getAmount()) ?
+        $payment->setState('partially_refunded') :
+        $payment->setState('refunded');
+
+      $payment->setRefundedAmount($newRefundedAmount)
+        ->save();
+    }
+    catch (\Exception $e) {
+      throw new PaymentGatewayException($e->getMessage(), $e->getCode(), $e);
+    }
   }
 
 }

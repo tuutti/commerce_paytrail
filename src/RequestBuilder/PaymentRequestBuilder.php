@@ -10,6 +10,7 @@ use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
+use Drupal\commerce_price\Price;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
@@ -23,6 +24,8 @@ use Paytrail\Payment\Model\Item;
 use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\PaymentRequest;
 use Paytrail\Payment\Model\PaymentRequestResponse;
+use Paytrail\Payment\Model\Refund;
+use Paytrail\Payment\Model\RefundResponse;
 use Paytrail\Payment\ObjectSerializer;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -45,17 +48,19 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    *   The HTTP client.
    * @param \Drupal\Component\Uuid\UuidInterface $uuidService
    *   The uuid service.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
    *   The minor units converter.
    */
   public function __construct(
-    EventDispatcherInterface $eventDispatcher,
-    ClientInterface $client,
+    protected EventDispatcherInterface $eventDispatcher,
+    protected ClientInterface $client,
     UuidInterface $uuidService,
-    protected TimeInterface $time,
+    TimeInterface $time,
     protected MinorUnitsConverterInterface $converter
   ) {
-    parent::__construct($eventDispatcher, $client, $uuidService, $time);
+    parent::__construct($uuidService, $time);
   }
 
   /**
@@ -90,6 +95,60 @@ class PaymentRequestBuilder extends RequestBuilderBase {
   }
 
   /**
+   * Refunds the given order and amount.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order to refund.
+   * @param \Drupal\commerce_price\Price $amount
+   *   The amount.
+   *
+   * @return \Paytrail\Payment\Model\RefundResponse
+   *   The refund response.
+   *
+   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
+   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
+   * @throws \Paytrail\Payment\ApiException
+   */
+  public function refund(OrderInterface $order, Price $amount) : RefundResponse {
+    if (!$transactionId = $order->getData(static::TRANSACTION_ID_KEY)) {
+      throw new ApiException('No transaction id found for: ' . $order->id());
+    }
+    $plugin = $this->getPlugin($order);
+    $configuration = $this->getPlugin($order)->getClientConfiguration();
+    $headers = $this->getHeaders('POST', $configuration, $transactionId);
+
+    $request = (new Refund())
+      ->setRefundReference($order->id())
+      ->setAmount($this->converter->toMinorUnits($amount))
+      ->setCallbackUrls(new Callbacks([
+        'success' => $plugin->getNotifyUrl()->toString(),
+        'cancel' => $plugin->getNotifyUrl()->toString(),
+      ]))
+      ->setRefundStamp($headers->nonce);
+
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers));
+
+    $response = (new PaymentsApi($this->client, $configuration))
+      ->refundPaymentByTransactionIdWithHttpInfo(
+        $transactionId,
+        $request,
+        $configuration->getApiKey('account'),
+        $headers->hashAlgorithm,
+        $headers->method,
+        $transactionId,
+        $headers->timestamp,
+        $headers->nonce,
+        $this->signature(
+          $configuration->getApiKey('secret'),
+          $headers->toArray(),
+          \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
+        ),
+      );
+    return $this->getResponse($order, $response);
+  }
+
+  /**
    * Gets the payment for given order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
@@ -106,21 +165,20 @@ class PaymentRequestBuilder extends RequestBuilderBase {
     if (!$transactionId = $order->getData(static::TRANSACTION_ID_KEY)) {
       throw new ApiException('No transaction id found for: ' . $order->id());
     }
-    $clientConfiguration = $this->getPlugin($order)->getClientConfiguration();
-    $headers = $this->getHeaders('GET', $clientConfiguration);
-    $headers->transactionId = $transactionId;
+    $configuration = $this->getPlugin($order)->getClientConfiguration();
+    $headers = $this->getHeaders('GET', $configuration, $transactionId);
 
-    $response = (new PaymentsApi($this->client, $clientConfiguration))
+    $response = (new PaymentsApi($this->client, $configuration))
       ->getPaymentByTransactionIdWithHttpInfo(
         $transactionId,
-        $clientConfiguration->getApiKey('account'),
+        $configuration->getApiKey('account'),
         $headers->hashAlgorithm,
         $headers->method,
         $transactionId,
         $headers->timestamp,
         $headers->nonce,
         $this->signature(
-          $clientConfiguration->getApiKey('secret'),
+          $configuration->getApiKey('secret'),
           $headers->toArray(),
         ),
       );
@@ -173,10 +231,8 @@ class PaymentRequestBuilder extends RequestBuilderBase {
     // Send invoice/customer data only if collect billing information
     // setting is enabled.
     if ($plugin->collectsBillingInformation()) {
-      $profile = $order->getBillingProfile();
-
       /** @var \Drupal\address\AddressInterface $address */
-      if ($address = $profile?->get('address')->first()) {
+      if ($address = $order->getBillingProfile()?->get('address')->first()) {
         $customer->setFirstName($address->getGivenName())
           ->setLastName($address->getFamilyName());
 
@@ -191,22 +247,22 @@ class PaymentRequestBuilder extends RequestBuilderBase {
     }
     $request->setCustomer($customer);
 
-    $clientConfiguration = $plugin->getClientConfiguration();
-    $headers = $this->getHeaders('POST', $clientConfiguration);
+    $configuration = $plugin->getClientConfiguration();
+    $headers = $this->getHeaders('POST', $configuration);
 
     $this->eventDispatcher
       ->dispatch(new ModelEvent($request, $headers));
 
-    $response = (new PaymentsApi($this->client, $clientConfiguration))
+    $response = (new PaymentsApi($this->client, $configuration))
       ->createPaymentWithHttpInfo(
         $request,
-        $clientConfiguration->getApiKey('account'),
+        $configuration->getApiKey('account'),
         $headers->hashAlgorithm,
         $headers->method,
         $headers->timestamp,
         $headers->nonce,
         $this->signature(
-          $clientConfiguration->getApiKey('secret'),
+          $configuration->getApiKey('secret'),
           $headers->toArray(),
           \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
         ),
