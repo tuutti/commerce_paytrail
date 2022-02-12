@@ -71,8 +71,11 @@ class PaymentRequestBuilder extends RequestBuilderBase {
     $item = (new Item())
       ->setUnitPrice($this->converter->toMinorUnits($orderItem->getAdjustedUnitPrice()))
       ->setUnits((int) $orderItem->getQuantity())
-      ->setVatPercentage(0)
-      ->setProductCode($orderItem->getPurchasedEntityId());
+      ->setVatPercentage(0);
+
+    if ($purchasedEntityId = $orderItem->getPurchasedEntityId()) {
+      $item->setProductCode($purchasedEntityId);
+    }
 
     if ($taxes = $orderItem->getAdjustments(['tax'])) {
       $item->setVatPercentage((int) Calculator::multiply(
