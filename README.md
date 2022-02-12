@@ -1,6 +1,6 @@
 # Commerce paytrail
 
-[![Build Status](https://gitlab.com/tuutti/commerce_paytrail/badges/8.x-2.x/pipeline.svg)](https://gitlab.com/tuutti/commerce_paytrail)
+![CI](https://github.com/tuutti/commerce_paytrail/workflows/CI/badge.svg)
 
 ## Description
 
@@ -27,15 +27,8 @@ information.
    will appear in the settings.
 
    * `Mode`: enables the Paytrail payment gateway in test or live mode.
-   * `Merchant ID`: provide your Paytrail Merchant ID.
-   * `Collect product details`: confirm whether to send product details to
-      Paytrail.
-   * `Allow IPN to create new payments`: allows Paytrail to automatically
-      create a new payment in case user never returns from the payment gateway.
-   * `Bypass Paytrail's payment method selection page`: redirects users
-      directly to the selected payment service.
-   * `Visible Payment methods`: configure the approved payment methods shown
-      on the payment page. If left empty, all available payment methods shown.
+   * `Account`: provide your Paytrail account.
+   * `Secret`: provide your Paytrail secret
 
 3. Click Save to save your configuration.
 

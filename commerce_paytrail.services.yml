@@ -3,6 +3,10 @@ services:
     parent: logger.channel_base
     arguments: ['commerce_paytrail']
 
+  commerce_paytrail.refund_request:
+    class: Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder
+    arguments: ['@event_dispatcher', '@http_client', '@uuid', '@datetime.time', '@commerce_price.minor_units_converter']
+
   commerce_paytrail.payment_request:
     class: Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
     arguments: ['@event_dispatcher', '@http_client', '@uuid', '@datetime.time', '@commerce_price.minor_units_converter']

@@ -5,8 +5,8 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Messenger\MessengerTrait;
@@ -36,13 +36,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
    */
   protected LoggerInterface $logger;
 
-  /**
-   * The payment request builder.
-   *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
-   */
-  protected PaymentRequestBuilder $paymentRequestBuilder;
-
   public const ACCOUNT = '375917';
   public const SECRET = 'SAIPPUAKAUPPIAS';
 
@@ -50,13 +43,10 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
-    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $instance */
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
-
     // Populate via setters to avoid overriding the parent constructor.
     $instance->languageManager = $container->get('language_manager');
     $instance->logger = $container->get('logger.channel.commerce_paytrail');
-    $instance->paymentRequestBuilder = $container->get('commerce_paytrail.payment_request');
 
     return $instance;
   }
@@ -185,6 +175,22 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
       ->setApiKey('account', $this->configuration['account'])
       ->setApiKey('secret', $this->configuration['secret'])
       ->setUserAgent('drupal/commerce_paytrail');
+  }
+
+  /**
+   * Validates the response status.
+   *
+   * @param string $response
+   *   The actual status.
+   * @param array $allowedStatuses
+   *   The allowed statuses.
+   */
+  protected function assertResponseStatus(string $response, array $allowedStatuses) : void {
+    if (!in_array($response, $allowedStatuses)) {
+      throw new PaymentGatewayException(
+        sprintf('Invalid status: %s [allowed: %s]', $response, implode(',', $allowedStatuses))
+      );
+    }
   }
 
 }

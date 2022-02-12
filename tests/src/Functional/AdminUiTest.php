@@ -4,20 +4,65 @@ declare(strict_types = 1);
 
 namespace Drupal\Tests\commerce_paytrail\Functional;
 
+use Drupal\commerce_payment\Entity\PaymentGateway;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_store\StoreCreationTrait;
+use Drupal\Tests\BrowserTestBase;
+use Drupal\Tests\commerce\Traits\CommerceBrowserTestTrait;
+
 /**
  * Provides tests for admin ui.
  *
  * @group commerce_paytrail
  */
-class AdminUiTest extends PaytrailBrowserTestBase {
+class AdminUiTest extends BrowserTestBase {
+
+  use CommerceBrowserTestTrait;
+  use StoreCreationTrait;
 
   /**
    * {@inheritdoc}
    */
-  protected function getAdministratorPermissions() : array {
-    return array_merge([
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected static $modules = [
+    'system',
+    'block',
+    'field',
+    'commerce',
+    'commerce_price',
+    'commerce_store',
+    'commerce_paytrail',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp() : void {
+    parent::setUp();
+
+    $this->store = $this->createStore(currency: 'EUR');
+    $this->gateway = PaymentGateway::create([
+      'id' => 'paytrail',
+      'label' => 'Paytrail',
+      'plugin' => 'paytrail',
+    ]);
+    $this->gateway->save();
+    $this->gatewayPlugin = $this->gateway->getPlugin();
+
+    $user = $this->createUser([
       'administer commerce_payment_gateway',
-    ], parent::getAdministratorPermissions());
+      'view the administration theme',
+      'access administration pages',
+      'access commerce administration pages',
+      'administer commerce_currency',
+      'administer commerce_store',
+      'administer commerce_store_type',
+    ]);
+    $this->drupalLogin($user);
   }
 
   /**
@@ -51,11 +96,11 @@ class AdminUiTest extends PaytrailBrowserTestBase {
   }
 
   /**
-   * Test payment gateway editing.
+   * Test that payment gateway can be saved.
    */
   public function testSave() : void {
     // Test default credentials.
-    $this->assertFormValues('375917', 'SAIPPUAKAUPPIAS', 'automatic');
+    $this->assertFormValues(PaytrailBase::ACCOUNT, PaytrailBase::SECRET, 'automatic');
     // Test that we can modify values.
     $this->assertFormValues('321', '123', 'EN', fn (array $expected) => $this->submitForm($expected, 'Save'));
   }

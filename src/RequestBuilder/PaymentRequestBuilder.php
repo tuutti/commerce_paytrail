@@ -7,16 +7,13 @@ namespace Drupal\commerce_paytrail\RequestBuilder;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
-use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
-use Drupal\commerce_price\Price;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
 use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Api\PaymentsApi;
-use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Address;
 use Paytrail\Payment\Model\Callbacks;
 use Paytrail\Payment\Model\Customer;
@@ -24,8 +21,6 @@ use Paytrail\Payment\Model\Item;
 use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\PaymentRequest;
 use Paytrail\Payment\Model\PaymentRequestResponse;
-use Paytrail\Payment\Model\Refund;
-use Paytrail\Payment\Model\RefundResponse;
 use Paytrail\Payment\ObjectSerializer;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -36,8 +31,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  */
 class PaymentRequestBuilder extends RequestBuilderBase {
 
-  public const TRANSACTION_ID_KEY = 'commerce_paytrail_transaction_id';
-  public const STAMP_KEY = 'commerce_paytrail_stamp';
+  use TransactionIdTrait;
+  use StampKeyTrait;
 
   /**
    * Constructs a new instance.
@@ -51,7 +46,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
-   *   The minor units converter.
+   *   The minor unit converter.
    */
   public function __construct(
     protected EventDispatcherInterface $eventDispatcher,
@@ -95,60 +90,6 @@ class PaymentRequestBuilder extends RequestBuilderBase {
   }
 
   /**
-   * Refunds the given order and amount.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order to refund.
-   * @param \Drupal\commerce_price\Price $amount
-   *   The amount.
-   *
-   * @return \Paytrail\Payment\Model\RefundResponse
-   *   The refund response.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
-   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
-   * @throws \Paytrail\Payment\ApiException
-   */
-  public function refund(OrderInterface $order, Price $amount) : RefundResponse {
-    if (!$transactionId = $order->getData(static::TRANSACTION_ID_KEY)) {
-      throw new ApiException('No transaction id found for: ' . $order->id());
-    }
-    $plugin = $this->getPlugin($order);
-    $configuration = $this->getPlugin($order)->getClientConfiguration();
-    $headers = $this->getHeaders('POST', $configuration, $transactionId);
-
-    $request = (new Refund())
-      ->setRefundReference($order->id())
-      ->setAmount($this->converter->toMinorUnits($amount))
-      ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl()->toString(),
-        'cancel' => $plugin->getNotifyUrl()->toString(),
-      ]))
-      ->setRefundStamp($headers->nonce);
-
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers));
-
-    $response = (new PaymentsApi($this->client, $configuration))
-      ->refundPaymentByTransactionIdWithHttpInfo(
-        $transactionId,
-        $request,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $transactionId,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
-          $configuration->getApiKey('secret'),
-          $headers->toArray(),
-          \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
-        ),
-      );
-    return $this->getResponse($order, $response);
-  }
-
-  /**
    * Gets the payment for given order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
@@ -162,11 +103,9 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    * @throws \Paytrail\Payment\ApiException
    */
   public function get(OrderInterface $order) : Payment {
-    if (!$transactionId = $order->getData(static::TRANSACTION_ID_KEY)) {
-      throw new ApiException('No transaction id found for: ' . $order->id());
-    }
+    $transactionId = $this->getTransactionId($order);
     $configuration = $this->getPlugin($order)->getClientConfiguration();
-    $headers = $this->getHeaders('GET', $configuration, $transactionId);
+    $headers = $this->createHeaders('GET', $configuration, $transactionId);
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->getPaymentByTransactionIdWithHttpInfo(
@@ -198,9 +137,51 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    * @throws \Paytrail\Payment\ApiException
    */
-  public function create(
-    OrderInterface $order
-  ) : PaymentRequestResponse {
+  public function create(OrderInterface $order) : PaymentRequestResponse {
+    $configuration = $this->getPlugin($order)
+      ->getClientConfiguration();
+    $headers = $this->createHeaders('POST', $configuration);
+    $request = $this->createPaymentRequest($order);
+
+    $response = (new PaymentsApi($this->client, $configuration))
+      ->createPaymentWithHttpInfo(
+        $request,
+        $configuration->getApiKey('account'),
+        $headers->hashAlgorithm,
+        $headers->method,
+        $headers->timestamp,
+        $headers->nonce,
+        $this->signature(
+          $configuration->getApiKey('secret'),
+          $headers->toArray(),
+          \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
+        ),
+      );
+    /** @var \Paytrail\Payment\Model\PaymentRequestResponse $response */
+    $response = $this->getResponse($order, $response);
+
+    // Save stamp and transaction id for later validation.
+    $this
+      ->setTransactionId($order, $response->getTransactionId())
+      ->setStamp($order, $request->getStamp());
+    $order->save();
+
+    return $response;
+  }
+
+  /**
+   * Creates a new payment request object.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return \Paytrail\Payment\Model\PaymentRequest
+   *   The payment request.
+   *
+   * @throws \Drupal\Core\TypedData\Exception\MissingDataException
+   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
+   */
+  public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
     $plugin = $this->getPlugin($order);
 
     $request = (new PaymentRequest())
@@ -247,55 +228,10 @@ class PaymentRequestBuilder extends RequestBuilderBase {
     }
     $request->setCustomer($customer);
 
-    $configuration = $plugin->getClientConfiguration();
-    $headers = $this->getHeaders('POST', $configuration);
-
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers));
+      ->dispatch(new ModelEvent($request));
 
-    $response = (new PaymentsApi($this->client, $configuration))
-      ->createPaymentWithHttpInfo(
-        $request,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
-          $configuration->getApiKey('secret'),
-          $headers->toArray(),
-          \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
-        ),
-      );
-    /** @var \Paytrail\Payment\Model\PaymentRequestResponse $response */
-    $response = $this->getResponse($order, $response);
-
-    // Save stamp and transaction id for later validation.
-    $order->setData(static::TRANSACTION_ID_KEY, $response->getTransactionId())
-      ->setData(static::STAMP_KEY, $request->getStamp())
-      ->save();
-
-    return $response;
-  }
-
-  /**
-   * Checks if returned stamp matches with stored one.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order to check.
-   * @param string $expectedStamp
-   *   The expected stamp.
-   *
-   * @return $this
-   *   The self.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
-   */
-  public function validateStamp(OrderInterface $order, string $expectedStamp) : self {
-    if ((!$stamp = $order->getData(static::STAMP_KEY)) || $stamp !== $expectedStamp) {
-      throw new SecurityHashMismatchException('Stamp validation failed.');
-    }
-    return $this;
+    return $request;
   }
 
 }

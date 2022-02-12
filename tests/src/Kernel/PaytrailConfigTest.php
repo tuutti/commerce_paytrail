@@ -66,7 +66,6 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
       $plugin = $this->gateway->getPlugin();
       $this->assertEquals($expected, $plugin->getLanguage());
     }
-
   }
 
 }

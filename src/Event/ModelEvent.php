@@ -23,7 +23,7 @@ final class ModelEvent extends Event {
    */
   public function __construct(
     public ModelInterface $model,
-    public ?Header $headers
+    public ?Header $headers = NULL
   ) {
   }
 

@@ -49,7 +49,7 @@ abstract class RequestBuilderBase {
    * @return \Drupal\commerce_paytrail\Header
    *   The header.
    */
-  public function getHeaders(
+  public function createHeaders(
     string $method,
     Configuration $configuration,
     ?string $transactionId = NULL,
@@ -82,7 +82,7 @@ abstract class RequestBuilderBase {
       $gateway = $order->get('payment_gateway');
 
       if ($gateway->isEmpty()) {
-        throw new \InvalidArgumentException('Payment gateway not found.');
+        throw new PaytrailPluginException('Payment gateway not found.');
       }
       $plugin = $gateway->first()->entity->getPlugin();
 
@@ -147,7 +147,11 @@ abstract class RequestBuilderBase {
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
   public function validateSignature(Paytrail $plugin, array $headers, string $body = '') : self {
-    $signature = $this->signature($plugin->getClientConfiguration()->getApiKey('secret'), $headers, $body);
+    $signature = $this->signature(
+      $plugin->getClientConfiguration()->getApiKey('secret'),
+      $headers,
+      $body
+    );
 
     if (!isset($headers['signature'])) {
       throw new SecurityHashMismatchException('Signature missing.');
