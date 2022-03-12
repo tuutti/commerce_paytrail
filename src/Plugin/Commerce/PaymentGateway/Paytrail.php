@@ -155,13 +155,14 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    * @param \Symfony\Component\HttpFoundation\Request $request
    *   The request.
    *
-   * @return \Drupal\commerce_payment\Entity\PaymentInterface
-   *   The payment.
-   *
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    * @throws \Paytrail\Payment\ApiException
    */
-  protected function handlePayment(OrderInterface $order, Request $request) : PaymentInterface {
+  protected function handlePayment(OrderInterface $order, Request $request) : void {
+    // Nothing to do if order is paid already.
+    if ($order->isPaid()) {
+      return;
+    }
     $this->paymentRequest
       // onNotify() uses {commerce_order} to load the order which is not a part
       // of signature hash calculation. Make sure stamp matches with the stamp
@@ -202,8 +203,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
         ->applyTransitionById('capture');
     }
     $payment->save();
-
-    return $payment;
   }
 
   /**
