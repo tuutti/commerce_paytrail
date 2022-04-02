@@ -75,8 +75,8 @@ abstract class RequestBuilderBase {
    * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
    *   The payment plugin.
    */
-  protected function getPlugin(OrderInterface $order) : Paytrail {
-    static $plugins;
+  public function getPlugin(OrderInterface $order) : Paytrail {
+    static $plugins = [];
 
     if (!isset($plugins[$order->id()])) {
       $gateway = $order->get('payment_gateway');
@@ -84,7 +84,7 @@ abstract class RequestBuilderBase {
       if ($gateway->isEmpty()) {
         throw new PaytrailPluginException('Payment gateway not found.');
       }
-      $plugin = $gateway->first()->entity->getPlugin();
+      $plugin = $gateway->first()->entity?->getPlugin();
 
       if (!$plugin instanceof Paytrail) {
         throw new PaytrailPluginException('Payment gateway not instanceof Klarna.');

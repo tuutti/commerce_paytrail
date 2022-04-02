@@ -1,0 +1,28 @@
+<?php
+
+/**
+ * @file
+ * Contains 'commerce_paytrail' update hooks.
+ */
+
+declare(strict_types = 1);
+
+use Drupal\commerce_payment\Entity\PaymentGateway;
+
+/**
+ * Enable the 'use_ipn_to_capture_payments' setting.
+ */
+function commerce_paytrail_update_9001() : void {
+  $gateways = PaymentGateway::loadMultiple();
+
+  foreach ($gateways as $gateway) {
+    if ($gateway->getPluginId() === 'paytrail') {
+      /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin */
+      $plugin = $gateway->getPlugin();
+      $configuration = $plugin->getConfiguration();
+      $configuration['use_ipn_to_capture_payments'] = TRUE;
+      $plugin->setConfiguration($configuration);
+      $gateway->save();
+    }
+  }
+}

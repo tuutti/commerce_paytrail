@@ -7,11 +7,19 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItem;
+use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\RequestBuilderBase;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_tax\Entity\TaxType;
 use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
+use Prophecy\Argument;
+use Prophecy\Prophecy\ObjectProphecy;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Base class for request builder tests.
@@ -55,6 +63,81 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
 
     $this->store->set('prices_include_tax', FALSE)
       ->save();
+  }
+
+  /**
+   * Creates a Paytrail plugin using mocked request builder.
+   *
+   * @param \Drupal\commerce_paytrail\RequestBuilder\RequestBuilderBase $builder
+   *   The mocked request builder.
+   *
+   * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
+   *   The payment gateway plugin.
+   */
+  protected function getPaymentRequestBuilder(RequestBuilderBase $builder) : Paytrail {
+    $service = match(TRUE) {
+      $builder instanceof PaymentRequestBuilder => 'commerce_paytrail.payment_request',
+      $builder instanceof RefundRequestBuilder => 'commerce_paytrail.refund_request',
+    };
+    $this->container->set($service, $builder);
+    $this->refreshServices();
+
+    $gateway = $this->createGatewayPlugin('test');
+    $this->gateway = $gateway;
+
+    return $gateway->getPlugin();
+  }
+
+  /**
+   * Create mock request.
+   *
+   * @param int|string $orderId
+   *   The order id.
+   *
+   * @return \Symfony\Component\HttpFoundation\Request
+   *   The request.
+   */
+  protected function createRequest(int|string $orderId) : Request {
+    $request = Request::createFromGlobals();
+    // Test with non-existent order.
+    $request->query->set('checkout-reference', $orderId);
+    $request->query->set('checkout-stamp', '123');
+
+    return $request;
+  }
+
+  /**
+   * Loads payment for given transaction id.
+   *
+   * @param string $transactionId
+   *   The transaction id used to load the payment.
+   *
+   * @return \Drupal\commerce_payment\Entity\PaymentInterface|null
+   *   The payment or null.
+   */
+  protected function loadPayment(string $transactionId) :?  PaymentInterface {
+    return $this->container
+      ->get('entity_type.manager')
+      ->getStorage('commerce_payment')
+      ->loadByRemoteId($transactionId);
+  }
+
+  /**
+   * Creates a mock builder for PaymentRequest builder.
+   *
+   * @return \Prophecy\Prophecy\ObjectProphecy
+   *   The mock builder.
+   */
+  protected function createRequestBuilderMock() : ObjectProphecy {
+    $builder = $this->prophesize(PaymentRequestBuilder::class);
+    $builder
+      ->validateStamp(Argument::any(), Argument::any())
+      ->shouldBeCalled()
+      ->willReturn($builder->reveal());
+    $builder->validateSignature(Argument::any(), Argument::any())
+      ->shouldBeCalled()
+      ->willReturn($builder->reveal());
+    return $builder;
   }
 
   /**
