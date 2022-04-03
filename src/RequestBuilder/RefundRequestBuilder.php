@@ -68,7 +68,7 @@ class RefundRequestBuilder extends RequestBuilderBase {
    */
   public function refund(OrderInterface $order, Price $amount) : RefundResponse {
     $transactionId = $this->getTransactionId($order);
-    $plugin = $this->getPlugin($order);
+    $plugin = $this->getPaymentPlugin($order);
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration, $transactionId);
 
@@ -113,7 +113,7 @@ class RefundRequestBuilder extends RequestBuilderBase {
     Price $amount,
     string $nonce
   ) : Refund {
-    $plugin = $this->getPlugin($order);
+    $plugin = $this->getPaymentPlugin($order);
 
     $request = (new Refund())
       ->setRefundReference($order->id())

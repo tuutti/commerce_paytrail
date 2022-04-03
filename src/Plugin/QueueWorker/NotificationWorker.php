@@ -6,6 +6,7 @@ namespace Drupal\commerce_paytrail\Plugin\QueueWorker;
 
 use Drupal\commerce_order\OrderStorage;
 use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
+use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\QueueWorkerBase;
@@ -23,6 +24,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * )
  */
 final class NotificationWorker extends QueueWorkerBase implements ContainerFactoryPluginInterface {
+
+  use PaymentGatewayPluginTrait;
 
   public const NUM_MAX_TRIES = 10;
   public const MAX_TRIES_SETTING = 'commerce_paytrail_maximum_captures';
@@ -113,8 +116,8 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
           sprintf('Order payment is not completed for order: %s', $id)
         );
       }
-      $this->paymentRequest
-        ->getPlugin($order)
+      $this
+        ->getPaymentPlugin($order)
         ->createPayment($order, $paymentResponse);
     }
     catch (\Exception $e) {

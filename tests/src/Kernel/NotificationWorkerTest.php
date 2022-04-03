@@ -72,7 +72,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
           ->setStatus($status)
           ->setTransactionId('123')
       );
-    $builder->getPlugin(Argument::any())
+    $builder->getPaymentPlugin(Argument::any())
       ->willReturn($this->gateway->getPlugin());
     $paymentBuilder = $this->getPaymentRequestBuilder($builder->reveal());
     $order = $this->createOrder();

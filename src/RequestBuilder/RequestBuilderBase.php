@@ -5,9 +5,9 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\Header;
+use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
@@ -19,6 +19,8 @@ use Paytrail\Payment\Model\ModelInterface;
  * A base class for request builders.
  */
 abstract class RequestBuilderBase {
+
+  use PaymentGatewayPluginTrait;
 
   /**
    * Constructs a new instance.
@@ -64,35 +66,6 @@ abstract class RequestBuilderBase {
       $transactionId,
       $platformName
     );
-  }
-
-  /**
-   * Gets the plugin for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
-   *   The payment plugin.
-   */
-  public function getPlugin(OrderInterface $order) : Paytrail {
-    static $plugins = [];
-
-    if (!isset($plugins[$order->id()])) {
-      $gateway = $order->get('payment_gateway');
-
-      if ($gateway->isEmpty()) {
-        throw new PaytrailPluginException('Payment gateway not found.');
-      }
-      $plugin = $gateway->first()->entity?->getPlugin();
-
-      if (!$plugin instanceof Paytrail) {
-        throw new PaytrailPluginException('Payment gateway not instanceof Klarna.');
-      }
-      $plugins[$order->id()] = $plugin;
-    }
-
-    return $plugins[$order->id()];
   }
 
   /**
@@ -184,7 +157,7 @@ abstract class RequestBuilderBase {
    */
   protected function getResponse(OrderInterface $order, array $data) : ModelInterface {
     [$response, $body,, $headers] = $data;
-    $plugin = $this->getPlugin($order);
+    $plugin = $this->getPaymentPlugin($order);
     $this->validateSignature($plugin, $headers, $body);
 
     return $response;

@@ -107,7 +107,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    */
   public function get(OrderInterface $order) : Payment {
     $transactionId = $this->getTransactionId($order);
-    $configuration = $this->getPlugin($order)->getClientConfiguration();
+    $configuration = $this->getPaymentPlugin($order)->getClientConfiguration();
     $headers = $this->createHeaders('GET', $configuration, $transactionId);
 
     $response = (new PaymentsApi($this->client, $configuration))
@@ -141,7 +141,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    * @throws \Paytrail\Payment\ApiException
    */
   public function create(OrderInterface $order) : PaymentRequestResponse {
-    $configuration = $this->getPlugin($order)
+    $configuration = $this->getPaymentPlugin($order)
       ->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
     $request = $this->createPaymentRequest($order);
@@ -185,7 +185,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
    */
   public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
-    $plugin = $this->getPlugin($order);
+    $plugin = $this->getPaymentPlugin($order);
 
     $request = (new PaymentRequest())
       ->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
