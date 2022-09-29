@@ -11,7 +11,6 @@ use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
-use Drupal\Core\Datetime\DrupalDateTime;
 use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\ModelInterface;
 
