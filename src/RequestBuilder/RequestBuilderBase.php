@@ -62,7 +62,7 @@ abstract class RequestBuilderBase {
       'sha512',
       $method,
       $this->uuidService->generate(),
-      (new DrupalDateTime('@' . $this->time->getCurrentTime()))->format('c'),
+      $this->time->getCurrentTime(),
       $transactionId,
       $platformName
     );
