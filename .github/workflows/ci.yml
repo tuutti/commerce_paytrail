@@ -5,7 +5,7 @@ env:
   SIMPLETEST_DB: "mysql://drupal:drupal@mariadb:3306/drupal"
   SIMPLETEST_BASE_URL: "http://127.0.0.1:8080"
   DRUPAL_MODULE_NAME: "commerce_paytrail"
-  DRUPAL_CORE_VERSION: 9.3.x
+  DRUPAL_CORE_VERSION: 9.4.x
   SYMFONY_DEPRECATIONS_HELPER: disabled
 jobs:
   test-contrib:
@@ -43,9 +43,9 @@ jobs:
           cd $DRUPAL_ROOT
           composer config platform.php ${{ matrix.php-version }}
           composer config repositories.0 path $GITHUB_WORKSPACE
-          composer require drupal/$DRUPAL_MODULE_NAME
+          composer require drupal/$DRUPAL_MODULE_NAME -W
           composer run-script drupal-phpunit-upgrade
-          composer require "drush/drush ^10.0"
+          composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
           composer require --dev "drupal/coder"
 
