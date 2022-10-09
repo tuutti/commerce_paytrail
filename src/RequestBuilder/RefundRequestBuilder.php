@@ -93,8 +93,8 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
       ->setRefundReference($order->id())
       ->setAmount($this->converter->toMinorUnits($amount))
       ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl('refund')->toString(),
-        'cancel' => $plugin->getNotifyUrl('refund')->toString(),
+        'success' => $plugin->getNotifyUrl('refund-success')->toString(),
+        'cancel' => $plugin->getNotifyUrl('refund-cancel')->toString(),
       ]))
       ->setRefundStamp($nonce);
 

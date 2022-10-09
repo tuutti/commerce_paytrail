@@ -119,12 +119,13 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    *   The response.
    */
   public function onNotify(Request $request) : Response {
-    $callback = match ($request->get('callback-type')) {
+    $callback = match ($request->query->get('event')) {
       // Refunds can be asynchronous, meaning the refund can be in 'pending'
-      // state. We always mark payments as refunded regardless of its state.
+      // state and requires a valid success/cancel callback. Payments are
+      // always marked as refunded regardless of its remote state.
       // Return a 200 response to make sure Paytrail doesn't keep
       // calling this for no reason.
-      'refund' => function (Request $request) : Response {
+      'refund-success', 'refund-cancel' => function (Request $request) : Response {
         return new Response();
       },
       default => function (Request $request) : Response {
@@ -159,12 +160,12 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   /**
    * {@inheritdoc}
    */
-  public function getNotifyUrl(string $type = NULL) : Url {
+  public function getNotifyUrl(string $eventName = NULL) : Url {
     $url = parent::getNotifyUrl();
 
-    if ($type) {
+    if ($eventName) {
       $query = $url->getOption('query');
-      $query['callback-type'] = $type;
+      $query['event'] = $eventName;
       $url->setOption('query', $query);
     }
     return $url;

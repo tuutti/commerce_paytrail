@@ -102,6 +102,20 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
   }
 
   /**
+   * Tests onNotify with refund events.
+   */
+  public function testOnNotifyEvent() : void {
+    $builder = $this->prophesize(RefundRequestBuilderInterface::class);
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+
+    foreach (['success', 'cancel'] as $event) {
+      $request = $this->createRequest(1);
+      $request->query->set('event', 'refund-' . $event);
+      static::assertEquals(200, $sut->onNotify($request)->getStatusCode());
+    }
+  }
+
+  /**
    * Tests full refund.
    */
   public function testFullRefund() : void {
