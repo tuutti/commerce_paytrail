@@ -222,8 +222,8 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
     }
     // onReturn() uses {commerce_order} to load the order, which is not a part
     // of the signature hash calculation. Make sure the order entity ID
-    // matches the order id in 'checkout-reference' to prevent a valid return
-    // URL from being reused.
+    // matches the order id in 'checkout-reference' to make sure a valid return
+    // URL cannot be reused.
     if (!$requestOrderId || $requestOrderId !== $order->id()) {
       throw new SecurityHashMismatchException('Order ID mismatch.');
     }
