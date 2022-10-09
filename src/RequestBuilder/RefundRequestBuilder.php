@@ -87,7 +87,7 @@ class RefundRequestBuilder extends RequestBuilderBase {
         $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
-          \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
+          json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         ),
       );
     return $this->getResponse($order, $response);
