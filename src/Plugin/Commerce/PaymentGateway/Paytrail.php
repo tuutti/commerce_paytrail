@@ -10,8 +10,8 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
-use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
+use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Drupal\Core\Queue\QueueInterface;
 use Drupal\Core\Url;
@@ -41,16 +41,16 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   /**
    * The payment request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface
    */
-  private PaymentRequestBuilder $paymentRequest;
+  private PaymentRequestBuilderInterface $paymentRequest;
 
   /**
    * The refund request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface
    */
-  private RefundRequestBuilder $refundRequest;
+  private RefundRequestBuilderInterface $refundRequest;
 
   /**
    * The queue.
@@ -63,7 +63,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
-    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $instance */
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
 
     // Populate via setters to avoid overriding the parent constructor.
@@ -213,7 +212,10 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
     [
       'checkout-reference' => $requestOrderId,
       'checkout-transaction-id' => $transactionId,
-    ] = $request->query->all();
+    ] = $request->query->all() + [
+      'checkout-reference' => NULL,
+      'checkout-transaction-id' => NULL,
+    ];
 
     if (!$transactionId) {
       throw new SecurityHashMismatchException('Transaction ID not set.');

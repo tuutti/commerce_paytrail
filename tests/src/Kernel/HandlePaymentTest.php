@@ -6,7 +6,7 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Paytrail\Payment\Model\Payment;
 use Prophecy\Argument;
 
@@ -22,54 +22,25 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
    * Tests that payment fails when order is not found.
    */
   public function testOnNotifyOrderNotFound() : void {
-    $builder = $this->prophesize(PaymentRequestBuilder::class);
+    $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
 
     // Test with non-existent order.
-    $response = $this->getPaymentRequestBuilder($builder->reveal())
+    $response = $this->getGatewayPluginForBuilder($builder->reveal())
       ->onNotify($this->createRequest(55));
     static::assertEquals(403, $response->getStatusCode());
     static::assertEquals('Order not found.', $response->getContent());
   }
 
   /**
-   * Tests that payment fails when stamp validation fails.
-   */
-  public function testHandlePaymentStampValidationFailed() : void {
-    $builder = $this->prophesize(PaymentRequestBuilder::class);
-    $builder
-      ->validateStamp(Argument::any(), Argument::any())
-      ->shouldBeCalled()
-      ->willThrow(new SecurityHashMismatchException('Stamp validation failed.'));
-    $builder->validateSignature(Argument::any(), Argument::any())
-      ->shouldNotBeCalled();
-    $order = $this->createOrder();
-
-    $sut = $this->getPaymentRequestBuilder($builder->reveal());
-
-    $response = $sut
-      ->onNotify($this->createRequest($order->id()));
-    static::assertEquals(403, $response->getStatusCode());
-    static::assertEquals('Stamp validation failed.', $response->getContent());
-
-    $this->expectException(PaymentGatewayException::class);
-    $this->expectExceptionMessage('Stamp validation failed.');
-    $sut->onReturn($order, $this->createRequest($order->id()));
-  }
-
-  /**
    * Tests that payment fails when signature validation fails.
    */
   public function testHandlePaymentSignatureValidationFailed() : void {
-    $builder = $this->prophesize(PaymentRequestBuilder::class);
-    $builder
-      ->validateStamp(Argument::any(), Argument::any())
-      ->shouldBeCalled()
-      ->willReturn($builder->reveal());
+    $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
     $builder->validateSignature(Argument::any(), Argument::any())
       ->shouldBeCalled()
       ->willThrow(new SecurityHashMismatchException('Signature does not match.'));
     $order = $this->createOrder();
-    $sut = $this->getPaymentRequestBuilder($builder->reveal());
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
 
     $response = $sut
       ->onNotify($this->createRequest($order->id()));
@@ -82,13 +53,26 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
   }
 
   /**
+   * Tests that order id must match the checkout-reference query parameter.
+   */
+  public function testInvalidOrderId() : void {
+    $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
+    $order = $this->createOrder();
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+
+    $this->expectException(PaymentGatewayException::class);
+    $this->expectExceptionMessage('Order ID mismatch.');
+    $sut->onReturn($order, $this->createRequest('non-existent-order'));
+  }
+
+  /**
    * Tests that payment fails when remote state is not correct.
    */
   public function testHandlePaymentInvalidResponseStatus() : void {
     $order = $this->createOrder();
     $builder = $this->createRequestBuilderMock();
     $builder
-      ->get(Argument::any())
+      ->get(Argument::any(), Argument::any())
       ->shouldBeCalled()
       ->willReturn(
         (new Payment())
@@ -97,7 +81,7 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
 
     $this->expectException(PaymentGatewayException::class);
     $this->expectExceptionMessage('Invalid status: ' . Payment::STATUS_FAIL);
-    $sut = $this->getPaymentRequestBuilder($builder->reveal());
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
     $sut->onReturn($order, $this->createRequest($order->id()));
   }
 
@@ -108,14 +92,14 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
     $order = $this->createOrder();
     $builder = $this->createRequestBuilderMock();
     $builder
-      ->get(Argument::any())
+      ->get(Argument::any(), Argument::any())
       ->shouldBeCalled()
       ->willReturn(
         (new Payment())
           ->setStatus(Payment::STATUS_OK)
           ->setTransactionId('123')
       );
-    $this->getPaymentRequestBuilder($builder->reveal())
+    $this->getGatewayPluginForBuilder($builder->reveal())
       ->onReturn($order, $this->createRequest($order->id()));
 
     $payment = $this->loadPayment('123');

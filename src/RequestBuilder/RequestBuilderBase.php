@@ -17,7 +17,7 @@ use Paytrail\Payment\Model\ModelInterface;
 /**
  * A base class for request builders.
  */
-abstract class RequestBuilderBase {
+abstract class RequestBuilderBase implements RequestBuilderInterface {
 
   use PaymentGatewayPluginTrait;
 
@@ -36,19 +36,7 @@ abstract class RequestBuilderBase {
   }
 
   /**
-   * Gets the default headers.
-   *
-   * @param string $method
-   *   The HTTP method.
-   * @param \Paytrail\Payment\Configuration $configuration
-   *   The configuration.
-   * @param string|null $transactionId
-   *   The (optional) transaction id.
-   * @param string|null $platformName
-   *   The (optional) platform name.
-   *
-   * @return \Drupal\commerce_paytrail\Header
-   *   The header.
+   * {@inheritdoc}
    */
   public function createHeaders(
     string $method,
@@ -68,17 +56,7 @@ abstract class RequestBuilderBase {
   }
 
   /**
-   * Calculates a HMAC.
-   *
-   * @param string $secret
-   *   The secret.
-   * @param array $headers
-   *   The headers.
-   * @param string|null $body
-   *   The body.
-   *
-   * @return string
-   *   The signature.
+   * {@inheritdoc}
    */
   public function signature(string $secret, array $headers, ?string $body = '') : string {
     // Filter non-checkout headers.
@@ -104,19 +82,7 @@ abstract class RequestBuilderBase {
   }
 
   /**
-   * Validates the response.
-   *
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin
-   *   The payment gateway plugin.
-   * @param array $headers
-   *   The headers.
-   * @param string $body
-   *   The body.
-   *
-   * @return $this
-   *   The self.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
+   * {@inheritdoc}
    */
   public function validateSignature(Paytrail $plugin, array $headers, string $body = '') : self {
     $signature = $this->signature(

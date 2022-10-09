@@ -29,7 +29,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  *
  * @internal
  */
-class PaymentRequestBuilder extends RequestBuilderBase {
+final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentRequestBuilderInterface {
 
   /**
    * Constructs a new instance.
@@ -90,19 +90,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
   }
 
   /**
-   * Gets the payment for given order.
-   *
-   * @param string $transactionId
-   *   The transaction ID.
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Paytrail\Payment\Model\Payment
-   *   The payment.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
-   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
-   * @throws \Paytrail\Payment\ApiException
+   * {@inheritdoc}
    */
   public function get(string $transactionId, OrderInterface $order) : Payment {
     $configuration = $this->getPaymentPlugin($order)->getClientConfiguration();
@@ -126,17 +114,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
   }
 
   /**
-   * Creates a new payment request.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Paytrail\Payment\Model\PaymentRequestResponse
-   *   The payment request response.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
-   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
-   * @throws \Paytrail\Payment\ApiException
+   * {@inheritdoc}
    */
   public function create(OrderInterface $order) : PaymentRequestResponse {
     $configuration = $this->getPaymentPlugin($order)
@@ -162,16 +140,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
   }
 
   /**
-   * Creates a new payment request object.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Paytrail\Payment\Model\PaymentRequest
-   *   The payment request.
-   *
-   * @throws \Drupal\Core\TypedData\Exception\MissingDataException
-   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
+   * {@inheritdoc}
    */
   public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
     $plugin = $this->getPaymentPlugin($order);

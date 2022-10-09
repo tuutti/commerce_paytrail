@@ -66,15 +66,13 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
   private function callOnNotify(string $status) : OrderInterface {
     $builder = $this->createRequestBuilderMock();
     $builder
-      ->get(Argument::any())
+      ->get(Argument::any(), Argument::any())
       ->willReturn(
         (new Payment())
           ->setStatus($status)
           ->setTransactionId('123')
       );
-    $builder->getPaymentPlugin(Argument::any())
-      ->willReturn($this->gateway->getPlugin());
-    $paymentBuilder = $this->getPaymentRequestBuilder($builder->reveal());
+    $paymentBuilder = $this->getGatewayPluginForBuilder($builder->reveal());
     $order = $this->createOrder();
     $paymentBuilder->onNotify($this->createRequest($order->id()));
 
