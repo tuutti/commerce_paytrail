@@ -31,9 +31,6 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  */
 class PaymentRequestBuilder extends RequestBuilderBase {
 
-  use TransactionIdTrait;
-  use StampKeyTrait;
-
   /**
    * Constructs a new instance.
    *
@@ -95,6 +92,8 @@ class PaymentRequestBuilder extends RequestBuilderBase {
   /**
    * Gets the payment for given order.
    *
+   * @param string $transactionId
+   *   The transaction ID.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    *
@@ -105,8 +104,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    * @throws \Paytrail\Payment\ApiException
    */
-  public function get(OrderInterface $order) : Payment {
-    $transactionId = $this->getTransactionId($order);
+  public function get(string $transactionId, OrderInterface $order) : Payment {
     $configuration = $this->getPaymentPlugin($order)->getClientConfiguration();
     $headers = $this->createHeaders('GET', $configuration, $transactionId);
 
@@ -160,16 +158,7 @@ class PaymentRequestBuilder extends RequestBuilderBase {
           \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
         ),
       );
-    /** @var \Paytrail\Payment\Model\PaymentRequestResponse $response */
-    $response = $this->getResponse($order, $response);
-
-    // Save stamp and transaction id for later validation.
-    $this
-      ->setTransactionId($order, $response->getTransactionId())
-      ->setStamp($order, $request->getStamp());
-    $order->save();
-
-    return $response;
+    return $this->getResponse($order, $response);
   }
 
   /**
@@ -233,6 +222,11 @@ class PaymentRequestBuilder extends RequestBuilderBase {
 
     $this->eventDispatcher
       ->dispatch(new ModelEvent($request));
+
+    // We use reference field to load the order. Make sure it cannot be changed.
+    if ($request->getReference() !== $order->id()) {
+      throw new \LogicException('The value of "reference" field cannot be changed.');
+    }
 
     return $request;
   }

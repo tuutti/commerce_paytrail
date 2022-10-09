@@ -25,8 +25,6 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  */
 class RefundRequestBuilder extends RequestBuilderBase {
 
-  use TransactionIdTrait;
-
   /**
    * Constructs a new instance.
    *
@@ -54,6 +52,8 @@ class RefundRequestBuilder extends RequestBuilderBase {
   /**
    * Refunds the given order and amount.
    *
+   * @param string $transactionId
+   *   The transaction ID.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order to refund.
    * @param \Drupal\commerce_price\Price $amount
@@ -66,10 +66,10 @@ class RefundRequestBuilder extends RequestBuilderBase {
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    * @throws \Paytrail\Payment\ApiException
    */
-  public function refund(OrderInterface $order, Price $amount) : RefundResponse {
-    $transactionId = $this->getTransactionId($order);
-    $plugin = $this->getPaymentPlugin($order);
-    $configuration = $plugin->getClientConfiguration();
+  public function refund(string $transactionId, OrderInterface $order, Price $amount) : RefundResponse {
+    $configuration = $this
+      ->getPaymentPlugin($order)
+      ->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration, $transactionId);
 
     $request = $this->createRefundRequest($order, $amount, $headers->nonce);
@@ -119,8 +119,8 @@ class RefundRequestBuilder extends RequestBuilderBase {
       ->setRefundReference($order->id())
       ->setAmount($this->converter->toMinorUnits($amount))
       ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl()->toString(),
-        'cancel' => $plugin->getNotifyUrl()->toString(),
+        'success' => $plugin->getNotifyUrl('refund')->toString(),
+        'cancel' => $plugin->getNotifyUrl('refund')->toString(),
       ]))
       ->setRefundStamp($nonce);
 

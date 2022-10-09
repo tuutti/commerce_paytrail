@@ -80,11 +80,18 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
    * {@inheritdoc}
    */
   public function processItem($data) : void {
-    ['order_id' => $id] = $data;
+    ['order_id' => $id, 'transaction_id' => $transactionId] = $data;
 
-    // Order not found or is paid already, we can safely ignore the item.
+    // Order not found or is paid already. We can safely ignore the item.
     if ((!$order = $this->orderStorage->load($id)) || $order->isPaid()) {
       return;
+    }
+
+    // The order validation/loading logic changed in 3.0-alpha4 release. Support
+    // orders made before 3.0-alpha4 release.
+    // @todo Remove this in 4.x.
+    if (!$transactionId) {
+      $transactionId = $order->getData('commerce_paytrail_transaction_id', NULL);
     }
     /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
     $numTries = $order->getData(self::MAX_TRIES_SETTING, 0);
@@ -101,7 +108,7 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
     }
 
     try {
-      $paymentResponse = $this->paymentRequest->get($order);
+      $paymentResponse = $this->paymentRequest->get($transactionId, $order);
     }
     catch (PaytrailPluginException) {
       // Nothing to do if dealing with non-paytrail order.
@@ -109,8 +116,7 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
     }
 
     try {
-      // Re-queue if order is not marked as paid. This probably should never
-      // happen.
+      // Re-queue if order is not marked as paid. This should never happen.
       if ($paymentResponse->getStatus() !== Payment::STATUS_OK) {
         throw new \InvalidArgumentException(
           sprintf('Order payment is not completed for order: %s', $id)
