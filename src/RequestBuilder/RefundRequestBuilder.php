@@ -23,9 +23,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  *
  * @internal
  */
-class RefundRequestBuilder extends RequestBuilderBase {
-
-  use TransactionIdTrait;
+final class RefundRequestBuilder extends RequestBuilderBase implements RefundRequestBuilderInterface {
 
   /**
    * Constructs a new instance.
@@ -52,24 +50,12 @@ class RefundRequestBuilder extends RequestBuilderBase {
   }
 
   /**
-   * Refunds the given order and amount.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order to refund.
-   * @param \Drupal\commerce_price\Price $amount
-   *   The amount.
-   *
-   * @return \Paytrail\Payment\Model\RefundResponse
-   *   The refund response.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
-   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
-   * @throws \Paytrail\Payment\ApiException
+   * {@inheritdoc}
    */
-  public function refund(OrderInterface $order, Price $amount) : RefundResponse {
-    $transactionId = $this->getTransactionId($order);
-    $plugin = $this->getPaymentPlugin($order);
-    $configuration = $plugin->getClientConfiguration();
+  public function refund(string $transactionId, OrderInterface $order, Price $amount) : RefundResponse {
+    $configuration = $this
+      ->getPaymentPlugin($order)
+      ->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration, $transactionId);
 
     $request = $this->createRefundRequest($order, $amount, $headers->nonce);
@@ -87,26 +73,14 @@ class RefundRequestBuilder extends RequestBuilderBase {
         $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
-          \GuzzleHttp\json_encode(ObjectSerializer::sanitizeForSerialization($request))
+          json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         ),
       );
     return $this->getResponse($order, $response);
   }
 
   /**
-   * Creates a new refund request object.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param \Drupal\commerce_price\Price $amount
-   *   The amount.
-   * @param string $nonce
-   *   The nonce.
-   *
-   * @return \Paytrail\Payment\Model\Refund
-   *   The refund request model.
-   *
-   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
+   * {@inheritdoc}
    */
   public function createRefundRequest(
     OrderInterface $order,
@@ -119,8 +93,8 @@ class RefundRequestBuilder extends RequestBuilderBase {
       ->setRefundReference($order->id())
       ->setAmount($this->converter->toMinorUnits($amount))
       ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl()->toString(),
-        'cancel' => $plugin->getNotifyUrl()->toString(),
+        'success' => $plugin->getNotifyUrl('refund-success')->toString(),
+        'cancel' => $plugin->getNotifyUrl('refund-cancel')->toString(),
       ]))
       ->setRefundStamp($nonce);
 

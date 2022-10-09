@@ -37,6 +37,10 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
     $order = $this->createOrder();
     $request = $this->sut->createRefundRequest($order, new Price('10', 'EUR'), '123');
 
+    foreach (['success', 'cancel'] as $type) {
+      // Make sure callback-type query parameter is set.
+      static::assertStringEndsWith('event=refund-' . $type, $request->getCallbackUrls()[$type]);
+    }
     static::assertEquals(1, $request->getRefundReference());
     static::assertEquals(1000, $request->getAmount());
     static::assertEquals('123', $request->getRefundStamp());

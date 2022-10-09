@@ -10,8 +10,8 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
-use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
+use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Drupal\Core\Queue\QueueInterface;
 use Drupal\Core\Url;
@@ -41,16 +41,16 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   /**
    * The payment request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface
    */
-  private PaymentRequestBuilder $paymentRequest;
+  private PaymentRequestBuilderInterface $paymentRequest;
 
   /**
    * The refund request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface
    */
-  private RefundRequestBuilder $refundRequest;
+  private RefundRequestBuilderInterface $refundRequest;
 
   /**
    * The queue.
@@ -63,7 +63,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
-    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $instance */
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
 
     // Populate via setters to avoid overriding the parent constructor.
@@ -120,24 +119,56 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    *   The response.
    */
   public function onNotify(Request $request) : Response {
-    $storage = $this->entityTypeManager->getStorage('commerce_order');
+    $callback = match ($request->query->get('event')) {
+      // Refunds can be asynchronous, meaning the refund can be in 'pending'
+      // state and requires a valid success/cancel callback. Payments are
+      // always marked as refunded regardless of its remote state.
+      // Return a 200 response to make sure Paytrail doesn't keep
+      // calling this for no reason.
+      'refund-success', 'refund-cancel' => function (Request $request) : Response {
+        return new Response();
+      },
+      default => function (Request $request) : Response {
+        $storage = $this->entityTypeManager->getStorage('commerce_order');
 
-    try {
-      /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
-      if (!$order = $storage->load($request->query->get('checkout-reference'))) {
-        throw new PaymentGatewayException('Order not found.');
+        try {
+          /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+          if (!$order = $storage->load($request->query->get('checkout-reference'))) {
+            throw new PaymentGatewayException('Order not found.');
+          }
+          $this->validateResponse($order, $request);
+
+          // Queue the order to avoid a race-condition between onNotify() and
+          // onReturn() callbacks.
+          // @see https://www.drupal.org/node/3268851
+          $this->queue->createItem([
+            'order_id' => $order->id(),
+            'transaction_id' => $request->query->get('checkout-transaction-id'),
+          ]);
+          return new Response();
+        }
+        catch (PaymentGatewayException | SecurityHashMismatchException $e) {
+          return new Response($e->getMessage(), Response::HTTP_FORBIDDEN);
+        }
+        return new Response(status: Response::HTTP_FORBIDDEN);
       }
-      $this->validateResponse($order, $request);
+    };
 
-      $this->queue->createItem([
-        'order_id' => $order->id(),
-      ]);
-      return new Response();
+    return $callback($request);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getNotifyUrl(string $eventName = NULL) : Url {
+    $url = parent::getNotifyUrl();
+
+    if ($eventName) {
+      $query = $url->getOption('query');
+      $query['event'] = $eventName;
+      $url->setOption('query', $query);
     }
-    catch (PaymentGatewayException | SecurityHashMismatchException $e) {
-      return new Response($e->getMessage(), Response::HTTP_FORBIDDEN);
-    }
-    return new Response(status: Response::HTTP_FORBIDDEN);
+    return $url;
   }
 
   /**
@@ -152,7 +183,10 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
     try {
       $this->validateResponse($order, $request);
 
-      $paymentResponse = $this->paymentRequest->get($order);
+      $paymentResponse = $this->paymentRequest->get(
+        $request->query->get('checkout-transaction-id'),
+        $order
+      );
       $this->assertResponseStatus($paymentResponse->getStatus(), [
         Payment::STATUS_OK,
         Payment::STATUS_PENDING,
@@ -175,12 +209,26 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    *
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
-  protected function validateResponse(OrderInterface $order, Request $request) : void {
+  private function validateResponse(OrderInterface $order, Request $request) : void {
+    [
+      'checkout-reference' => $requestOrderId,
+      'checkout-transaction-id' => $transactionId,
+    ] = $request->query->all() + [
+      'checkout-reference' => NULL,
+      'checkout-transaction-id' => NULL,
+    ];
+
+    if (!$transactionId) {
+      throw new SecurityHashMismatchException('Transaction ID not set.');
+    }
+    // onReturn() uses {commerce_order} to load the order, which is not a part
+    // of the signature hash calculation. Make sure the order entity ID
+    // matches the order id in 'checkout-reference' to make sure a valid return
+    // URL cannot be reused.
+    if (!$requestOrderId || $requestOrderId !== $order->id()) {
+      throw new SecurityHashMismatchException('Order ID mismatch.');
+    }
     $this->paymentRequest
-      // onNotify() uses {commerce_order} to load the order which is not a part
-      // of signature hash calculation. Make sure stamp matches with the stamp
-      // saved in order entity so a valid return URL cannot be re-used.
-      ->validateStamp($order, $request->query->get('checkout-stamp'))
       ->validateSignature($this, $request->query->all());
   }
 
@@ -223,9 +271,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
 
   /**
    * {@inheritdoc}
-   *
-   * @todo Refunds can be asynchronous in the future.
-   * @see https://docs.paytrail.com/#/?id=refund
    */
   public function refundPayment(PaymentInterface $payment, Price $amount = NULL) : void {
     $this->assertPaymentState($payment, ['completed', 'partially_refunded']);
@@ -239,7 +284,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
     $newRefundedAmount = $oldRefundedAmount->add($amount);
 
     try {
-      $response = $this->refundRequest->refund($order, $amount);
+      $response = $this->refundRequest->refund($payment->getRemoteId(), $order, $amount);
 
       $this->assertResponseStatus($response->getStatus(), [
         RefundResponse::STATUS_OK,

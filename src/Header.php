@@ -22,7 +22,7 @@ final class Header {
    *   The method.
    * @param string $nonce
    *   The nonce.
-   * @param string $timestamp
+   * @param int|string $timestamp
    *   The timestamp.
    * @param string|null $transactionId
    *   The transactionId.
@@ -34,7 +34,7 @@ final class Header {
     public string $hashAlgorithm,
     public string $method,
     public string $nonce,
-    public string $timestamp,
+    public int|string $timestamp,
     public ?string $transactionId = NULL,
     public ?string $platformName = NULL
   ) {

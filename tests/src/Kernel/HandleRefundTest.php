@@ -6,7 +6,7 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
-use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Paytrail\Payment\Model\RefundResponse;
 use Prophecy\Argument;
@@ -36,6 +36,7 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
       'test' => FALSE,
     ]);
     $payment->setAmount(new Price('22', 'EUR'))
+      ->setRemoteId('123')
       ->getState()
       ->applyTransitionById('authorize');
 
@@ -52,9 +53,9 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
    * Make sure payments in incorrect state cannot be refunded.
    */
   public function testInvalidPaymentState() : void {
-    $builder = $this->prophesize(RefundRequestBuilder::class);
+    $builder = $this->prophesize(RefundRequestBuilderInterface::class);
     $payment = $this->createPayment(FALSE);
-    $sut = $this->getPaymentRequestBuilder($builder->reveal());
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
 
     $this->expectErrorMessage('The provided payment is in an invalid state ("authorization").');
     $sut->refundPayment($payment);
@@ -64,15 +65,15 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
    * Make sure refund fails if Paytrail refund request failed.
    */
   public function testInvalidResponseStatus() : void {
-    $builder = $this->prophesize(RefundRequestBuilder::class);
-    $builder->refund(Argument::any(), Argument::any())
+    $builder = $this->prophesize(RefundRequestBuilderInterface::class);
+    $builder->refund(Argument::any(), Argument::any(), Argument::any())
       ->shouldBeCalled()
       ->willReturn(
         (new RefundResponse())
           ->setStatus(RefundResponse::STATUS_FAIL)
       );
     $payment = $this->createPayment(TRUE);
-    $sut = $this->getPaymentRequestBuilder($builder->reveal());
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
 
     $this->expectErrorMessageMatches('/Invalid status\:/s');
     $sut->refundPayment($this->reloadEntity($payment));
@@ -82,15 +83,15 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
    * Tests partial refund.
    */
   public function testPartialRefund() : void {
-    $builder = $this->prophesize(RefundRequestBuilder::class);
-    $builder->refund(Argument::any(), Argument::any())
+    $builder = $this->prophesize(RefundRequestBuilderInterface::class);
+    $builder->refund(Argument::any(), Argument::any(), Argument::any())
       ->shouldBeCalled()
       ->willReturn(
         (new RefundResponse())
           ->setStatus(RefundResponse::STATUS_OK)
       );
     $payment = $this->createPayment(TRUE);
-    $sut = $this->getPaymentRequestBuilder($builder->reveal());
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
     $sut->refundPayment($payment, new Price('10', 'EUR'));
 
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
@@ -101,18 +102,32 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
   }
 
   /**
+   * Tests onNotify with refund events.
+   */
+  public function testOnNotifyEvent() : void {
+    $builder = $this->prophesize(RefundRequestBuilderInterface::class);
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+
+    foreach (['success', 'cancel'] as $event) {
+      $request = $this->createRequest(1);
+      $request->query->set('event', 'refund-' . $event);
+      static::assertEquals(200, $sut->onNotify($request)->getStatusCode());
+    }
+  }
+
+  /**
    * Tests full refund.
    */
   public function testFullRefund() : void {
-    $builder = $this->prophesize(RefundRequestBuilder::class);
-    $builder->refund(Argument::any(), Argument::any())
+    $builder = $this->prophesize(RefundRequestBuilderInterface::class);
+    $builder->refund(Argument::any(), Argument::any(), Argument::any())
       ->shouldBeCalled()
       ->willReturn(
         (new RefundResponse())
           ->setStatus(RefundResponse::STATUS_OK)
       );
     $payment = $this->createPayment(TRUE);
-    $sut = $this->getPaymentRequestBuilder($builder->reveal());
+    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
     $sut->refundPayment($payment);
 
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
