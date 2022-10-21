@@ -7,6 +7,7 @@ env:
   DRUPAL_MODULE_NAME: "commerce_paytrail"
   DRUPAL_CORE_VERSION: 9.4.x
   SYMFONY_DEPRECATIONS_HELPER: disabled
+  OPTIONAL_DEPENDENCIES: drupal/commerce_shipping
 jobs:
   test-contrib:
     runs-on: ubuntu-latest
@@ -36,7 +37,7 @@ jobs:
         run: echo "DRUPAL_ROOT=$HOME/drupal" >> $GITHUB_ENV
 
       - name: Clone drupal
-        run: git clone --depth 1 --branch "$DRUPAL_CORE_VERSION" http://git.drupal.org/project/drupal.git/ $DRUPAL_ROOT
+        run: git clone --depth 1 --branch "$DRUPAL_CORE_VERSION" https://git.drupal.org/project/drupal.git/ $DRUPAL_ROOT
 
       - name: Install required composer dependencies
         run: |
@@ -48,6 +49,7 @@ jobs:
           composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
           composer require --dev "drupal/coder"
+          composer require $OPTIONAL_DEPENDENCIES -W
 
       - name: Install Drupal
         run: |
