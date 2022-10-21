@@ -99,7 +99,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
       ->setRefundStamp($nonce);
 
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request));
+      ->dispatch(new ModelEvent($request, order: $order));
 
     return $request;
   }

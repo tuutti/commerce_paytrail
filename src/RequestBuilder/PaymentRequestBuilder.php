@@ -190,7 +190,7 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
     $request->setCustomer($customer);
 
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request));
+      ->dispatch(new ModelEvent($request, order: $order));
 
     // We use reference field to load the order. Make sure it cannot be changed.
     if ($request->getReference() !== $order->id()) {
