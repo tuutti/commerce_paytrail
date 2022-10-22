@@ -43,7 +43,6 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
   protected function setUp(): void {
     parent::setUp();
 
-    $this->installEntitySchema('profile');
     $this->installEntitySchema('commerce_payment');
     $this->installEntitySchema('commerce_promotion');
     $this->installConfig([
