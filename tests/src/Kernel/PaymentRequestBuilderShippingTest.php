@@ -60,8 +60,13 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    *
    * @param bool $applyTaxes
    *   Whether to apply taxes or not.
+   * @param bool $includeTaxes
+   *   Whether to include taxes in prices or not.
+   *
+   * @return \Drupal\commerce_order\Entity\OrderInterface
+   *   The order.
    */
-  private function setupOrder(bool $applyTaxes, bool $includeTaxes) : OrderInterface {
+  private function createOrder(bool $applyTaxes, bool $includeTaxes) : OrderInterface {
     $gateway = PaymentGateway::create([
       'id' => 'paytrail',
       'label' => 'Paytrail',
@@ -169,7 +174,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::getSubscribedEvents
    */
   public function testShipment() : void {
-    $order = $this->setupOrder(FALSE, FALSE);
+    $order = $this->createOrder(FALSE, FALSE);
     $items = $this->sut->createPaymentRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
@@ -186,7 +191,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::getSubscribedEvents
    */
   public function testShipmentIncludeTaxes() : void {
-    $order = $this->setupOrder(TRUE, TRUE);
+    $order = $this->createOrder(TRUE, TRUE);
     $items = $this->sut->createPaymentRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
@@ -203,7 +208,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::getSubscribedEvents
    */
   public function testShipmentIncludeNoTaxes() : void {
-    $order = $this->setupOrder(TRUE, FALSE);
+    $order = $this->createOrder(TRUE, FALSE);
     $items = $this->sut->createPaymentRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
