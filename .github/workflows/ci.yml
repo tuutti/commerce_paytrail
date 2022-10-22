@@ -44,6 +44,7 @@ jobs:
           composer config platform.php ${{ matrix.php-version }}
           composer config repositories.0 path $GITHUB_WORKSPACE
           composer require --dev drupal/$DRUPAL_MODULE_NAME -W
+          composer require drupal/commerce_shipping
           composer run-script drupal-phpunit-upgrade
           composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
