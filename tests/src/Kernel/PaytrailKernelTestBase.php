@@ -44,7 +44,7 @@ abstract class PaytrailKernelTestBase extends OrderKernelTestBase {
     $this->installEntitySchema('commerce_payment_method');
     $this->installConfig('commerce_payment');
     $this->installConfig('commerce_paytrail');
-    $this->store = $this->createStore(default: TRUE, country: 'FI', currency: 'EUR');
+    $this->store = $this->createStore(country: 'FI', currency: 'EUR');
     $this->gateway = $this->createGatewayPlugin();
   }
 
