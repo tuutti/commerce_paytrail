@@ -4,14 +4,15 @@ declare(strict_types = 1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
-use Drupal\commerce_payment\Entity\PaymentGateway;
-use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\Tests\commerce_order\Kernel\OrderKernelTestBase;
+use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
 
 /**
  * Provides a base class for Paytrail kernel tests.
  */
 abstract class PaytrailKernelTestBase extends OrderKernelTestBase {
+
+  use ApiTestTrait;
 
   /**
    * {@inheritdoc}
@@ -46,22 +47,6 @@ abstract class PaytrailKernelTestBase extends OrderKernelTestBase {
     $this->installConfig('commerce_paytrail');
     $this->store = $this->createStore(country: 'FI', currency: 'EUR');
     $this->gateway = $this->createGatewayPlugin();
-  }
-
-  /**
-   * Creates a new gateway plugin.
-   *
-   * @return \Drupal\commerce_payment\Entity\PaymentGatewayInterface
-   *   The gateway plugin.
-   */
-  protected function createGatewayPlugin(string $id = 'paytrail') : PaymentGatewayInterface {
-    $gateway = PaymentGateway::create([
-      'id' => $id,
-      'label' => 'Paytrail',
-      'plugin' => 'paytrail',
-    ]);
-    $gateway->save();
-    return $gateway;
   }
 
 }
