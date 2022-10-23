@@ -4,17 +4,16 @@ declare(strict_types = 1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
-use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_order\Entity\OrderItem;
-use Drupal\commerce_payment\Entity\PaymentGateway;
+use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_price\Price;
-use Drupal\commerce_product\Entity\ProductVariation;
 use Drupal\commerce_shipping\Entity\ShippingMethod;
 use Drupal\commerce_tax\Entity\TaxType;
-use Drupal\physical\Weight;
 use Drupal\profile\Entity\Profile;
+use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
 use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
 
 /**
@@ -25,12 +24,23 @@ use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
  */
 class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
 
+  use ApiTestTrait;
+  use OrderTestTrait;
+  use TaxTestTrait;
+
   /**
    * The payment request builder.
    *
    * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
    */
   protected ?PaymentRequestBuilder $sut;
+
+  /**
+   * The payment gateway.
+   *
+   * @var \Drupal\commerce_payment\Entity\PaymentGateway
+   */
+  protected ?PaymentGatewayInterface $gateway;
 
   /**
    * {@inheritdoc}
@@ -48,78 +58,22 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
   protected function setUp(): void {
     parent::setUp();
 
-    $this->installConfig(['commerce_tax', 'commerce_checkout']);
+    $this->installConfig(['commerce_checkout']);
     $this->installEntitySchema('commerce_payment_method');
 
+    $this->setupTaxes();
     $this->store = $this->createStore(country: 'FI', currency: 'EUR');
+    $this->gateway = $this->createGatewayPlugin();
     $this->sut = $this->container->get('commerce_paytrail.payment_request');
   }
 
   /**
    * Setup order object.
    *
-   * @param bool $applyTaxes
-   *   Whether to apply taxes or not.
-   * @param bool $includeTaxes
-   *   Whether to include taxes in prices or not.
-   *
    * @return \Drupal\commerce_order\Entity\OrderInterface
    *   The order.
    */
-  private function createOrder(bool $applyTaxes, bool $includeTaxes) : OrderInterface {
-    $gateway = PaymentGateway::create([
-      'id' => 'paytrail',
-      'label' => 'Paytrail',
-      'plugin' => 'paytrail',
-    ]);
-    $gateway->save();
-
-    $this->store->set('prices_include_tax', $includeTaxes);
-    if ($applyTaxes) {
-      $this->store->set('tax_registrations', ['FI']);
-    }
-    $this->store->save();
-
-    $eu_tax_type = TaxType::create([
-      'id' => 'eu_vat',
-      'label' => 'EU VAT',
-      'plugin' => 'european_union_vat',
-      'configuration' => [
-        'display_inclusive' => TRUE,
-      ],
-    ]);
-    $eu_tax_type->save();
-
-    $first_variation = ProductVariation::create([
-      'type' => 'default',
-      'sku' => 'test-product-01',
-      'title' => 'Hat',
-      'price' => new Price('70.00', 'EUR'),
-      'weight' => new Weight('0', 'g'),
-    ]);
-    $first_variation->save();
-
-    $first_order_item = OrderItem::create([
-      'type' => 'default',
-      'quantity' => 1,
-      'title' => $first_variation->getOrderItemTitle(),
-      'purchased_entity' => $first_variation,
-      'unit_price' => new Price('70.00', 'EUR'),
-    ]);
-    $first_order_item->save();
-
-    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
-    $order = Order::create([
-      'type' => 'default',
-      'uid' => $this->createUser(['mail' => $this->randomString() . '@example.com']),
-      'store_id' => $this->store->id(),
-      'payment_gateway' => $gateway,
-      'order_items' => [
-        $first_order_item,
-      ],
-    ]);
-    $order->save();
-
+  private function createShippingOrder() : OrderInterface {
     TaxType::create([
       'id' => 'shipping',
       'label' => 'Shipping',
@@ -145,6 +99,8 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
       'status' => TRUE,
     ]);
     $shipping_method->save();
+
+    $order = $this->createOrder();
 
     /** @var \Drupal\profile\Entity\ProfileInterface $shipping_profile */
     $shipping_profile = Profile::create([
@@ -173,8 +129,10 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::addShipping
    * @covers ::getSubscribedEvents
    */
-  public function testShipment() : void {
-    $order = $this->createOrder(FALSE, FALSE);
+  public function testShipmentWithoutTaxes() : void {
+    $order = $this
+      ->setPricesIncludeTax(FALSE)
+      ->createShippingOrder();
     $items = $this->sut->createPaymentRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
@@ -191,7 +149,9 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::getSubscribedEvents
    */
   public function testShipmentIncludeTaxes() : void {
-    $order = $this->createOrder(TRUE, TRUE);
+    $order = $this
+      ->setPricesIncludeTax(TRUE, ['FI'])
+      ->createShippingOrder();
     $items = $this->sut->createPaymentRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
@@ -208,7 +168,9 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::getSubscribedEvents
    */
   public function testShipmentIncludeNoTaxes() : void {
-    $order = $this->createOrder(TRUE, FALSE);
+    $order = $this
+      ->setPricesIncludeTax(FALSE, ['FI'])
+      ->createShippingOrder();
     $items = $this->sut->createPaymentRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */

@@ -82,11 +82,9 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    * Make sure taxes are included in prices.
    */
   public function testCreatePricesIncludeTax() : void {
-    $this->store->set('prices_include_tax', TRUE)
-      ->set('tax_registrations', ['FI'])
-      ->save();
-
-    $order = $this->createOrder();
+    $order = $this
+      ->setPricesIncludeTax(TRUE, ['FI'])
+      ->createOrder();
 
     $request = $this->sut->createPaymentRequest($order);
     // Order should have prices included in unit prices.
@@ -97,11 +95,9 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    * Make sure taxes are added to total price.
    */
   public function testCreatePricesIncludeNoTax() : void {
-    $this->store->set('prices_include_tax', FALSE)
-      ->set('tax_registrations', ['FI'])
-      ->save();
-
-    $order = $this->createOrder();
+    $order = $this
+      ->setPricesIncludeTax(FALSE, ['FI'])
+      ->createOrder();
 
     $request = $this->sut->createPaymentRequest($order);
     // Taxes should be added to unit price.
@@ -112,17 +108,15 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    * Make sure discounts are included.
    */
   public function testDiscount() : void {
-    $this->store->set('prices_include_tax', TRUE)
-      ->set('tax_registrations', ['FI'])
-      ->save();
-
-    $order = $this->createOrder([
-      new Adjustment([
-        'type' => 'custom',
-        'label' => 'Discount',
-        'amount' => new Price('-5', 'EUR'),
-      ]),
-    ]);
+    $order = $this
+      ->setPricesIncludeTax(TRUE, ['FI'])
+      ->createOrder([
+        new Adjustment([
+          'type' => 'custom',
+          'label' => 'Discount',
+          'amount' => new Price('-5', 'EUR'),
+        ]),
+      ]);
     $request = $this->sut->createPaymentRequest($order);
     $this->assertTaxes($request, 1700, 850, 24);
   }
