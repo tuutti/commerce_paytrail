@@ -14,7 +14,6 @@ use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
 use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Api\PaymentsApi;
-use Paytrail\Payment\Model\Address;
 use Paytrail\Payment\Model\Callbacks;
 use Paytrail\Payment\Model\Customer;
 use Paytrail\Payment\Model\Item;
