@@ -1,10 +1,8 @@
 on: [push]
 name: CI
 env:
-  MYSQL_ROOT_PASSWORD: drupal
   SIMPLETEST_DB: "mysql://drupal:drupal@mariadb:3306/drupal"
   SIMPLETEST_BASE_URL: "http://127.0.0.1:8080"
-  DRUPAL_MODULE_NAME: "commerce_paytrail"
   SYMFONY_DEPRECATIONS_HELPER: disabled
 jobs:
   test-contrib:
@@ -36,6 +34,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Parse $MODULE_NAME from composer.json
+        run: echo "MODULE_NAME=$(cat composer.json | jq -r .name | awk -F/ '{print $NF}')" >> $GITHUB_ENV
+
       - name: Set variables
         run: echo "DRUPAL_ROOT=$HOME/drupal" >> $GITHUB_ENV
 
@@ -43,8 +44,8 @@ jobs:
         run: git clone --depth 1 --branch "${{ matrix.core }}" https://git.drupal.org/project/drupal.git/ $DRUPAL_ROOT
 
       - name: Install required composer dependencies
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          cd $DRUPAL_ROOT
           composer config platform.php ${{ matrix.php-version }}
           composer run-script drupal-phpunit-upgrade
           composer config repositories.0 path $GITHUB_WORKSPACE
@@ -55,19 +56,19 @@ jobs:
           composer require --dev "drupal/coder"
 
       - name: Install Drupal
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          cd $DRUPAL_ROOT
           php -d sendmail_path=$(which true); vendor/bin/drush --yes -v site-install minimal --db-url="$SIMPLETEST_DB"
           vendor/bin/drush en $DRUPAL_MODULE_NAME -y
 
       - name: Run PHPCS
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          cd $DRUPAL_ROOT
           vendor/bin/phpcs modules/contrib/$DRUPAL_MODULE_NAME --standard=Drupal --extensions=php,module,inc,install,test,info
 
       - name: Run PHPUnit tests
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          cd $DRUPAL_ROOT
           vendor/bin/drush runserver $SIMPLETEST_BASE_URL > /dev/null 2>&1 &
           chromedriver --port=4444 > /dev/null 2>&1 &
           php ./core/scripts/run-tests.sh --dburl $SIMPLETEST_DB --php /usr/local/bin/php --color --verbose --sqlite /tmp/test.sqlite --url $SIMPLETEST_BASE_URL $DRUPAL_MODULE_NAME

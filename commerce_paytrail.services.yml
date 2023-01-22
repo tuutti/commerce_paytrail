@@ -11,5 +11,7 @@ services:
     class: Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
     arguments: ['@event_dispatcher', '@http_client', '@uuid', '@datetime.time', '@commerce_price.minor_units_converter']
 
-  commerce_paytrail.request_builder_subscriber:
-    class: Drupal\commerce_paytrail\Commerce\RequestBuilderSubscriber
+  commerce_paytrail.billing_information_collector:
+    class: Drupal\commerce_paytrail\EventSubscriber\BillingInformationCollector
+    tags:
+      - { name: event_subscriber }

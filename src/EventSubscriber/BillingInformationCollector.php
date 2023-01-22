@@ -13,7 +13,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * Adds billing information to payment requests when enabled.
  */
-final class BillingInformationSubscriber implements EventSubscriberInterface {
+final class BillingInformationCollector implements EventSubscriberInterface {
 
   use PaymentGatewayPluginTrait;
 

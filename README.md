@@ -53,9 +53,9 @@ See:
 To mitigate this issue, you can either:
 
 1. Disable the `Collect billing information` setting from Payment gateway settings to completely disable billing information form.
-2. Remove `commerce_paytrail.request_builder_subscriber` service. This prevents Drupal from sending the payment information to Paytrail, but the payment information is still collected to Drupal.
+2. Remove `commerce_paytrail.billing_information_collector` service. This prevents Drupal from sending the payment information to Paytrail, but the payment information is still collected to Drupal.
 
-The service can be removed by calling `$container->removeDefinition('commerce_paytrail.request_builder_subscriber')` in your service provider. See https://www.drupal.org/docs/drupal-apis/services-and-dependency-injection/altering-existing-services-providing-dynamic-services for more information.
+The service can be removed by calling `$container->removeDefinition('commerce_paytrail.billing_information_collector')` in your service provider. See https://www.drupal.org/docs/drupal-apis/services-and-dependency-injection/altering-existing-services-providing-dynamic-services for more information.
 
 ## Maintainers
 
