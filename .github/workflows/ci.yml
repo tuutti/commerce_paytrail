@@ -46,11 +46,9 @@ jobs:
         run: |
           cd $DRUPAL_ROOT
           composer config platform.php ${{ matrix.php-version }}
-          # Update laminas/laminas-feed on drupal 9.x.
-          [[ "${{ matrix.core }}" = 9* ]] && composer update laminas/laminas-feed -W
-          composer require drupal/$DRUPAL_MODULE_NAME -W
           composer run-script drupal-phpunit-upgrade
           composer config repositories.0 path $GITHUB_WORKSPACE
+          composer require drupal/$DRUPAL_MODULE_NAME -W
           composer require drupal/commerce_shipping
           composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
