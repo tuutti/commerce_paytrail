@@ -5,7 +5,7 @@ env:
   SIMPLETEST_DB: "mysql://drupal:drupal@mariadb:3306/drupal"
   SIMPLETEST_BASE_URL: "http://127.0.0.1:8080"
   DRUPAL_MODULE_NAME: "commerce_paytrail"
-  DRUPAL_CORE_VERSION: 9.4.x
+  DRUPAL_CORE_VERSION: 9.5.x
   SYMFONY_DEPRECATIONS_HELPER: disabled
 jobs:
   test-contrib:
@@ -19,7 +19,7 @@ jobs:
 
     services:
       mariadb:
-        image: mariadb:10.9
+        image: mariadb
         env:
           MYSQL_USER: drupal
           MYSQL_PASSWORD: drupal
