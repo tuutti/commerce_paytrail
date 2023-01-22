@@ -32,13 +32,30 @@ information.
 3. Click Save to save your configuration.
 
 ## Known issues
-Paytrail module provides a notification callback that will be called by Paytrail when the order is paid in full. This is used to make sure orders are captured (by Drupal) even if the customer never returns to Drupal from the payment gateway.
 
-Paytrail however, will fire the callback as soon as the order is paid, often leading to a situation where `onNotify()` and `onReturn()` callbacks are called at the same time, causing a race-condition between the two. See [https://www.drupal.org/project/commerce/issues/3043180](https://www.drupal.org/project/commerce/issues/3043180) for more information about this.
+### Notification callback limitations
+Paytrail module provides a notification callback that is called by Paytrail when the order is paid in full. This is used to make sure orders are captured (by Drupal) even if the customer never returns to Drupal from the payment gateway.
 
-To mitigate this issue, the order will be placed in a queue when the notification callback is fired and the queue will then be processed by cron.
+Paytrail fires the callback as soon as the order is paid, often leading to a situation where `onNotify()` and `onReturn()` callbacks are called at the same time, causing a race-condition between the two. See https://www.drupal.org/project/commerce/issues/3043180 for more information about this.
 
-See [#3268851](https://www.drupal.org/project/commerce_paytrail/issues/3268851).
+To mitigate this issue, the order is placed in a queue when the notification callback is fired and the queue will then be processed by cron.
+
+See https://www.drupal.org/project/commerce_paytrail/issues/3268851.
+
+### Postal code validation
+
+Paytrail doesn't support non-digit postal codes, so collecting billing information for countries like UK is not possible at the moment.
+
+See:
+- https://github.com/paytrail/api-documentation/issues/34.
+- https://www.drupal.org/project/commerce_paytrail/issues/333547.
+
+To mitigate this issue, you can either:
+
+1. Disable the `Collect billing information` setting from Payment gateway settings to completely disable billing information form.
+2. Remove `commerce_paytrail.billing_information_collector` service. This prevents Drupal from sending the payment information to Paytrail, but the payment information is still collected to Drupal.
+
+The service can be removed by calling `$container->removeDefinition('commerce_paytrail.billing_information_collector')` in your service provider. See https://www.drupal.org/docs/drupal-apis/services-and-dependency-injection/altering-existing-services-providing-dynamic-services for more information.
 
 ## Maintainers
 

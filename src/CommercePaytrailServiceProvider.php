@@ -27,6 +27,7 @@ class CommercePaytrailServiceProvider extends ServiceProviderBase {
         ->addTag('event_subscriber')
         ->addArgument(new Reference('commerce_price.minor_units_converter'));
     }
+    $container->removeDefinition('commerce_paytrail.request_builder_subscriber');
   }
 
 }
