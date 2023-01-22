@@ -5,7 +5,6 @@ env:
   SIMPLETEST_DB: "mysql://drupal:drupal@mariadb:3306/drupal"
   SIMPLETEST_BASE_URL: "http://127.0.0.1:8080"
   DRUPAL_MODULE_NAME: "commerce_paytrail"
-  DRUPAL_CORE_VERSION: 9.5.x
   SYMFONY_DEPRECATIONS_HELPER: disabled
 jobs:
   test-contrib:
@@ -13,7 +12,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php-version: ['8.0', '8.1', '8.2']
+        php-version: ['8.0', '8.1']
+        core: ['9.5.x']
+        # Test php 8.2 only on 10.x core.
+        include:
+          - core: 10.0.x
+            php-version: 8.2
     container:
       image: ghcr.io/tuutti/drupal-php-docker:${{ matrix.php-version }}
 
@@ -36,15 +40,17 @@ jobs:
         run: echo "DRUPAL_ROOT=$HOME/drupal" >> $GITHUB_ENV
 
       - name: Clone drupal
-        run: git clone --depth 1 --branch "$DRUPAL_CORE_VERSION" https://git.drupal.org/project/drupal.git/ $DRUPAL_ROOT
+        run: git clone --depth 1 --branch "${{ matrix.core }}" https://git.drupal.org/project/drupal.git/ $DRUPAL_ROOT
 
       - name: Install required composer dependencies
         run: |
           cd $DRUPAL_ROOT
           composer config platform.php ${{ matrix.php-version }}
+          # Update laminas/laminas-feed on drupal 9.x.
+          [[ "${{ matrix.core }}" = 9* ]] && composer update laminas/laminas-feed -W
+          composer require drupal/$DRUPAL_MODULE_NAME -W
           composer run-script drupal-phpunit-upgrade
           composer config repositories.0 path $GITHUB_WORKSPACE
-          composer require --dev drupal/$DRUPAL_MODULE_NAME -W
           composer require drupal/commerce_shipping
           composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
