@@ -49,7 +49,7 @@ jobs:
           composer config platform.php ${{ matrix.php-version }}
           composer run-script drupal-phpunit-upgrade
           composer config repositories.0 path $GITHUB_WORKSPACE
-          composer require drupal/$DRUPAL_MODULE_NAME -W
+          composer require drupal/$MODULE_NAME -W
           composer require drupal/commerce_shipping
           composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
@@ -59,16 +59,16 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
           php -d sendmail_path=$(which true); vendor/bin/drush --yes -v site-install minimal --db-url="$SIMPLETEST_DB"
-          vendor/bin/drush en $DRUPAL_MODULE_NAME -y
+          vendor/bin/drush en $MODULE_NAME -y
 
       - name: Run PHPCS
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          vendor/bin/phpcs modules/contrib/$DRUPAL_MODULE_NAME --standard=Drupal --extensions=php,module,inc,install,test,info
+          vendor/bin/phpcs modules/contrib/$MODULE_NAME --standard=Drupal --extensions=php,module,inc,install,test,info
 
       - name: Run PHPUnit tests
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
           vendor/bin/drush runserver $SIMPLETEST_BASE_URL > /dev/null 2>&1 &
           chromedriver --port=4444 > /dev/null 2>&1 &
-          php ./core/scripts/run-tests.sh --dburl $SIMPLETEST_DB --php /usr/local/bin/php --color --verbose --sqlite /tmp/test.sqlite --url $SIMPLETEST_BASE_URL $DRUPAL_MODULE_NAME
+          php ./core/scripts/run-tests.sh --dburl $SIMPLETEST_DB --php /usr/local/bin/php --color --verbose --sqlite /tmp/test.sqlite --url $SIMPLETEST_BASE_URL $MODULE_NAME
