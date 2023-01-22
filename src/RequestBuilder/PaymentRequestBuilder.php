@@ -170,23 +170,6 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
     $customer = (new Customer())
       ->setEmail($order->getEmail());
 
-    // Send invoice/customer data only if collect billing information
-    // setting is enabled.
-    if ($plugin->collectsBillingInformation()) {
-      /** @var \Drupal\address\AddressInterface $address */
-      if ($address = $order->getBillingProfile()?->get('address')->first()) {
-        $customer->setFirstName($address->getGivenName())
-          ->setLastName($address->getFamilyName());
-
-        $request->setInvoicingAddress(
-          (new Address())
-            ->setStreetAddress($address->getAddressLine1())
-            ->setCity($address->getLocale())
-            ->setCountry($address->getCountryCode())
-            ->setPostalCode($address->getPostalCode())
-        );
-      }
-    }
     $request->setCustomer($customer);
 
     $this->eventDispatcher
