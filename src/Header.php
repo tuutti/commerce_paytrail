@@ -53,12 +53,10 @@ final class Header {
       'checkout-method' => $this->method,
       'checkout-nonce' => $this->nonce,
       'checkout-timestamp' => $this->timestamp,
+      'platform-name' => $this->platformName ?: 'drupal/commerce_paytrail',
     ];
     if ($this->transactionId) {
       $array['checkout-transaction-id'] = $this->transactionId;
-    }
-    if ($this->platformName) {
-      $array['platform-name'] = $this->platformName;
     }
 
     return $array;
