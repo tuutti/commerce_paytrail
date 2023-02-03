@@ -10,6 +10,7 @@ use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Paytrail\Payment\Model\RefundResponse;
 use Prophecy\Argument;
+use Prophecy\PhpUnit\ProphecyTrait;
 
 /**
  * Paytrail gateway plugin tests.
@@ -18,6 +19,8 @@ use Prophecy\Argument;
  * @coversDefaultClass \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
  */
 class HandleRefundTest extends RequestBuilderKernelTestBase {
+
+  use ProphecyTrait;
 
   /**
    * Creates a payment.
@@ -57,7 +60,7 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
     $payment = $this->createPayment(FALSE);
     $sut = $this->getGatewayPluginForBuilder($builder->reveal());
 
-    $this->expectErrorMessage('The provided payment is in an invalid state ("authorization").');
+    $this->expectExceptionMessage('The provided payment is in an invalid state ("authorization").');
     $sut->refundPayment($payment);
   }
 
@@ -75,7 +78,7 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
     $payment = $this->createPayment(TRUE);
     $sut = $this->getGatewayPluginForBuilder($builder->reveal());
 
-    $this->expectErrorMessageMatches('/Invalid status\:/s');
+    $this->expectExceptionMessageMatches('/Invalid status\:/s');
     $sut->refundPayment($this->reloadEntity($payment));
   }
 
