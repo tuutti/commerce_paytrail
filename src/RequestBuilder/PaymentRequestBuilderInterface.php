@@ -35,6 +35,8 @@ interface PaymentRequestBuilderInterface extends RequestBuilderInterface {
    *
    * @return \Paytrail\Payment\Model\PaymentRequestResponse
    *   The payment request response.
+   *
+   * @throws \Paytrail\Payment\ApiException
    */
   public function create(OrderInterface $order) : PaymentRequestResponse;
 
@@ -46,6 +48,8 @@ interface PaymentRequestBuilderInterface extends RequestBuilderInterface {
    *
    * @return \Paytrail\Payment\Model\PaymentRequest
    *   The payment request.
+   *
+   * @throws \Paytrail\Payment\ApiException
    */
   public function createPaymentRequest(OrderInterface $order) : PaymentRequest;
 
