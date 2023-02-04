@@ -5,11 +5,12 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Paytrail\Payment\ApiException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -23,7 +24,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
   /**
    * Constructs a new instance.
    *
-   * @param \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder $paymentRequest
+   * @param \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface $paymentRequest
    *   The payment provider request service.
    * @param \Psr\Log\LoggerInterface $logger
    *   The logger interface.
@@ -31,7 +32,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
    *   The messenger service.
    */
   public function __construct(
-    private PaymentRequestBuilder $paymentRequest,
+    private PaymentRequestBuilderInterface $paymentRequest,
     private LoggerInterface $logger,
     private MessengerInterface $messenger
   ) {
@@ -74,7 +75,15 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
       return $this->buildRedirectForm($form, $form_state, $selectedProvider->getUrl(), $data, self::REDIRECT_POST);
     }
 
-    $response = $this->paymentRequest->create($order);
+    try {
+      $response = $this->paymentRequest->create($order);
+    }
+    catch (ApiException) {
+      $this->messenger->addError(
+        $this->t('Failed to fetch payment methods. Please contact store administration if the problem persists.')
+      );
+      return $form;
+    }
 
     foreach ($response->getGroups() as $group) {
       $form['payment_groups'][$group->getId()] = [
