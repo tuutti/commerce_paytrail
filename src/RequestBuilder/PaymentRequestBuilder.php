@@ -63,7 +63,7 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
    * @return \Paytrail\Payment\Model\Item
    *   The paytrail order item.
    */
-  protected function createOrderLine(OrderItemInterface $orderItem) : Item {
+  private function createOrderLine(OrderItemInterface $orderItem) : Item {
     $item = (new Item())
       ->setUnitPrice($this->converter->toMinorUnits($orderItem->getAdjustedUnitPrice()))
       ->setUnits((int) $orderItem->getQuantity())
@@ -139,6 +139,26 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
   }
 
   /**
+   * Checks if given order has any discounts applied.
+   *
+   * Note: This only applies to order level discounts, such as giftcards.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order to check.
+   *
+   * @return bool
+   *   TRUE if order has discounts.
+   */
+  private function orderHasDiscounts(OrderInterface $order) : bool {
+    foreach ($order->getAdjustments() as $adjustment) {
+      if ($adjustment->getAmount()->isNegative()) {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
@@ -149,12 +169,10 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
       ->setReference($order->id())
       ->setStamp($this->uuidService->generate())
       ->setLanguage($plugin->getLanguage())
-      ->setItems(
-        array_map(
-          fn (OrderItemInterface $item) => $this->createOrderLine($item),
-          $order->getItems()
-        )
-      )
+      ->setItems(array_map(
+        fn (OrderItemInterface $item) => $this->createOrderLine($item),
+        $order->getItems()
+      ))
       // Only EUR is supported.
       ->setCurrency('EUR')
       ->setCallbackUrls(new Callbacks([
@@ -174,6 +192,12 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
     $this->eventDispatcher
       ->dispatch(new ModelEvent($request, order: $order));
 
+    // Paytrail does not support order level discounts, such as giftcards.
+    // Remove order items if order has any discounts applied.
+    // See https://www.drupal.org/project/commerce_paytrail/issues/3339269.
+    if ($this->orderHasDiscounts($order)) {
+      unset($request['items']);
+    }
     // We use reference field to load the order. Make sure it cannot be changed.
     if ($request->getReference() !== $order->id()) {
       throw new \LogicException('The value of "reference" field cannot be changed.');

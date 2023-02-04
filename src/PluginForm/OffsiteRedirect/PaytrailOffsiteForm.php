@@ -58,6 +58,8 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
     ];
 
     if (!$order = $this->entity->getOrder()) {
+      $this->logger
+        ->error(sprintf('Payment %s has no order referenced.', $this->entity->id()));
       $this->messenger->addError(
         $this->t('The provided payment has no order referenced. Please contact store administration if the problem persists.')
       );
@@ -78,7 +80,9 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
     try {
       $response = $this->paymentRequest->create($order);
     }
-    catch (ApiException) {
+    catch (ApiException $e) {
+      $this->logger
+        ->error(sprintf('Paytrail API failure [#%s]: %s', $order->id(), $e->getMessage()));
       $this->messenger->addError(
         $this->t('Failed to fetch payment methods. Please contact store administration if the problem persists.')
       );
