@@ -14,6 +14,7 @@ use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
 use Prophecy\Argument;
+use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,6 +27,7 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
   use EventSubscriberTestTrait;
   use TaxTestTrait;
   use OrderTestTrait;
+  use ProphecyTrait;
 
   /**
    * {@inheritdoc}

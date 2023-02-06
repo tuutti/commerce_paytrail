@@ -5,17 +5,12 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\EventSubscriber;
 
 use Drupal\commerce_paytrail\Event\ModelEvent;
-use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Paytrail\Payment\Model\Address;
-use Paytrail\Payment\Model\PaymentRequest;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Adds billing information to payment requests when enabled.
  */
-final class BillingInformationCollector implements EventSubscriberInterface {
-
-  use PaymentGatewayPluginTrait;
+final class BillingInformationCollector extends PaymentRequestSubscriberBase {
 
   /**
    * Adds billing information to payment request.
@@ -23,18 +18,18 @@ final class BillingInformationCollector implements EventSubscriberInterface {
    * @param \Drupal\commerce_paytrail\Event\ModelEvent $event
    *   The event to subscribe to.
    */
-  public function addBillingInformation(ModelEvent $event) : void {
-    if (!$event->model instanceof PaymentRequest || !$order = $event->order) {
+  public function processEvent(ModelEvent $event) : void {
+    if (!$this->isValid($event)) {
       return;
     }
-    $plugin = $this->getPaymentPlugin($order);
+    $plugin = $this->getPaymentPlugin($event->order);
 
     // Send invoice/customer data only if collect billing information
     // setting is enabled and customer has entered their address.
     if (
       !$plugin->collectsBillingInformation() ||
       /** @var \Drupal\address\AddressInterface $address */
-      !$address = $order->getBillingProfile()?->get('address')->first()
+      !$address = $event->order->getBillingProfile()?->get('address')->first()
     ) {
       return;
     }
@@ -49,15 +44,6 @@ final class BillingInformationCollector implements EventSubscriberInterface {
         ->setCountry($address->getCountryCode())
         ->setPostalCode($address->getPostalCode())
     );
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function getSubscribedEvents() : array {
-    return [
-      ModelEvent::class => ['addBillingInformation'],
-    ];
   }
 
 }

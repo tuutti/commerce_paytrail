@@ -5,16 +5,15 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\Commerce\Shipping;
 
 use Drupal\commerce_paytrail\Event\ModelEvent;
+use Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Paytrail\Payment\Model\Item;
-use Paytrail\Payment\Model\PaymentRequest;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Provides a shipping support.
  */
-final class ShippingEventSubscriber implements EventSubscriberInterface {
+final class ShippingEventSubscriber extends PaymentRequestSubscriberBase {
 
   /**
    * Constructs a new instance.
@@ -33,16 +32,16 @@ final class ShippingEventSubscriber implements EventSubscriberInterface {
    * @param \Drupal\commerce_paytrail\Event\ModelEvent $event
    *   The event to subscribe to.
    */
-  public function addShipping(ModelEvent $event) : void {
-    if (!$event->model instanceof PaymentRequest || !$order = $event->order) {
+  public function processEvent(ModelEvent $event) : void {
+    if (!$this->isValid($event)) {
       return;
     }
 
-    if (!$order->hasField('shipments') || $order->get('shipments')->isEmpty()) {
+    if (!$event->order->hasField('shipments') || $event->order->get('shipments')->isEmpty()) {
       return;
     }
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface[] $shipments */
-    $shipments = $order->get('shipments')->referencedEntities();
+    $shipments = $event->order->get('shipments')->referencedEntities();
 
     $items = $event->model->getItems();
 
@@ -62,15 +61,6 @@ final class ShippingEventSubscriber implements EventSubscriberInterface {
       $items[] = $item;
     }
     $event->model->setItems($items);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function getSubscribedEvents() : array {
-    return [
-      ModelEvent::class => ['addShipping'],
-    ];
   }
 
 }

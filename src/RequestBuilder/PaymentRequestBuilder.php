@@ -7,6 +7,7 @@ namespace Drupal\commerce_paytrail\RequestBuilder;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
@@ -195,9 +196,13 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
     // Paytrail does not support order level discounts, such as giftcards.
     // Remove order items if order has any discounts applied.
     // See https://www.drupal.org/project/commerce_paytrail/issues/3339269.
-    if ($this->orderHasDiscounts($order)) {
-      unset($request['items']);
+    if (
+      $plugin->orderDiscountStrategy() === PaytrailBase::STRATEGY_REMOVE_ITEMS &&
+      $this->orderHasDiscounts($order)
+    ) {
+      $request['items'] = NULL;
     }
+
     // We use reference field to load the order. Make sure it cannot be changed.
     if ($request->getReference() !== $order->id()) {
       throw new \LogicException('The value of "reference" field cannot be changed.');
