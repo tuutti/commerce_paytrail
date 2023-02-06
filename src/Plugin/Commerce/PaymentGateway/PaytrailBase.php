@@ -112,7 +112,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
         static::STRATEGY_REMOVE_ITEMS => $this->t('<b>Remove order item information</b>: The order item data will not be included in the API request. See the link below for implications.'),
       ],
       '#default_value' => $this->configuration['order_discount_strategy'],
-      '#description' => $this->t('<p>Paytrail does not support order level discounts, such as gift cards. See <a href="@link">this link</a> for more information.</p><p>This setting <em>does not</em> affect most discounts applied by <code>commerce_promotion</code> module, since they split the discount across all order items.</p>',
+      '#description' => $this->t('<p>Paytrail does not support order level discounts, such as gift cards. See <a href="@link">this link</a> for more information.</p><p>This setting <em>does not</em> affect most discounts applied by <code>commerce_promotion</code> module, since they are split across all order items.</p>',
         [
           '@link' => 'https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-',
         ]),
@@ -185,9 +185,9 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
   /**
    * Gets the order discount strategy.
    *
-   * Paytrail does not support order level discounts (such as
-   * gift cards). This setting allows site owners to choose the
-   * strategy how to deal with them.
+   * Paytrail does not support order level discounts (such as gift cards).
+   * This setting allows site owners to choose the strategy how to deal with
+   * them.
    *
    * NOTE: This only applies to ORDER level discounts.
    *
@@ -195,7 +195,8 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
    *
    * 'None': Do nothing. The API request *will* fail if order's total price does
    * not match the total unit price.
-   * 'Remove order items': Order item information is not mandatory. See
+   * 'Remove order items': Removes order item information from the API request
+   * since it's not mandatory. See
    * https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-.
    *
    * @return string|null
