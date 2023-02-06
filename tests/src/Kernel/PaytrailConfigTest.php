@@ -46,6 +46,7 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
       'mode' => 'test',
       // Payment method types is keyed incorrectly by default.
       'payment_method_types' => ['paytrail'],
+      'order_discount_strategy' => NULL,
       'collect_billing_information' => TRUE,
     ], $this->gateway->getPlugin()->getConfiguration());
   }

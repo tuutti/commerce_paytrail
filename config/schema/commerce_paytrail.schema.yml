@@ -7,6 +7,9 @@ commerce_payment.commerce_payment_gateway.plugin.paytrail:
     account:
       type: string
       label: 'Merchant ID'
+    order_discount_strategy:
+      type: string
+      label: 'Order discount strategy'
     secret:
       type: string
       label: 'Secret'

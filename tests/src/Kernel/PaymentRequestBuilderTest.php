@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_order\Adjustment;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_price\Price;
 use Drupal\profile\Entity\Profile;
@@ -118,7 +119,38 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
         ]),
       ]);
     $request = $this->sut->createPaymentRequest($order);
+    // Make sure order items are not removed.
+    $this->assertNotNull($request->getItems());
+
     $this->assertTaxes($request, 1700, 850, 24);
+  }
+
+  /**
+   * Make sure order level discounts remove items if configured so.
+   */
+  public function testOrderLevelDiscount() : void {
+    $this->gateway->getPlugin()->setConfiguration([
+      'order_discount_strategy' => PaytrailBase::STRATEGY_REMOVE_ITEMS,
+    ]);
+    $this->gateway->save();
+    $this->assertEquals(PaytrailBase::STRATEGY_REMOVE_ITEMS, $this->gateway->getPlugin()->orderDiscountStrategy());
+
+    $order = $this
+      ->setPricesIncludeTax(TRUE, ['FI'])
+      ->createOrder();
+    $order->addAdjustment(
+      new Adjustment([
+        'type' => 'custom',
+        'label' => 'Discount',
+        'amount' => new Price('-5', 'EUR'),
+      ]));
+    $order->save();
+
+    $request = $this->sut->createPaymentRequest($order);
+    // Make sure order item level discounts remove order items.
+    $this->assertNull($request->getItems());
+    // Make sure discount is still applied to total price.
+    $this->assertEquals(1700, $request->getAmount());
   }
 
   /**
