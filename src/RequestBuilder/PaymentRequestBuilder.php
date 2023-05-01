@@ -53,7 +53,7 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
     private EventDispatcherInterface $eventDispatcher,
     private ClientInterface $client,
     private MinorUnitsConverterInterface $converter,
-    private int $callbackDelay = 120,
+    private int $callbackDelay,
   ) {
     parent::__construct($uuidService, $time);
   }
@@ -186,7 +186,7 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
       // Delay callback polling to minimize the chance of Paytrail
       // calling ::onNotify() before customer returns from the payment
       // gateway.
-      ->setCallbackDelay(120)
+      ->setCallbackDelay($this->callbackDelay)
       ->setRedirectUrls(new Callbacks([
         'success' => $plugin->getReturnUrl($order)->toString(),
         'cancel' => $plugin->getCancelUrl($order)->toString(),

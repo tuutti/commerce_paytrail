@@ -33,15 +33,6 @@ information.
 
 ## Known issues
 
-### Notification callback limitations
-Paytrail module provides a notification callback that is called by Paytrail when the order is paid in full. This is used to make sure orders are captured (by Drupal) even if the customer never returns to Drupal from the payment gateway.
-
-Paytrail fires the callback as soon as the order is paid, often leading to a situation where `onNotify()` and `onReturn()` callbacks are called at the same time, causing a race-condition between the two. See https://www.drupal.org/project/commerce/issues/3043180 for more information about this.
-
-To mitigate this issue, the order is placed in a queue when the notification callback is fired and the queue will then be processed by cron.
-
-See https://www.drupal.org/project/commerce_paytrail/issues/3268851.
-
 ### Postal code validation
 
 Paytrail doesn't support non-digit postal codes, so collecting billing information for countries like UK is not possible at the moment.
