@@ -71,9 +71,7 @@ jobs:
         run: |
           vendor/bin/drush runserver $SIMPLETEST_BASE_URL > /dev/null 2>&1 &
           chromedriver --port=4444 > /dev/null 2>&1 &
-          php -d pcov.directory=$MODULE_FOLDER \
-            vendor/bin/phpunit \
-            --bootstrap $DRUPAL_ROOT/public/core/tests/bootstrap.php \
-            -c $MODULE_FOLDER/phpunit.xml \
-            --coverage-clover=coverage.xml \
+          vendor/bin/phpunit \
+            --bootstrap core/tests/bootstrap.php \
+            -c modules/contrib/$MODULE_NAME/phpunit.xml \
             $MODULE_FOLDER
