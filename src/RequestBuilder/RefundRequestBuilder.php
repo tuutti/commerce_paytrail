@@ -28,23 +28,23 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
   /**
    * Constructs a new instance.
    *
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
-   *   The event dispatcher.
-   * @param \GuzzleHttp\ClientInterface $client
-   *   The HTTP client.
    * @param \Drupal\Component\Uuid\UuidInterface $uuidService
    *   The uuid service.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   *   The event dispatcher.
+   * @param \GuzzleHttp\ClientInterface $client
+   *   The HTTP client.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
    *   The minor unit converter.
    */
   public function __construct(
-    protected EventDispatcherInterface $eventDispatcher,
-    protected ClientInterface $client,
     UuidInterface $uuidService,
     TimeInterface $time,
-    protected MinorUnitsConverterInterface $converter
+    private EventDispatcherInterface $eventDispatcher,
+    private ClientInterface $client,
+    private MinorUnitsConverterInterface $converter
   ) {
     parent::__construct($uuidService, $time);
   }

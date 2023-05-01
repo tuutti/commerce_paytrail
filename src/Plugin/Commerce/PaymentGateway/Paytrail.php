@@ -13,7 +13,6 @@ use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
-use Drupal\Core\Queue\QueueInterface;
 use Drupal\Core\Url;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Payment;
@@ -53,13 +52,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   private RefundRequestBuilderInterface $refundRequest;
 
   /**
-   * The queue.
-   *
-   * @var \Drupal\Core\Queue\QueueInterface
-   */
-  private QueueInterface $queue;
-
-  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
@@ -68,8 +60,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
     // Populate via setters to avoid overriding the parent constructor.
     $instance->paymentRequest = $container->get('commerce_paytrail.payment_request');
     $instance->refundRequest = $container->get('commerce_paytrail.refund_request');
-    $instance->queue = $container->get('queue')
-      ->get('commerce_paytrail_notification_worker');
 
     return $instance;
   }
@@ -138,13 +128,15 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
           }
           $this->validateResponse($order, $request);
 
-          // Queue the order to avoid a race-condition between onNotify() and
-          // onReturn() callbacks.
-          // @see https://www.drupal.org/node/3268851
-          $this->queue->createItem([
-            'order_id' => $order->id(),
-            'transaction_id' => $request->query->get('checkout-transaction-id'),
+          $paymentResponse = $this->paymentRequest->get(
+            $request->query->get('checkout-transaction-id'),
+            $order
+          );
+          $this->assertResponseStatus($paymentResponse->getStatus(), [
+            Payment::STATUS_OK,
           ]);
+          $this->createPayment($order, $paymentResponse);
+
           return new Response();
         }
         catch (PaymentGatewayException | SecurityHashMismatchException $e) {

@@ -30,7 +30,7 @@ jobs:
         ports:
           - 3306:3306
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -71,4 +71,7 @@ jobs:
         run: |
           vendor/bin/drush runserver $SIMPLETEST_BASE_URL > /dev/null 2>&1 &
           chromedriver --port=4444 > /dev/null 2>&1 &
-          php ./core/scripts/run-tests.sh --dburl $SIMPLETEST_DB --php /usr/local/bin/php --color --verbose --sqlite /tmp/test.sqlite --url $SIMPLETEST_BASE_URL $MODULE_NAME
+          vendor/bin/phpunit \
+            --bootstrap core/tests/bootstrap.php \
+            -c modules/contrib/$MODULE_NAME/phpunit.xml \
+            modules/contrib/$MODULE_NAME
