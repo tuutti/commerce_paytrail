@@ -34,23 +34,26 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
   /**
    * Constructs a new instance.
    *
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
-   *   The event dispatcher.
-   * @param \GuzzleHttp\ClientInterface $client
-   *   The HTTP client.
    * @param \Drupal\Component\Uuid\UuidInterface $uuidService
    *   The uuid service.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   *   The event dispatcher.
+   * @param \GuzzleHttp\ClientInterface $client
+   *   The HTTP client.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
    *   The minor unit converter.
+   * @param int $callbackDelay
+   *   The callback delay.
    */
   public function __construct(
-    protected EventDispatcherInterface $eventDispatcher,
-    protected ClientInterface $client,
     UuidInterface $uuidService,
     TimeInterface $time,
-    protected MinorUnitsConverterInterface $converter
+    private EventDispatcherInterface $eventDispatcher,
+    private ClientInterface $client,
+    private MinorUnitsConverterInterface $converter,
+    private int $callbackDelay = 120,
   ) {
     parent::__construct($uuidService, $time);
   }
@@ -181,9 +184,9 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
         'cancel' => $plugin->getNotifyUrl()->toString(),
       ]))
       // Delay callback polling to minimize the chance of Paytrail
-      // calling the callback before customer returns from the payment
+      // calling ::onNotify() before customer returns from the payment
       // gateway.
-      ->setCallbackDelay(30)
+      ->setCallbackDelay(120)
       ->setRedirectUrls(new Callbacks([
         'success' => $plugin->getReturnUrl($order)->toString(),
         'cancel' => $plugin->getCancelUrl($order)->toString(),
