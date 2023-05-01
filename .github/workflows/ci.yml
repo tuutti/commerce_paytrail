@@ -30,7 +30,7 @@ jobs:
         ports:
           - 3306:3306
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -71,4 +71,9 @@ jobs:
         run: |
           vendor/bin/drush runserver $SIMPLETEST_BASE_URL > /dev/null 2>&1 &
           chromedriver --port=4444 > /dev/null 2>&1 &
-          php ./core/scripts/run-tests.sh --dburl $SIMPLETEST_DB --php /usr/local/bin/php --color --verbose --sqlite /tmp/test.sqlite --url $SIMPLETEST_BASE_URL $MODULE_NAME
+          php -d pcov.directory=$MODULE_FOLDER \
+            vendor/bin/phpunit \
+            --bootstrap $DRUPAL_ROOT/public/core/tests/bootstrap.php \
+            -c $MODULE_FOLDER/phpunit.xml \
+            --coverage-clover=coverage.xml \
+            $MODULE_FOLDER
