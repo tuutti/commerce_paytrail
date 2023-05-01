@@ -11,6 +11,6 @@ declare(strict_types = 1);
  * Enable the 'use_ipn_to_capture_payments' setting.
  */
 function commerce_paytrail_update_9001() : void {
-  // This used to enable 'use_ipn_to_capture_payments' setting that doesn't exist
-  // anymore. Keep this hook to keep track of the current schema version.
+  // This used to enable 'use_ipn_to_capture_payments' setting that doesn't
+  // exist anymore. Keep this hook to keep track of the current schema version.
 }
