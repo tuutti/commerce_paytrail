@@ -74,4 +74,4 @@ jobs:
           vendor/bin/phpunit \
             --bootstrap core/tests/bootstrap.php \
             -c modules/contrib/$MODULE_NAME/phpunit.xml \
-            modules/contrib/MODULE_NAME
+            modules/contrib/$MODULE_NAME
