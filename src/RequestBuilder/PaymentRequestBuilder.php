@@ -180,6 +180,10 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
         'success' => $plugin->getNotifyUrl()->toString(),
         'cancel' => $plugin->getNotifyUrl()->toString(),
       ]))
+      // Delay callback polling to minimize the chance of Paytrail
+      // calling the callback before customer returns from the payment
+      // gateway.
+      ->setCallbackDelay(30)
       ->setRedirectUrls(new Callbacks([
         'success' => $plugin->getReturnUrl($order)->toString(),
         'cancel' => $plugin->getCancelUrl($order)->toString(),

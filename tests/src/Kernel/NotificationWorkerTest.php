@@ -6,6 +6,7 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Plugin\QueueWorker\NotificationWorker;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\Core\Queue\QueueInterface;
 use Paytrail\Payment\Model\Payment;
 use Prophecy\Argument;
@@ -63,8 +64,8 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
    * @return \Drupal\commerce_order\Entity\OrderInterface
    *   The order.
    */
-  private function callOnNotify(string $status) : OrderInterface {
-    $builder = $this->createRequestBuilderMock();
+  private function createQueueItem(string $status) : OrderInterface {
+    $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
     $builder
       ->get(Argument::any(), Argument::any())
       ->willReturn(
@@ -72,9 +73,15 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
           ->setStatus($status)
           ->setTransactionId('123')
       );
-    $paymentBuilder = $this->getGatewayPluginForBuilder($builder->reveal());
+    $this->getGatewayPluginForBuilder($builder->reveal());
     $order = $this->createOrder();
-    $paymentBuilder->onNotify($this->createRequest($order->id()));
+    /** @var \Drupal\Core\Queue\QueueInterface $queue */
+    $queue = $this->container->get('queue')
+      ->get('commerce_paytrail_notification_worker');
+    $queue->createItem([
+      'transaction_id' => '123',
+      'order_id' => $order->id(),
+    ]);
 
     return $this->reloadEntity($order);
   }
@@ -83,7 +90,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
    * Tests that item is released if order is not found.
    */
   public function testNoOrderFound() : void {
-    $order = $this->callOnNotify(Payment::STATUS_OK);
+    $order = $this->createQueueItem(Payment::STATUS_OK);
     $order->delete();
     static::assertEquals(1, $this->getQueue()->numberOfItems());
     $this->claimQueueItem();
@@ -94,7 +101,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
    * Tests that item is released if the order is paid already.
    */
   public function testNotifyOrderIsPaidAlready() : void {
-    $order = $this->callOnNotify(Payment::STATUS_OK);
+    $order = $this->createQueueItem(Payment::STATUS_OK);
     static::assertEquals(1, $this->getQueue()->numberOfItems());
     $order->setTotalPaid($order->getTotalPrice());
     $order->getState()->applyTransitionById('place');
@@ -110,7 +117,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
    * Tests that pending payment state will throw and exception.
    */
   public function testOnNotifyPendingOrder() : void {
-    $order = $this->callOnNotify(Payment::STATUS_PENDING);
+    $order = $this->createQueueItem(Payment::STATUS_PENDING);
     $this->expectException(\InvalidArgumentException::class);
     $this->expectExceptionMessage('Order payment is not completed for order: ' . $order->id());
     $this->claimQueueItem();
@@ -121,7 +128,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
    */
   public function testQueueRelease() : void {
     $numExceptions = 0;
-    $order = $this->callOnNotify(Payment::STATUS_PENDING);
+    $order = $this->createQueueItem(Payment::STATUS_PENDING);
 
     for ($i = 0; $i <= NotificationWorker::NUM_MAX_TRIES; $i++) {
       try {
@@ -143,7 +150,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
    * Make sure payment gets paid.
    */
   public function testSuccessfulNotify() : void {
-    $this->callOnNotify(Payment::STATUS_OK);
+    $this->createQueueItem(Payment::STATUS_OK);
     $this->claimQueueItem();
 
     $payment = $this->loadPayment('123');

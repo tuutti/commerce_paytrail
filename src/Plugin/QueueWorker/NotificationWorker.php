@@ -22,6 +22,12 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   title = @Translation("Notification worker"),
  *   cron = {"time" = 60}
  * )
+ *
+ * @deprecated in commerce_paytrail:3.0.0-beta3 and is removed from commerce_paytrail:3.1.0.
+ * The code triggering this is already removed, but this is left so existing
+ * queues can be processed.
+ *
+ * @see https://www.drupal.org/project/commerce_paytrail/issues/3356761
  */
 final class NotificationWorker extends QueueWorkerBase implements ContainerFactoryPluginInterface {
 
@@ -89,9 +95,8 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
 
     // The order validation/loading logic changed in 3.0-alpha4 release. Support
     // orders made before 3.0-alpha4 release.
-    // @todo Remove this in 4.x.
     if (!$transactionId) {
-      $transactionId = $order->getData('commerce_paytrail_transaction_id', NULL);
+      $transactionId = $order->getData('commerce_paytrail_transaction_id');
     }
     /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
     $numTries = $order->getData(self::MAX_TRIES_SETTING, 0);
@@ -109,22 +114,20 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
 
     try {
       $paymentResponse = $this->paymentRequest->get($transactionId, $order);
-    }
-    catch (PaytrailPluginException) {
-      // Nothing to do if dealing with non-paytrail order.
-      return;
-    }
 
-    try {
       // Re-queue if order is not marked as paid. This should never happen.
       if ($paymentResponse->getStatus() !== Payment::STATUS_OK) {
         throw new \InvalidArgumentException(
           sprintf('Order payment is not completed for order: %s', $id)
         );
       }
-      $this
-        ->getPaymentPlugin($order)
+      $plugin = $this->getPaymentPlugin($order);
+      $plugin
         ->createPayment($order, $paymentResponse);
+    }
+    catch (PaytrailPluginException) {
+      // Nothing to do if dealing with non-paytrail order.
+      return;
     }
     catch (\Exception $e) {
       $order->setData(self::MAX_TRIES_SETTING, ++$numTries)
