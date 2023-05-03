@@ -1,6 +1,6 @@
 # Commerce paytrail
 
-![CI](https://github.com/tuutti/commerce_paytrail/workflows/CI/badge.svg)[![codecov](https://codecov.io/github/tuutti/commerce_paytrail/branch/8.x-1.x/graph/badge.svg?token=32zwdww9JR)](https://codecov.io/github/tuutti/commerce_paytrail)
+![CI](https://github.com/tuutti/commerce_paytrail/workflows/CI/badge.svg)
 
 ## Description
 
