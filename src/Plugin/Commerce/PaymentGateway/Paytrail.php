@@ -291,7 +291,12 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
         ->save();
     }
     catch (\Exception $e) {
-      throw new PaymentGatewayException($e->getMessage(), $e->getCode(), $e);
+      $message = $e->getMessage();
+
+      if ($e instanceof ApiException) {
+        $message = json_decode($e->getResponseBody())->message ?? $e->getMessage();
+      }
+      throw new PaymentGatewayException($message, $e->getCode(), $e);
     }
   }
 
