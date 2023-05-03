@@ -129,6 +129,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::processEvent
    * @covers ::isValid
    * @covers ::getSubscribedEvents
+   * @covers \Drupal\commerce_paytrail\CommercePaytrailServiceProvider::register
    */
   public function testShipmentWithoutTaxes() : void {
     $order = $this
@@ -149,6 +150,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::processEvent
    * @covers ::isValid
    * @covers ::getSubscribedEvents
+   * @covers \Drupal\commerce_paytrail\CommercePaytrailServiceProvider::register
    */
   public function testShipmentIncludeTaxes() : void {
     $order = $this
@@ -169,6 +171,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
    * @covers ::processEvent
    * @covers ::isValid
    * @covers ::getSubscribedEvents
+   * @covers \Drupal\commerce_paytrail\CommercePaytrailServiceProvider::register
    */
   public function testShipmentIncludeNoTaxes() : void {
     $order = $this

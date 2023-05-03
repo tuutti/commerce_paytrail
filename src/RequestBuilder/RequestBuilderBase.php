@@ -45,7 +45,7 @@ abstract class RequestBuilderBase implements RequestBuilderInterface {
     ?string $platformName = NULL,
   ) : Header {
     return new Header(
-      $configuration,
+      $configuration->getApiKey('account'),
       'sha512',
       $method,
       $this->uuidService->generate(),

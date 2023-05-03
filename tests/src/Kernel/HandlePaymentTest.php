@@ -25,6 +25,8 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
    * @covers ::onReturn
    * @covers ::onNotify
    * @covers ::validateResponse
+   * @covers ::createPayment
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testHandlePaymentSignatureValidationFailed() : void {
     $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
@@ -49,6 +51,7 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
    *
    * @covers ::onReturn
    * @covers ::onNotify
+   * @covers ::validateResponse
    */
   public function testInvalidOrderId() : void {
     $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
@@ -70,6 +73,7 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
    *
    * @covers ::onReturn
    * @covers ::onNotify
+   * @covers ::validateResponse
    */
   public function testHandlePaymentInvalidResponseStatus() : void {
     $order = $this->createOrder();
@@ -96,6 +100,8 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
    * Tests that payment can be fully captured.
    *
    * @covers ::onReturn
+   * @covers ::validateResponse
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testHandlePaymentCapture() : void {
     $order = $this->createOrder();
@@ -121,6 +127,8 @@ class HandlePaymentTest extends RequestBuilderKernelTestBase {
    * Tests that payment can be fully captured via onNotify().
    *
    * @covers ::onNotify
+   * @covers ::validateResponse
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testHandleOnNotifyPaymentCapture() : void {
     $order = $this->createOrder();

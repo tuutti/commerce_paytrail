@@ -32,6 +32,10 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests createRefundRequest().
+   *
+   * @covers ::__construct
+   * @covers ::getPaymentPlugin
+   * @covers ::createRefundRequest
    */
   public function testCreateRefundRequest() : void {
     $order = $this->createOrder();
@@ -48,6 +52,9 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
 
   /**
    * Make sure we can subscribe to model events.
+   *
+   * @covers ::createRefundRequest
+   * @covers ::getPaymentPlugin
    */
   public function testEventSubscriberEvent() : void {
     $this->assertCaughtEvents(1, function () {

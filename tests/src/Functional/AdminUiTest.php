@@ -98,6 +98,8 @@ class AdminUiTest extends BrowserTestBase {
    *   The secret.
    * @param string $language
    *   The language.
+   * @param string $discountStrategy
+   *   The discount strategy.
    * @param callable|null $callback
    *   The callback to run with expected values.
    */
