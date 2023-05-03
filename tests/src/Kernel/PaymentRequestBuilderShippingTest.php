@@ -126,7 +126,8 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
   /**
    * Tests shipment without taxes.
    *
-   * @covers ::addShipping
+   * @covers ::processEvent
+   * @covers ::isValid
    * @covers ::getSubscribedEvents
    */
   public function testShipmentWithoutTaxes() : void {
@@ -145,7 +146,8 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
   /**
    * Tests shipment with taxes included.
    *
-   * @covers ::addShipping
+   * @covers ::processEvent
+   * @covers ::isValid
    * @covers ::getSubscribedEvents
    */
   public function testShipmentIncludeTaxes() : void {
@@ -164,7 +166,8 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
   /**
    * Tests taxes when taxes are not included in prices.
    *
-   * @covers ::addShipping
+   * @covers ::processEvent
+   * @covers ::isValid
    * @covers ::getSubscribedEvents
    */
   public function testShipmentIncludeNoTaxes() : void {
