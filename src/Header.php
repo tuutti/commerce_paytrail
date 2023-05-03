@@ -4,17 +4,15 @@ declare(strict_types = 1);
 
 namespace Drupal\commerce_paytrail;
 
-use Paytrail\Payment\Configuration;
-
 /**
- * The header class.
+ * The header value object.
  */
 final class Header {
 
   /**
    * Constructs a new instance.
    *
-   * @param \Paytrail\Payment\Configuration $configuration
+   * @param string $account
    *   The configuration.
    * @param string $hashAlgorithm
    *   The hash algorithm.
@@ -30,7 +28,7 @@ final class Header {
    *   The platform name.
    */
   public function __construct(
-    public Configuration $configuration,
+    public string $account,
     public string $hashAlgorithm,
     public string $method,
     public string $nonce,
@@ -48,11 +46,11 @@ final class Header {
    */
   public function toArray() : array {
     $array = [
-      'checkout-account' => $this->configuration->getApiKey('account'),
+      'checkout-account' => $this->account,
       'checkout-algorithm' => $this->hashAlgorithm,
       'checkout-method' => $this->method,
       'checkout-nonce' => $this->nonce,
-      'checkout-timestamp' => $this->timestamp,
+      'checkout-timestamp' => (int) $this->timestamp,
       'platform-name' => $this->platformName ?: 'drupal/commerce_paytrail',
     ];
     if ($this->transactionId) {

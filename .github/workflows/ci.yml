@@ -37,8 +37,11 @@ jobs:
       - name: Parse $MODULE_NAME from composer.json
         run: echo "MODULE_NAME=$(cat composer.json | jq -r .name | awk -F/ '{print $NF}')" >> $GITHUB_ENV
 
-      - name: Set variables
+      - name: Set DRUPAL_ROOT
         run: echo "DRUPAL_ROOT=$HOME/drupal" >> $GITHUB_ENV
+
+      - name: Set MODULE_FOLDER
+        run: echo "MODULE_FOLDER=$DRUPAL_ROOT/modules/contrib/$MODULE_NAME" >> $GITHUB_ENV
 
       - name: Clone drupal
         run: git clone --depth 1 --branch "${{ matrix.core }}" https://git.drupal.org/project/drupal.git/ $DRUPAL_ROOT
@@ -64,14 +67,20 @@ jobs:
       - name: Run PHPCS
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          vendor/bin/phpcs modules/contrib/$MODULE_NAME --standard=Drupal --extensions=php,module,inc,install,test,info
+          vendor/bin/phpcs $MODULE_FOLDER --standard=Drupal --extensions=php,module,inc,install,test,info
 
-      - name: Run PHPUnit tests
+      - name: Start services
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
           vendor/bin/drush runserver $SIMPLETEST_BASE_URL > /dev/null 2>&1 &
           chromedriver --port=4444 > /dev/null 2>&1 &
-          vendor/bin/phpunit \
-            --bootstrap core/tests/bootstrap.php \
-            -c modules/contrib/$MODULE_NAME/phpunit.xml \
-            modules/contrib/$MODULE_NAME
+
+      - name: Run PHPUnit tests
+        working-directory: ${{ env.MODULE_FOLDER }}
+        run: |
+          $DRUPAL_ROOT/vendor/bin/phpunit \
+            --bootstrap $DRUPAL_ROOT/core/tests/bootstrap.php \
+            -c $MODULE_FOLDER/phpunit.xml \
+            --coverage-clover=$MODULE_FOLDER/coverage.xml \
+            .
+          codecov

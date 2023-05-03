@@ -15,7 +15,7 @@ use Prophecy\Argument;
  * Paytrail gateway plugin tests.
  *
  * @group commerce_paytrail
- * @coversDefaultClass \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
+ * @coversDefaultClass \Drupal\commerce_paytrail\Plugin\QueueWorker\NotificationWorker
  */
 class NotificationWorkerTest extends RequestBuilderKernelTestBase {
 
@@ -56,7 +56,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
   }
 
   /**
-   * Calls ::onNotify() with mocked request builder.
+   * Queues the given item.
    *
    * @param string $status
    *   The expected status.
@@ -88,6 +88,11 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests that item is released if order is not found.
+   *
+   * @covers ::create
+   * @covers ::processItem
+   * @covers ::getPaymentPlugin
+   * @covers ::__construct
    */
   public function testNoOrderFound() : void {
     $order = $this->createQueueItem(Payment::STATUS_OK);
@@ -99,6 +104,11 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests that item is released if the order is paid already.
+   *
+   * @covers ::create
+   * @covers ::processItem
+   * @covers ::getPaymentPlugin
+   * @covers ::__construct
    */
   public function testNotifyOrderIsPaidAlready() : void {
     $order = $this->createQueueItem(Payment::STATUS_OK);
@@ -115,6 +125,11 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests that pending payment state will throw and exception.
+   *
+   * @covers ::create
+   * @covers ::processItem
+   * @covers ::getPaymentPlugin
+   * @covers ::__construct
    */
   public function testOnNotifyPendingOrder() : void {
     $order = $this->createQueueItem(Payment::STATUS_PENDING);
@@ -125,6 +140,11 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests that items are released from queue after N number of tries.
+   *
+   * @covers ::create
+   * @covers ::processItem
+   * @covers ::getPaymentPlugin
+   * @covers ::__construct
    */
   public function testQueueRelease() : void {
     $numExceptions = 0;
@@ -148,6 +168,11 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
 
   /**
    * Make sure payment gets paid.
+   *
+   * @covers ::create
+   * @covers ::processItem
+   * @covers ::getPaymentPlugin
+   * @covers ::__construct
    */
   public function testSuccessfulNotify() : void {
     $this->createQueueItem(Payment::STATUS_OK);

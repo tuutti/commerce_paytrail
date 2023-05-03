@@ -54,6 +54,13 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
 
   /**
    * Make sure payments in incorrect state cannot be refunded.
+   *
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::refund
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::createRefundRequest
+   * @covers ::refundPayment
+   * @covers ::assertRefundAmount
+   * @covers ::assertPaymentState
+   * @covers ::assertResponseStatus
    */
   public function testInvalidPaymentState() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
@@ -66,6 +73,13 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
 
   /**
    * Make sure refund fails if Paytrail refund request failed.
+   *
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::refund
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::createRefundRequest
+   * @covers ::refundPayment
+   * @covers ::assertRefundAmount
+   * @covers ::assertPaymentState
+   * @covers ::assertResponseStatus
    */
   public function testInvalidResponseStatus() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
@@ -84,6 +98,13 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests partial refund.
+   *
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::refund
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::createRefundRequest
+   * @covers ::refundPayment
+   * @covers ::assertRefundAmount
+   * @covers ::assertPaymentState
+   * @covers ::assertResponseStatus
    */
   public function testPartialRefund() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
@@ -106,6 +127,8 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests onNotify with refund events.
+   *
+   * @covers ::onNotify
    */
   public function testOnNotifyEvent() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
@@ -120,6 +143,13 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
 
   /**
    * Tests full refund.
+   *
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::refund
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder::createRefundRequest
+   * @covers ::refundPayment
+   * @covers ::assertRefundAmount
+   * @covers ::assertPaymentState
+   * @covers ::assertResponseStatus
    */
   public function testFullRefund() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);

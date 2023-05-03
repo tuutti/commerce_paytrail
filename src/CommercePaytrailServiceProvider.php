@@ -17,7 +17,7 @@ class CommercePaytrailServiceProvider extends ServiceProviderBase {
   /**
    * {@inheritdoc}
    */
-  public function register(ContainerBuilder $container) :void {
+  public function register(ContainerBuilder $container) : void {
     // We cannot use the module handler as the container is not yet compiled.
     // @see \Drupal\Core\DrupalKernel::compileContainer()
     $modules = $container->getParameter('container.modules');
@@ -27,7 +27,6 @@ class CommercePaytrailServiceProvider extends ServiceProviderBase {
         ->addTag('event_subscriber')
         ->addArgument(new Reference('commerce_price.minor_units_converter'));
     }
-    $container->removeDefinition('commerce_paytrail.request_builder_subscriber');
   }
 
 }
