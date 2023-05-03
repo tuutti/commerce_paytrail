@@ -41,7 +41,7 @@ jobs:
         run: echo "DRUPAL_ROOT=$HOME/drupal" >> $GITHUB_ENV
 
       - name: Set MODULE_FOLDER
-        run: echo "MODULE_FOLDER=$DRUPAL_ROOT/modules/contrib/MODULE_NAME" >> $GITHUB_ENV
+        run: echo "MODULE_FOLDER=$DRUPAL_ROOT/modules/contrib/$MODULE_NAME" >> $GITHUB_ENV
 
       - name: Clone drupal
         run: git clone --depth 1 --branch "${{ matrix.core }}" https://git.drupal.org/project/drupal.git/ $DRUPAL_ROOT
