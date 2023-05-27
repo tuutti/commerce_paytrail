@@ -135,7 +135,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
     $order = $this
       ->setPricesIncludeTax(FALSE)
       ->createShippingOrder();
-    $items = $this->sut->createPaymentRequest($order)->getItems();
+    $items = $this->sut->populateRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
@@ -156,7 +156,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
     $order = $this
       ->setPricesIncludeTax(TRUE, ['FI'])
       ->createShippingOrder();
-    $items = $this->sut->createPaymentRequest($order)->getItems();
+    $items = $this->sut->populateRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
@@ -177,7 +177,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
     $order = $this
       ->setPricesIncludeTax(FALSE, ['FI'])
       ->createShippingOrder();
-    $items = $this->sut->createPaymentRequest($order)->getItems();
+    $items = $this->sut->populateRequest($order)->getItems();
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);

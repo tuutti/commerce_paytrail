@@ -7,13 +7,15 @@ namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
-use Drupal\Core\Url;
+use Drupal\Core\Form\FormStateInterface;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\RefundResponse;
@@ -35,14 +37,14 @@ use Symfony\Component\HttpFoundation\Response;
  *   requires_billing_information = FALSE,
  * )
  */
-final class Paytrail extends PaytrailBase implements SupportsNotificationsInterface, SupportsRefundsInterface {
+final class Paytrail extends PaytrailBase implements SupportsNotificationsInterface, SupportsRefundsInterface, OffsitePaymentGatewayInterface {
 
   /**
    * The payment request builder.
    *
    * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface
    */
-  private PaymentRequestBuilderInterface $paymentRequest;
+  private PaymentRequestBuilder $paymentRequest;
 
   /**
    * The refund request builder.
@@ -69,34 +71,31 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    */
   public function defaultConfiguration() : array {
     return [
-      'payment_method_types' => ['paytrail'],
+      'order_discount_strategy' => NULL,
     ] + parent::defaultConfiguration();
   }
 
   /**
-   * Gets the return URL for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Drupal\Core\Url
-   *   The return url.
+   * {@inheritdoc}
    */
-  public function getReturnUrl(OrderInterface $order) : Url {
-    return $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
-  }
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) : array {
+    $form = parent::buildConfigurationForm($form, $form_state);
 
-  /**
-   * Gets the cancel URL for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Drupal\Core\Url
-   *   The cancel url.
-   */
-  public function getCancelUrl(OrderInterface $order) : Url {
-    return $this->buildReturnUrl($order, 'commerce_payment.checkout.cancel');
+    $form['order_discount_strategy'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Order discount strategy'),
+      // @todo Support splitting discount amount into order items.
+      '#options' => [
+        NULL => $this->t('<b>Do nothing</b>: The API request will fail if you have any order level discounts'),
+        static::STRATEGY_REMOVE_ITEMS => $this->t('<b>Remove order item information</b>: The order item data will not be included in the API request. See the link below for implications.'),
+      ],
+      '#default_value' => $this->configuration['order_discount_strategy'],
+      '#description' => $this->t('<p>Paytrail does not support order level discounts, such as gift cards. See <a href="@link">this link</a> for more information.</p><p>This setting <em>does not</em> affect most discounts applied by <code>commerce_promotion</code> module, since they are split across all order items.</p>',
+        [
+          '@link' => 'https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-',
+        ]),
+    ];
+    return $form;
   }
 
   /**
@@ -150,20 +149,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   }
 
   /**
-   * {@inheritdoc}
-   */
-  public function getNotifyUrl(string $eventName = NULL) : Url {
-    $url = parent::getNotifyUrl();
-
-    if ($eventName) {
-      $query = $url->getOption('query');
-      $query['event'] = $eventName;
-      $url->setOption('query', $query);
-    }
-    return $url;
-  }
-
-  /**
    * Validate and store transaction for order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
@@ -187,7 +172,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
       $this->createPayment($order, $paymentResponse);
     }
     catch (SecurityHashMismatchException | ApiException $e) {
-      throw new PaymentGatewayException($e->getMessage());
+      throw new PaymentGatewayException($e->getMessage(), previous: $e);
     }
   }
 
@@ -201,7 +186,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    *
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
-  private function validateResponse(OrderInterface $order, Request $request) : void {
+  protected function validateResponse(OrderInterface $order, Request $request) : void {
     [
       'checkout-reference' => $requestOrderId,
       'checkout-transaction-id' => $transactionId,
@@ -220,8 +205,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
     if (!$requestOrderId || $requestOrderId !== $order->id()) {
       throw new SecurityHashMismatchException('Order ID mismatch.');
     }
-    $this->paymentRequest
-      ->validateSignature($this, $request->query->all());
+    $this->validateSignature($this, $request->query->all());
   }
 
   /**

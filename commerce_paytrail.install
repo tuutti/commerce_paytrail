@@ -14,3 +14,25 @@ function commerce_paytrail_update_9001() : void {
   // This used to enable 'use_ipn_to_capture_payments' setting that doesn't
   // exist anymore. Keep this hook to keep track of the current schema version.
 }
+
+/**
+ * Install 'paytrail_token' payment method type.
+ */
+function commerce_paytrail_update_9002() : void {
+  \Drupal::service('plugin.manager.commerce_payment_method_type')->clearCachedDefinitions();
+  \Drupal::service('entity_type.bundle.info')->clearCachedBundles();
+  /** @var \Drupal\entity\BundlePlugin\BundlePluginHandlerInterface $bundle_handler */
+  $bundle_handler = \Drupal::entityTypeManager()->getHandler('commerce_payment_method', 'bundle_plugin');
+  /** @var \Drupal\Core\field\FieldStorageDefinitionListenerInterface $field_storage_definition_listener */
+  $field_storage_definition_listener = \Drupal::service('field_storage_definition.listener');
+  /** @var \Drupal\Core\field\FieldDefinitionListenerInterface $field_storage_definition_listener */
+  $field_definition_listener = \Drupal::service('field_definition.listener');
+  /** @var \Drupal\Core\Entity\EntityBundleListenerInterface $entity_bundle_listener */
+  $entity_bundle_listener = \Drupal::service('entity_bundle.listener');
+  $entity_bundle_listener->onBundleCreate('paytrail_token', 'commerce_payment_method');
+
+  foreach ($bundle_handler->getFieldDefinitions('paytrail_token') as $definition) {
+    $field_storage_definition_listener->onFieldStorageDefinitionCreate($definition);
+    $field_definition_listener->onFieldDefinitionCreate($definition);
+  }
+}

@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\PaymentRequest;
 use Paytrail\Payment\Model\PaymentRequestResponse;
@@ -19,17 +20,19 @@ interface PaymentRequestBuilderInterface extends RequestBuilderInterface {
    *
    * @param string $transactionId
    *   The transaction ID.
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin
+   *   The payment gateway plugin.
    *
    * @return \Paytrail\Payment\Model\Payment
    *   The payment.
    */
-  public function get(string $transactionId, OrderInterface $order) : Payment;
+  public function get(string $transactionId, Paytrail $plugin) : Payment;
 
   /**
    * Creates a new payment request.
    *
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail $plugin
+   *   The payment gateway plugin.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    *
@@ -38,7 +41,7 @@ interface PaymentRequestBuilderInterface extends RequestBuilderInterface {
    *
    * @throws \Paytrail\Payment\ApiException
    */
-  public function create(OrderInterface $order) : PaymentRequestResponse;
+  public function create(Paytrail $plugin, OrderInterface $order) : PaymentRequestResponse;
 
   /**
    * Creates a new payment request object.

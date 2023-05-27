@@ -22,10 +22,12 @@ final class Header {
    *   The nonce.
    * @param int|string $timestamp
    *   The timestamp.
-   * @param string|null $transactionId
-   *   The transactionId.
    * @param string|null $platformName
    *   The platform name.
+   * @param string|null $transactionId
+   *   The transaction id.
+   * @param string|null $tokenizationId
+   *   The tokenization id.
    */
   public function __construct(
     public string $account,
@@ -33,8 +35,9 @@ final class Header {
     public string $method,
     public string $nonce,
     public int|string $timestamp,
+    public ?string $platformName = NULL,
     public ?string $transactionId = NULL,
-    public ?string $platformName = NULL
+    public ?string $tokenizationId = NULL,
   ) {
   }
 
@@ -56,7 +59,9 @@ final class Header {
     if ($this->transactionId) {
       $array['checkout-transaction-id'] = $this->transactionId;
     }
-
+    if ($this->tokenizationId) {
+      $array['checkout-tokenization-id'] = $this->tokenizationId;
+    }
     return $array;
   }
 

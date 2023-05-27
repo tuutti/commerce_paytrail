@@ -7,6 +7,7 @@ namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
+use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Messenger\MessengerTrait;
@@ -21,6 +22,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 abstract class PaytrailBase extends OffsitePaymentGatewayBase {
 
   use MessengerTrait;
+  use SignatureTrait;
 
   /**
    * The language manager.
@@ -60,7 +62,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
       'language' => 'automatic',
       'account' => static::ACCOUNT,
       'secret' => static::SECRET,
-      'order_discount_strategy' => NULL,
+      'payment_method_types' => ['paytrail'],
     ] + parent::defaultConfiguration();
   }
 
@@ -101,22 +103,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
         'EN' => $this->t('English'),
       ],
       '#default_value' => $this->configuration['language'],
-    ];
-
-    $form['order_discount_strategy'] = [
-      '#type' => 'radios',
-      '#title' => $this->t('Order discount strategy'),
-      // @todo Support splitting discount amount into order items.
-      '#options' => [
-        NULL => $this->t('<b>Do nothing</b>: The API request will fail if you have any order level discounts'),
-        static::STRATEGY_REMOVE_ITEMS => $this->t('<b>Remove order item information</b>: The order item data will not be included in the API request. See the link below for implications.'),
-      ],
-      '#default_value' => $this->configuration['order_discount_strategy'],
-      '#description' => $this->t('<p>Paytrail does not support order level discounts, such as gift cards. See <a href="@link">this link</a> for more information.</p><p>This setting <em>does not</em> affect most discounts applied by <code>commerce_promotion</code> module, since they are split across all order items.</p>',
-        [
-          '@link' => 'https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-',
-        ]),
-
     ];
 
     return $form;
@@ -204,6 +190,46 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
    */
   public function orderDiscountStrategy() : ? string {
     return $this->configuration['order_discount_strategy'];
+  }
+
+  /**
+   * Gets the return URL for given order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return \Drupal\Core\Url
+   *   The return url.
+   */
+  public function getReturnUrl(OrderInterface $order) : Url {
+    return $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
+  }
+
+  /**
+   * Gets the cancel URL for given order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return \Drupal\Core\Url
+   *   The cancel url.
+   */
+  public function getCancelUrl(OrderInterface $order) : Url {
+    return $this->buildReturnUrl($order, 'commerce_payment.checkout.cancel');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getNotifyUrl(string $eventName = NULL) : Url {
+    $url = parent::getNotifyUrl();
+
+    if ($eventName) {
+      $query = $url->getOption('query');
+      $query['event'] = $eventName;
+      $url->setOption('query', $query);
+    }
+    return $url;
   }
 
   /**

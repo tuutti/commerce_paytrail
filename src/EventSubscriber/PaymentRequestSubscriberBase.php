@@ -8,6 +8,7 @@ use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
 use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Paytrail\Payment\Model\PaymentRequest;
+use Paytrail\Payment\Model\TokenPaymentRequest;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -27,7 +28,10 @@ abstract class PaymentRequestSubscriberBase implements EventSubscriberInterface 
    *   TRUE if event is valid.
    */
   protected function isValid(ModelEvent $event) : bool {
-    if (!$event->model instanceof PaymentRequest || !$order = $event->order) {
+    if (
+      !($event->model instanceof PaymentRequest || $event->model instanceof TokenPaymentRequest) ||
+      !$order = $event->order
+    ) {
       return FALSE;
     }
 

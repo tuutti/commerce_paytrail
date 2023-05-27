@@ -78,7 +78,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
     }
 
     try {
-      $response = $this->paymentRequest->create($order);
+      $response = $this->paymentRequest->create($this->plugin, $order);
     }
     catch (ApiException $e) {
       $this->logger
