@@ -5,20 +5,14 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
-use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
-use Drupal\commerce_price\Price;
-use Drupal\Core\Form\FormStateInterface;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Payment;
-use Paytrail\Payment\Model\RefundResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,55 +41,13 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   private PaymentRequestBuilder $paymentRequest;
 
   /**
-   * The refund request builder.
-   *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface
-   */
-  private RefundRequestBuilderInterface $refundRequest;
-
-  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
-
-    // Populate via setters to avoid overriding the parent constructor.
     $instance->paymentRequest = $container->get('commerce_paytrail.payment_request');
-    $instance->refundRequest = $container->get('commerce_paytrail.refund_request');
 
     return $instance;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function defaultConfiguration() : array {
-    return [
-      'order_discount_strategy' => NULL,
-    ] + parent::defaultConfiguration();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function buildConfigurationForm(array $form, FormStateInterface $form_state) : array {
-    $form = parent::buildConfigurationForm($form, $form_state);
-
-    $form['order_discount_strategy'] = [
-      '#type' => 'radios',
-      '#title' => $this->t('Order discount strategy'),
-      // @todo Support splitting discount amount into order items.
-      '#options' => [
-        NULL => $this->t('<b>Do nothing</b>: The API request will fail if you have any order level discounts'),
-        static::STRATEGY_REMOVE_ITEMS => $this->t('<b>Remove order item information</b>: The order item data will not be included in the API request. See the link below for implications.'),
-      ],
-      '#default_value' => $this->configuration['order_discount_strategy'],
-      '#description' => $this->t('<p>Paytrail does not support order level discounts, such as gift cards. See <a href="@link">this link</a> for more information.</p><p>This setting <em>does not</em> affect most discounts applied by <code>commerce_promotion</code> module, since they are split across all order items.</p>',
-        [
-          '@link' => 'https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-',
-        ]),
-    ];
-    return $form;
   }
 
   /**
@@ -162,7 +114,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
 
       $paymentResponse = $this->paymentRequest->get(
         $request->query->get('checkout-transaction-id'),
-        $order
+        $this
       );
       $this->assertResponseStatus($paymentResponse->getStatus(), [
         Payment::STATUS_OK,
@@ -243,45 +195,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
         ->applyTransitionById('capture');
     }
     $payment->save();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function refundPayment(PaymentInterface $payment, Price $amount = NULL) : void {
-    $this->assertPaymentState($payment, ['completed', 'partially_refunded']);
-    // If not specified, refund the entire amount.
-    $amount = $amount ?: $payment->getAmount();
-    // Validate the requested amount.
-    $this->assertRefundAmount($payment, $amount);
-    $order = $payment->getOrder();
-
-    $oldRefundedAmount = $payment->getRefundedAmount();
-    $newRefundedAmount = $oldRefundedAmount->add($amount);
-
-    try {
-      $response = $this->refundRequest->refund($payment->getRemoteId(), $order, $amount);
-
-      $this->assertResponseStatus($response->getStatus(), [
-        RefundResponse::STATUS_OK,
-        RefundResponse::STATUS_PENDING,
-      ]);
-
-      $newRefundedAmount->lessThan($payment->getAmount()) ?
-        $payment->setState('partially_refunded') :
-        $payment->setState('refunded');
-
-      $payment->setRefundedAmount($newRefundedAmount)
-        ->save();
-    }
-    catch (\Exception $e) {
-      $message = $e->getMessage();
-
-      if ($e instanceof ApiException) {
-        $message = json_decode($e->getResponseBody())->message ?? $e->getMessage();
-      }
-      throw new PaymentGatewayException($message, $e->getCode(), $e);
-    }
   }
 
 }

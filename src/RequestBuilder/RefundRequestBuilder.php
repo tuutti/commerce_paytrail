@@ -53,10 +53,10 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
    * {@inheritdoc}
    */
   public function refund(string $transactionId, OrderInterface $order, Price $amount) : RefundResponse {
-    $configuration = $this
-      ->getPaymentPlugin($order)
-      ->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration, $transactionId);
+    $plugin = $this->getPaymentPlugin($order);
+    $configuration = $plugin->getClientConfiguration();
+    $headers = $this->createHeaders('POST', $configuration);
+    $headers->transactionId = $transactionId;
 
     $request = $this->createRefundRequest($order, $amount, $headers->nonce);
 
@@ -76,7 +76,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         ),
       );
-    return $this->getResponse($order, $response);
+    return $this->getResponse($plugin, $response);
   }
 
   /**

@@ -10,11 +10,16 @@ use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodStorageInterface;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsAuthorizationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPaymentMethodsInterface;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsVoidsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentMethodType\PaytrailToken as PaytrailTokenMethod;
+use Drupal\commerce_paytrail\ExceptionHelper;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder;
+use Drupal\commerce_price\Price;
 use Paytrail\Payment\ApiException;
+use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\TokenizationRequestResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -36,9 +41,10 @@ use Symfony\Component\HttpFoundation\Request;
  *   requires_billing_information = FALSE,
  * )
  */
-final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentMethodsInterface {
+final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
 
-  private TokenPaymentRequestBuilder $paymentRequestBuilder;
+  private TokenPaymentRequestBuilder $paymentTokenRequest;
+  private PaymentRequestBuilder $paymentRequestBuilder;
 
   /**
    * {@inheritdoc}
@@ -55,7 +61,8 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
       $plugin_id,
       $plugin_definition
     );
-    $instance->paymentRequestBuilder = $container->get('commerce_paytrail.token_payment_request');
+    $instance->paymentTokenRequest = $container->get('commerce_paytrail.token_payment_request');
+    $instance->paymentRequestBuilder = $container->get('commerce_paytrail.payment_request');
     return $instance;
   }
 
@@ -75,24 +82,39 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
       if (!$token = $request->query->get('checkout-tokenization-id')) {
         throw new SecurityHashMismatchException('Missing required "checkout-tokenization-id".');
       }
-      $payment_method_storage = $this->entityTypeManager->getStorage('commerce_payment_method');
-      assert($payment_method_storage instanceof PaymentMethodStorageInterface);
+      $paymentMethodStorage = $this->entityTypeManager->getStorage('commerce_payment_method');
+      assert($paymentMethodStorage instanceof PaymentMethodStorageInterface);
 
-      $payment_method = $payment_method_storage->createForCustomer(
+      $paymentMethod = $paymentMethodStorage->createForCustomer(
         'paytrail_token',
         $this->parentEntity->id(),
         $order->getCustomerId(),
         $order->getBillingProfile()
       );
-      $this->createPaymentMethod($payment_method, $token);
+     $paymentMethod = $this->createPaymentMethod(
+        $paymentMethod,
+        $token,
+      );
+      /** @var \Drupal\commerce_payment\PaymentStorageInterface $paymentStorage */
+      $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
+      /** @var PaymentInterface $payment */
+      $payment = $paymentStorage->create([
+        'payment_gateway' => $this->parentEntity->id(),
+        'order_id' => $order->id(),
+        'test' => !$this->isLive(),
+        'payment_method' => $paymentMethod,
+      ]);
+      // @todo Figure out if we should capture the payment here.
+      $this->createPayment($payment, FALSE);
+      $paymentMethod->save();
     }
     catch (SecurityHashMismatchException | ApiException | \InvalidArgumentException $e) {
-      throw new PaymentGatewayException($e->getMessage(), previous: $e);
+      ExceptionHelper::handle($e);
     }
   }
 
-  public function createPaymentMethod(PaymentMethodInterface $paymentMethod, string $token) : void {
-    $response = $this->paymentRequestBuilder->getCardForToken($this, $token);
+  public function createPaymentMethod(PaymentMethodInterface $paymentMethod, string $token) : PaymentMethodInterface {
+    $response = $this->paymentTokenRequest->getCardForToken($this, $token);
 
     if (!$card = $response->getCard()) {
       throw new \InvalidArgumentException('Failed to fetch card details.');
@@ -107,8 +129,9 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
       $paymentMethod->card_exp_year->value,
     );
     $paymentMethod->setExpiresTime($expires)
-      ->setRemoteId($response->getToken())
-      ->save();
+      ->setRemoteId($response->getToken());
+
+    return $paymentMethod;
   }
 
   /**
@@ -116,11 +139,14 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
    */
   public function createPayment(PaymentInterface $payment, $capture = TRUE) : void {
     $paymentMethod = $payment->getPaymentMethod();
+    $this->assertPaymentState($payment, ['new']);
+    $this->assertPaymentMethod($paymentMethod);
 
     try {
       $order = $payment->getOrder();
-      $response = $this->paymentRequestBuilder
-        ->merchantInitiatedTransaction($this, $order, $paymentMethod->getRemoteId());
+      $response = $this->paymentTokenRequest
+        ->tokenMitAuthorize($this, $order, $paymentMethod->getRemoteId());
+
       $payment
         ->setRemoteId($response->getTransactionId())
         ->setAmount($order->getBalance())
@@ -128,14 +154,21 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
         ->getState()
         ->applyTransitionById('authorize');
 
-      if (!$payment->isCompleted() && $capture) {
-        $payment->getState()
-          ->applyTransitionById('capture');
+      if ($capture) {
+        $this->capturePayment($payment);
+
+        $paymentResponse = $this->paymentRequestBuilder
+          ->get($response->getTransactionId(), $this);
+
+        if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
+          $payment->getState()
+            ->applyTransitionById('capture');
+        }
       }
       $payment->save();
     }
     catch (ApiException $e) {
-      throw new PaymentGatewayException($e->getMessage(), previous: $e);
+      ExceptionHelper::handle($e);
     }
   }
 
@@ -144,6 +177,51 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
    */
   public function deletePaymentMethod(PaymentMethodInterface $payment_method) : void {
     $payment_method->delete();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function voidPayment(PaymentInterface $payment) : void {
+    $this->assertPaymentState($payment, ['authorization']);
+
+    try {
+      $this->paymentTokenRequest
+        ->tokenRevert($this, $payment);
+    }
+    catch (ApiException $e) {
+      ExceptionHelper::handle($e);
+    }
+    $payment->setState('authorization_voided');
+    $payment->save();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function capturePayment(
+    PaymentInterface $payment,
+    Price $amount = NULL
+  ) : void {
+    $this->assertPaymentState($payment, ['authorization']);
+    $amount = $amount ?: $payment->getAmount();
+
+    try {
+      $response = $this->paymentTokenRequest
+        ->tokenCommit($this, $payment, $amount);
+
+      $paymentResponse = $this->paymentRequestBuilder
+        ->get($response->getTransactionId(), $this);
+
+      if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
+        $payment->getState()
+          ->applyTransitionById('capture');
+      }
+      $payment->save();
+    }
+    catch (ApiException $e) {
+      ExceptionHelper::handle($e);
+    }
   }
 
 }

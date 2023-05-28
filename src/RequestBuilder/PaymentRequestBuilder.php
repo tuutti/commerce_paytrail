@@ -5,7 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Paytrail\Payment\Api\PaymentsApi;
 use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\PaymentRequest;
@@ -22,18 +22,18 @@ final class PaymentRequestBuilder extends PaymentRequestBase {
   /**
    * {@inheritdoc}
    */
-  public function get(string $transactionId, Paytrail $plugin) : Payment {
+  public function get(string $transactionId, PaytrailBase $plugin) : Payment {
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('GET', $configuration);
     $headers->transactionId = $transactionId;
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->getPaymentByTransactionIdWithHttpInfo(
-        $transactionId,
+        $headers->transactionId,
         $configuration->getApiKey('account'),
         $headers->hashAlgorithm,
         $headers->method,
-        $transactionId,
+        $headers->transactionId,
         $headers->timestamp,
         $headers->nonce,
         $this->signature(
@@ -47,9 +47,10 @@ final class PaymentRequestBuilder extends PaymentRequestBase {
   /**
    * {@inheritdoc}
    */
-  public function create(Paytrail $plugin, OrderInterface $order) : PaymentRequestResponse {
+  public function create(OrderInterface $order, PaytrailBase $plugin) : PaymentRequestResponse {
     $configuration = $plugin
       ->getClientConfiguration();
+
     $headers = $this->createHeaders('POST', $configuration);
     $request = $this->populateRequest(new PaymentRequest(), $order);
 

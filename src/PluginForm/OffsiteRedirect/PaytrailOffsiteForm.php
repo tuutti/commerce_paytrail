@@ -53,10 +53,6 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) : array {
-    $form = [
-      '#cache' => ['max-age' => 0],
-    ];
-
     if (!$order = $this->entity->getOrder()) {
       $this->logger
         ->error(sprintf('Payment %s has no order referenced.', $this->entity->id()));
