@@ -7,12 +7,15 @@ namespace Drupal\commerce_paytrail;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 
+/**
+ * A trait to create and validate Paytrail signatures.
+ */
 trait SignatureTrait {
 
   /**
    * {@inheritdoc}
    */
-  protected function signature(string $secret, array $headers, ?string $body = '') : string {
+  public function signature(string $secret, array $headers, ?string $body = '') : string {
     // Filter non-checkout headers.
     $headers = array_filter(
       $headers,
@@ -38,7 +41,7 @@ trait SignatureTrait {
   /**
    * {@inheritdoc}
    */
-  protected function validateSignature(PaytrailBase $plugin, array $headers, string $body = '') : self {
+  public function validateSignature(PaytrailBase $plugin, array $headers, string $body = '') : self {
     $signature = $this->signature(
       $plugin->getClientConfiguration()->getApiKey('secret'),
       $headers,

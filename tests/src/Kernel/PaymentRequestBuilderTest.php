@@ -65,7 +65,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   public function testCreate() : void {
     $order = $this->createOrder();
 
-    $request = $this->sut->populateRequest($order);
+    $request = $this->sut->createPaymentRequest($order);
     static::assertInstanceOf(PaymentRequest::class, $request);
     static::assertCount(1, $request->getItems());
     static::assertEquals($order->id(), $request->getReference());
@@ -87,7 +87,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
       ->setPricesIncludeTax(TRUE, ['FI'])
       ->createOrder();
 
-    $request = $this->sut->populateRequest($order);
+    $request = $this->sut->createPaymentRequest($order);
     // Order should have prices included in unit prices.
     $this->assertTaxes($request, 2200, 1100, 24);
   }
@@ -100,7 +100,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
       ->setPricesIncludeTax(FALSE, ['FI'])
       ->createOrder();
 
-    $request = $this->sut->populateRequest($order);
+    $request = $this->sut->createPaymentRequest($order);
     // Taxes should be added to unit price.
     $this->assertTaxes($request, 2728, 1364, 24);
   }
@@ -118,7 +118,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
           'amount' => new Price('-5', 'EUR'),
         ]),
       ]);
-    $request = $this->sut->populateRequest($order);
+    $request = $this->sut->createPaymentRequest($order);
     // Make sure order items are not removed.
     $this->assertNotNull($request->getItems());
 
@@ -146,7 +146,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
       ]));
     $order->save();
 
-    $request = $this->sut->populateRequest($order);
+    $request = $this->sut->createPaymentRequest($order);
     // Make sure order item level discounts remove order items.
     $this->assertNull($request->getItems());
     // Make sure discount is still applied to total price.
@@ -172,7 +172,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
 
     $order->setBillingProfile($profile)
       ->save();
-    $request = $this->sut->populateRequest($order);
+    $request = $this->sut->createPaymentRequest($order);
     static::assertInstanceOf(Address::class, $request->getInvoicingAddress());
   }
 
@@ -181,7 +181,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    */
   public function testEventSubscriberEvent() : void {
     $this->assertCaughtEvents(1, function () {
-      $this->sut->populateRequest($this->createOrder());
+      $this->sut->createPaymentRequest($this->createOrder());
     });
   }
 

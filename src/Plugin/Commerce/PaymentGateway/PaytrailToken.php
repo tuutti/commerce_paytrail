@@ -91,13 +91,13 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
         $order->getCustomerId(),
         $order->getBillingProfile()
       );
-     $paymentMethod = $this->createPaymentMethod(
+      $paymentMethod = $this->createPaymentMethod(
         $paymentMethod,
         $token,
       );
       /** @var \Drupal\commerce_payment\PaymentStorageInterface $paymentStorage */
       $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
-      /** @var PaymentInterface $payment */
+      /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
       $payment = $paymentStorage->create([
         'payment_gateway' => $this->parentEntity->id(),
         'order_id' => $order->id(),

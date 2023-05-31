@@ -25,8 +25,11 @@ use Paytrail\Payment\ObjectSerializer;
  */
 final class TokenPaymentRequestBuilder extends PaymentRequestBase {
 
-  public function createAddCardForm(OrderInterface $order, PaytrailToken $plugin) : array {
-    $configuration = $plugin->getClientConfiguration();
+  public function createAddCardForm(OrderInterface $order) : array {
+    $plugin = $this->getPaymentPlugin($order);
+
+    $configuration = $plugin
+      ->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
 
     $request = (new AddCardFormRequest())
@@ -112,7 +115,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
 
     $tokenRequest = (new TokenPaymentRequest())
       ->setToken($payment->getRemoteId());
-    $request = $this->populateRequest($tokenRequest, $payment->getOrder())
+    $request = $this->populatePaymentRequest($tokenRequest, $payment->getOrder())
       // Override the capture amount.
       ->setAmount($this->converter->toMinorUnits($amount));
 
@@ -147,7 +150,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
 
     $tokenRequest = (new TokenPaymentRequest())
       ->setToken($token);
-    $request = $this->populateRequest($tokenRequest, $order);
+    $request = $this->populatePaymentRequest($tokenRequest, $order);
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitAuthorizationHoldWithHttpInfo(
@@ -172,8 +175,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
 
     $tokenRequest = (new TokenPaymentRequest())
       ->setToken($token);
-    $request = $this->populateRequest($tokenRequest, $order);
-
+    $request = $this->populatePaymentRequest($tokenRequest, $order);
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitChargeWithHttpInfo(
         $request,

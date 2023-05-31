@@ -4,7 +4,6 @@ declare(strict_types = 1);
 
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
-use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Header;
 use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;

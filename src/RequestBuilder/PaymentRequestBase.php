@@ -107,14 +107,10 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
     return $item;
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function populateRequest(PaymentRequest|TokenPaymentRequest $request, OrderInterface $order) : PaymentRequest|TokenPaymentRequest {
+  protected function populatePaymentRequest(PaymentRequest|TokenPaymentRequest $request, OrderInterface $order) : PaymentRequest|TokenPaymentRequest {
     $plugin = $this->getPaymentPlugin($order);
 
-    $request
-      ->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
+    $request->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
       ->setReference($order->id())
       ->setStamp($this->uuidService->generate())
       ->setLanguage($plugin->getLanguage())
@@ -162,5 +158,6 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
 
     return $request;
   }
+
 
 }
