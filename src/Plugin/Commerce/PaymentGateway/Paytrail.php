@@ -10,7 +10,7 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGateway
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Payment;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -38,7 +38,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    *
    * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface
    */
-  private PaymentRequestBuilder $paymentRequest;
+  private PaymentRequestBuilderInterface $paymentRequest;
 
   /**
    * {@inheritdoc}

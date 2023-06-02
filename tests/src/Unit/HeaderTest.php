@@ -21,23 +21,17 @@ class HeaderTest extends UnitTestCase {
    * @dataProvider toArrayData
    */
   public function testToArray(
-    array $expected,
-    string $account,
-    string $alg,
-    string $method,
-    string $nonce,
-    int $timestamp,
-    ?string $transactionId,
-    ?string $platformName
+    array $expected
   ) : void {
     $sut = new Header(
-      $account,
-      $alg,
-      $method,
-      $nonce,
-      $timestamp,
-      $transactionId,
-      $platformName
+      $expected['checkout-account'],
+      $expected['checkout-algorithm'],
+      $expected['checkout-method'],
+      $expected['checkout-nonce'],
+      $expected['checkout-timestamp'],
+      $expected['platform-name'] ?? NULL,
+      $expected['checkout-transaction-id'] ?? NULL,
+      $expected['checkout-tokenization-id'] ?? NULL,
     );
     $this->assertEquals($expected, $sut->toArray());
   }
@@ -59,13 +53,6 @@ class HeaderTest extends UnitTestCase {
           'checkout-timestamp' => 1234567,
           'platform-name' => 'drupal/commerce_paytrail',
         ],
-        'account-test',
-        'sha256',
-        'GET',
-        '123',
-        1234567,
-        NULL,
-        NULL,
       ],
       [
         [
@@ -76,14 +63,8 @@ class HeaderTest extends UnitTestCase {
           'checkout-timestamp' => '1234567',
           'platform-name' => 'platform-name',
           'checkout-transaction-id' => 'transaction-id',
+          'checkout-tokenization-id' => 'tokenization-id',
         ],
-        'account-test',
-        'sha256',
-        'GET',
-        '123',
-        1234567,
-        'transaction-id',
-        'platform-name',
       ],
     ];
   }
