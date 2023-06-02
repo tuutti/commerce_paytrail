@@ -114,7 +114,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
 
       $paymentResponse = $this->paymentRequest->get(
         $request->query->get('checkout-transaction-id'),
-        $this
+        $order
       );
       $this->assertResponseStatus($paymentResponse->getStatus(), [
         Payment::STATUS_OK,
