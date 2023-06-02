@@ -236,7 +236,7 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
         ->tokenCommit($payment, $amount);
 
       $paymentResponse = $this->paymentRequestBuilder
-        ->get($response->getTransactionId(), $this);
+        ->get($response->getTransactionId(), $payment->getOrder());
 
       if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
         $payment->getState()

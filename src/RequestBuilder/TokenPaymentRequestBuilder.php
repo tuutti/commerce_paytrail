@@ -140,9 +140,6 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       // Override the capture amount.
       ->setAmount($this->converter->toMinorUnits($amount));
 
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, $order));
-
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenCommitWithHttpInfo(
         $payment->getRemoteId(),
@@ -194,9 +191,6 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $headers = $this->createHeaders('POST', $configuration);
     $request = $this->populateTokenMitRequest($order, $token);
 
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, $order));
-
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitAuthorizationHoldWithHttpInfo(
         $request,
@@ -223,9 +217,6 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $headers = $this->createHeaders('POST', $configuration);
 
     $request = $this->populateTokenMitRequest($order, $token);
-
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, $order));
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitChargeWithHttpInfo(
