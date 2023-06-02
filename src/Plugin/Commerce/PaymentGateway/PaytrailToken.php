@@ -8,7 +8,6 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
-use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodStorageInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsAuthorizationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPaymentMethodsInterface;
@@ -20,7 +19,6 @@ use Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder;
 use Drupal\commerce_price\Price;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Payment;
-use Paytrail\Payment\Model\TokenizationRequestResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -43,7 +41,18 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
 
+  /**
+   * The token payment request builder.
+   *
+   * @var \Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder
+   */
   private TokenPaymentRequestBuilder $paymentTokenRequest;
+
+  /**
+   * The payment request builder.
+   *
+   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+   */
   private PaymentRequestBuilder $paymentRequestBuilder;
 
   /**
@@ -75,6 +84,9 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
     ] + parent::defaultConfiguration();
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onReturn(OrderInterface $order, Request $request) : void {
     try {
       $this->validateSignature($this, $request->query->all());
@@ -113,6 +125,19 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
     }
   }
 
+  /**
+   * Populates the payment method with external credit card details.
+   *
+   * @param \Drupal\commerce_payment\Entity\PaymentMethodInterface $paymentMethod
+   *   The payment method.
+   * @param string $token
+   *   The token.
+   *
+   * @return \Drupal\commerce_payment\Entity\PaymentMethodInterface
+   *   The created payment method.
+   *
+   * @throws \JsonException
+   */
   public function createPaymentMethod(PaymentMethodInterface $paymentMethod, string $token) : PaymentMethodInterface {
     $response = $this->paymentTokenRequest->getCardForToken($this, $token);
 
@@ -145,7 +170,7 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
     try {
       $order = $payment->getOrder();
       $response = $this->paymentTokenRequest
-        ->tokenMitAuthorize($this, $order, $paymentMethod->getRemoteId());
+        ->tokenMitAuthorize($order, $paymentMethod->getRemoteId());
 
       $payment
         ->setRemoteId($response->getTransactionId())
@@ -158,7 +183,7 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
         $this->capturePayment($payment);
 
         $paymentResponse = $this->paymentRequestBuilder
-          ->get($response->getTransactionId(), $this);
+          ->get($response->getTransactionId(), $order);
 
         if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
           $payment->getState()
@@ -187,7 +212,7 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
 
     try {
       $this->paymentTokenRequest
-        ->tokenRevert($this, $payment);
+        ->tokenRevert($payment);
     }
     catch (ApiException $e) {
       ExceptionHelper::handle($e);
@@ -208,7 +233,7 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
 
     try {
       $response = $this->paymentTokenRequest
-        ->tokenCommit($this, $payment, $amount);
+        ->tokenCommit($payment, $amount);
 
       $paymentResponse = $this->paymentRequestBuilder
         ->get($response->getTransactionId(), $this);

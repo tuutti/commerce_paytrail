@@ -17,7 +17,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\Url;
-use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\RefundResponse;
 use Psr\Log\LoggerInterface;
@@ -141,7 +140,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Support
   /**
    * {@inheritdoc}
    */
-  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) : void {
     parent::submitConfigurationForm($form, $form_state);
 
     if (!$form_state->getErrors()) {
@@ -289,13 +288,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Support
         sprintf('Invalid status: %s [allowed: %s]', $response, implode(',', $allowedStatuses))
       );
     }
-  }
-
-  /**
-   * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
-   *   The payment.
-   */
-  protected function onRefund(PaymentInterface $payment) : void {
   }
 
   /**

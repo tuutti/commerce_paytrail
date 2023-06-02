@@ -107,6 +107,19 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
     return $item;
   }
 
+  /**
+   * Populates the given payment request.
+   *
+   * @param \Paytrail\Payment\Model\PaymentRequest|\Paytrail\Payment\Model\TokenPaymentRequest $request
+   *   The base request.
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return \Paytrail\Payment\Model\PaymentRequest|\Paytrail\Payment\Model\TokenPaymentRequest
+   *   The payment request
+   *
+   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
+   */
   protected function populatePaymentRequest(PaymentRequest|TokenPaymentRequest $request, OrderInterface $order) : PaymentRequest|TokenPaymentRequest {
     $plugin = $this->getPaymentPlugin($order);
 
@@ -158,6 +171,5 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
 
     return $request;
   }
-
 
 }

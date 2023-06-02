@@ -7,7 +7,6 @@ namespace Drupal\commerce_paytrail\Plugin\QueueWorker;
 use Drupal\commerce_order\OrderStorage;
 use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
 use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\QueueWorkerBase;
@@ -58,7 +57,7 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
     string $plugin_id,
     array $plugin_definition,
     private OrderStorage $orderStorage,
-    private PaymentRequestBuilder $paymentRequest,
+    private PaymentRequestBuilderInterface $paymentRequest,
     private LoggerInterface $logger
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);

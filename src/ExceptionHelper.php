@@ -33,6 +33,15 @@ final class ExceptionHelper {
     200,
   ];
 
+  /**
+   * Constructs a new payment gateway exception for given API exception.
+   *
+   * @param \Paytrail\Payment\ApiException $exception
+   *   The API exception.
+   *
+   * @return \Drupal\commerce_payment\Exception\PaymentGatewayException
+   *   The API exception converted into PaymentGatewayException.
+   */
   private static function handleApiException(PaytrailApiException $exception) : PaymentGatewayException {
     $body = json_decode($exception->getResponseBody() ?? '');
     $message = $exception->getMessage() ?: 'API request failed with no error message.';
@@ -52,6 +61,15 @@ final class ExceptionHelper {
     return new PaymentGatewayException($message, previous: $exception);
   }
 
+  /**
+   * Exception handler for payment plugins.
+   *
+   * @param \Exception $exception
+   *   The original exception.
+   *
+   * @throws \Exception
+   *   The exception.
+   */
   public static function handle(\Exception $exception) : void {
     if ($exception instanceof PaytrailApiException) {
       $exception = self::handleApiException($exception);

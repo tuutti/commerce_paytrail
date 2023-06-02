@@ -6,6 +6,7 @@ namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
+use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken;
 use Drupal\commerce_price\Price;
 use Paytrail\Payment\Api\TokenPaymentsApi;
@@ -19,13 +20,16 @@ use Paytrail\Payment\Model\TokenPaymentRequest;
 use Paytrail\Payment\ObjectSerializer;
 
 /**
- * The payment request builder.
+ * The token payment request builder.
  *
  * @internal
  */
-final class TokenPaymentRequestBuilder extends PaymentRequestBase {
+final class TokenPaymentRequestBuilder extends PaymentRequestBase implements TokenPaymentRequestBuilderInterface {
 
-  public function createAddCardForm(OrderInterface $order) : array {
+  /**
+   * {@inheritdoc}
+   */
+  public function createAddCardFormForOrder(OrderInterface $order) : array {
     $plugin = $this->getPaymentPlugin($order);
 
     $configuration = $plugin
@@ -44,6 +48,9 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
       ->setCheckoutCallbackSuccessUrl($plugin->getNotifyUrl()->toString())
       ->setCheckoutCallbackCancelUrl($plugin->getNotifyUrl()->toString());
 
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers, $order));
+
     $signature = $this->signature(
       $configuration->getApiKey('secret'),
       (array) ObjectSerializer::sanitizeForSerialization($request)
@@ -58,6 +65,9 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
     ];
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getCardForToken(PaytrailToken $plugin, string $token) : TokenizationRequestResponse {
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
@@ -86,7 +96,12 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
     return $this->getResponse($plugin, $response);
   }
 
-  public function tokenRevert(PaytrailToken $plugin, PaymentInterface $payment) : TokenMITPaymentResponse {
+  /**
+   * {@inheritdoc}
+   */
+  public function tokenRevert(PaymentInterface $payment) : TokenMITPaymentResponse {
+    $plugin = $this
+      ->getPaymentPlugin($payment->getOrder());
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
     $headers->transactionId = $payment->getRemoteId();
@@ -108,7 +123,13 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
     return $this->getResponse($plugin, $response);
   }
 
-  public function tokenCommit(PaytrailToken $plugin, PaymentInterface $payment, Price $amount) : TokenMITPaymentResponse {
+  /**
+   * {@inheritdoc}
+   */
+  public function tokenCommit(PaymentInterface $payment, Price $amount) : TokenMITPaymentResponse {
+    $order = $payment->getOrder();
+    $plugin = $this
+      ->getPaymentPlugin($order);
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
     $headers->transactionId = $payment->getRemoteId();
@@ -118,6 +139,9 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
     $request = $this->populatePaymentRequest($tokenRequest, $payment->getOrder())
       // Override the capture amount.
       ->setAmount($this->converter->toMinorUnits($amount));
+
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers, $order));
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenCommitWithHttpInfo(
@@ -144,13 +168,34 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
     return $response;
   }
 
-  public function tokenMitAuthorize(PaytrailToken $plugin, OrderInterface $order, string $token) : TokenMITPaymentResponse {
-    $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration);
-
+  /**
+   * Constructs a new token payment request object.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param string $token
+   *   The token.
+   *
+   * @return \Paytrail\Payment\Model\TokenPaymentRequest
+   *   The token payment request.
+   */
+  private function populateTokenMitRequest(OrderInterface $order, string $token) : TokenPaymentRequest {
     $tokenRequest = (new TokenPaymentRequest())
       ->setToken($token);
-    $request = $this->populatePaymentRequest($tokenRequest, $order);
+    return $this->populatePaymentRequest($tokenRequest, $order);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function tokenMitAuthorize(OrderInterface $order, string $token) : TokenMITPaymentResponse {
+    $plugin = $this->getPaymentPlugin($order);
+    $configuration = $plugin->getClientConfiguration();
+    $headers = $this->createHeaders('POST', $configuration);
+    $request = $this->populateTokenMitRequest($order, $token);
+
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers, $order));
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitAuthorizationHoldWithHttpInfo(
@@ -169,13 +214,19 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase {
     return $this->getResponse($plugin, $response);
   }
 
-  public function tokenMitCharge(PaytrailToken $plugin, OrderInterface $order, string $token) : TokenMITPaymentResponse {
+  /**
+   * {@inheritdoc}
+   */
+  public function tokenMitCharge(OrderInterface $order, string $token) : TokenMITPaymentResponse {
+    $plugin = $this->getPaymentPlugin($order);
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
 
-    $tokenRequest = (new TokenPaymentRequest())
-      ->setToken($token);
-    $request = $this->populatePaymentRequest($tokenRequest, $order);
+    $request = $this->populateTokenMitRequest($order, $token);
+
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers, $order));
+
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitChargeWithHttpInfo(
         $request,
