@@ -6,7 +6,7 @@ namespace Drupal\commerce_paytrail;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 
 /**
  * A trait to interact with the payment gateway.
@@ -19,10 +19,10 @@ trait PaymentGatewayPluginTrait {
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    *
-   * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase
+   * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface
    *   The payment plugin.
    */
-  protected function getPaymentPlugin(OrderInterface $order) : PaytrailBase {
+  protected function getPaymentPlugin(OrderInterface $order) : PaytrailInterface {
     static $plugins = [];
 
     if (!isset($plugins[$order->id()])) {
@@ -33,8 +33,8 @@ trait PaymentGatewayPluginTrait {
       }
       $plugin = $gateway->first()->entity?->getPlugin();
 
-      if (!$plugin instanceof PaytrailBase) {
-        throw new PaytrailPluginException('Payment gateway not instanceof PaytrailBase.');
+      if (!$plugin instanceof PaytrailInterface) {
+        throw new PaytrailPluginException('Payment gateway not instanceof PaytrailInterface.');
       }
       $plugins[$order->id()] = $plugin;
     }

@@ -8,7 +8,6 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
-use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\ExceptionHelper;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_paytrail\SignatureTrait;
@@ -25,7 +24,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Base class for paytrail gateway plugins.
  */
-abstract class PaytrailBase extends OffsitePaymentGatewayBase implements SupportsRefundsInterface {
+abstract class PaytrailBase extends OffsitePaymentGatewayBase implements PaytrailInterface {
 
   use MessengerTrait;
   use SignatureTrait;
@@ -50,10 +49,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Support
    * @var \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface
    */
   protected RefundRequestBuilderInterface $refundRequest;
-
-  public const ACCOUNT = '375917';
-  public const SECRET = 'SAIPPUAKAUPPIAS';
-  public const STRATEGY_REMOVE_ITEMS = 'remove_items';
 
   /**
    * {@inheritdoc}
@@ -173,7 +168,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Support
   }
 
   /**
-   * Get used langcode.
+   * {@inheritdoc}
    */
   public function getLanguage() : string {
     // Attempt to autodetect.
@@ -188,60 +183,28 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Support
   }
 
   /**
-   * Gets the live mode status.
-   *
-   * @return bool
-   *   Boolean indicating whether we are operating in live mode.
+   * {@inheritdoc}
    */
   public function isLive() : bool {
     return $this->configuration['mode'] === 'live';
   }
 
   /**
-   * Gets the order discount strategy.
-   *
-   * Paytrail does not support order level discounts (such as gift cards).
-   * This setting allows site owners to choose the strategy how to deal with
-   * them.
-   *
-   * NOTE: This only applies to ORDER level discounts.
-   *
-   * Available options:
-   *
-   * 'None': Do nothing. The API request *will* fail if order's total price does
-   * not match the total unit price.
-   * 'Remove order items': Removes order item information from the API request
-   * since it's not mandatory. See
-   * https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-.
-   *
-   * @return string|null
-   *   The discount calculation strategy.
+   * {@inheritdoc}
    */
   public function orderDiscountStrategy() : ? string {
     return $this->configuration['order_discount_strategy'];
   }
 
   /**
-   * Gets the return URL for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Drupal\Core\Url
-   *   The return url.
+   * {@inheritdoc}
    */
   public function getReturnUrl(OrderInterface $order) : Url {
     return $this->buildReturnUrl($order, 'commerce_payment.checkout.return');
   }
 
   /**
-   * Gets the cancel URL for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Drupal\Core\Url
-   *   The cancel url.
+   * {@inheritdoc}
    */
   public function getCancelUrl(OrderInterface $order) : Url {
     return $this->buildReturnUrl($order, 'commerce_payment.checkout.cancel');
@@ -262,10 +225,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Support
   }
 
   /**
-   * Gets the client configuration.
-   *
-   * @return \Paytrail\Payment\Configuration
-   *   The client configuration.
+   * {@inheritdoc}
    */
   public function getClientConfiguration() : Configuration {
     return (new Configuration())
