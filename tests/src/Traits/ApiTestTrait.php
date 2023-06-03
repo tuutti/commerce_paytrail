@@ -37,12 +37,20 @@ trait ApiTestTrait {
    * @return \Drupal\commerce_payment\Entity\PaymentGatewayInterface
    *   The gateway plugin.
    */
-  protected function createGatewayPlugin(string $id = 'paytrail') : PaymentGatewayInterface {
+  protected function createGatewayPlugin(
+    string $id = 'paytrail',
+    string $plugin = 'paytrail',
+    array $configuration = []
+  ) : PaymentGatewayInterface {
     $gateway = PaymentGateway::create([
       'id' => $id,
       'label' => 'Paytrail',
-      'plugin' => 'paytrail',
+      'plugin' => $plugin,
     ]);
+
+    if ($configuration) {
+      $gateway->getPlugin()->setConfiguration($configuration);
+    }
     $gateway->save();
     return $gateway;
   }

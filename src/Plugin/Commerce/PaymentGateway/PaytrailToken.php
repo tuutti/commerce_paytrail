@@ -9,6 +9,7 @@ use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\commerce_payment\PaymentMethodStorageInterface;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsAuthorizationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPaymentMethodsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsVoidsInterface;
@@ -34,12 +35,12 @@ use Symfony\Component\HttpFoundation\Request;
  *   },
  *   payment_method_types = {"paytrail_token"},
  *   credit_card_types = {
- *     "amex", "dinersclub", "discover", "jcb", "maestro", "mastercard", "visa",
+ *     "amex", "mastercard", "visa",
  *   },
  *   requires_billing_information = FALSE,
  * )
  */
-final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
+final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterface, SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
 
   /**
    * The token payment request builder.
@@ -103,6 +104,7 @@ final class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentM
         $order->getCustomerId(),
         $order->getBillingProfile()
       );
+
       $paymentMethod = $this->createPaymentMethod(
         $paymentMethod,
         $token,

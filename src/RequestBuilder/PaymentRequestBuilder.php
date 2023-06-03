@@ -25,8 +25,7 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
     $plugin = $this->getPaymentPlugin($order);
 
     $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('GET', $configuration);
-    $headers->transactionId = $transactionId;
+    $headers = $this->createHeaders('GET', $configuration, transactionId: $transactionId);
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->getPaymentByTransactionIdWithHttpInfo(

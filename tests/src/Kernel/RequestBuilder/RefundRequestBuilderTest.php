@@ -2,10 +2,11 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\Tests\commerce_paytrail\Kernel;
+namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder;
 use Drupal\commerce_price\Price;
+use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
 
 /**
  * Tests Refund requests.

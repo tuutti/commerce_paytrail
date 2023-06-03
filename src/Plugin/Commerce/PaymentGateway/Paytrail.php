@@ -10,6 +10,7 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGateway
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
+use Drupal\commerce_paytrail\ExceptionHelper;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Payment;
@@ -124,7 +125,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
       $this->createPayment($order, $paymentResponse);
     }
     catch (SecurityHashMismatchException | ApiException $e) {
-      throw new PaymentGatewayException($e->getMessage(), previous: $e);
+      ExceptionHelper::handle($e);
     }
   }
 

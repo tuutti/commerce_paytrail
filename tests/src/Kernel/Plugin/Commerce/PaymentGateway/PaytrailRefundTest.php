@@ -2,12 +2,13 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\Tests\commerce_paytrail\Kernel;
+namespace Drupal\Tests\commerce_paytrail\Kernel\Plugin\Commerce;
 
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
+use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
 use Paytrail\Payment\Model\RefundResponse;
 use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
@@ -18,7 +19,7 @@ use Prophecy\PhpUnit\ProphecyTrait;
  * @group commerce_paytrail
  * @coversDefaultClass \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
  */
-class HandleRefundTest extends RequestBuilderKernelTestBase {
+class PaytrailRefundTest extends RequestBuilderKernelTestBase {
 
   use ProphecyTrait;
 
@@ -65,7 +66,7 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
   public function testInvalidPaymentState() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
     $payment = $this->createPayment(FALSE);
-    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
 
     $this->expectExceptionMessage('The provided payment is in an invalid state ("authorization").');
     $sut->refundPayment($payment);
@@ -90,7 +91,7 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
           ->setStatus(RefundResponse::STATUS_FAIL)
       );
     $payment = $this->createPayment(TRUE);
-    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
 
     $this->expectExceptionMessageMatches('/Invalid status\:/s');
     $sut->refundPayment($this->reloadEntity($payment));
@@ -115,7 +116,7 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
           ->setStatus(RefundResponse::STATUS_OK)
       );
     $payment = $this->createPayment(TRUE);
-    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
     $sut->refundPayment($payment, new Price('10', 'EUR'));
 
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
@@ -132,10 +133,10 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
    */
   public function testOnNotifyEvent() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
-    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
 
     foreach (['success', 'cancel'] as $event) {
-      $request = $this->createRequest(1);
+      $request = $this->createRequest(1, $sut);
       $request->query->set('event', 'refund-' . $event);
       static::assertEquals(200, $sut->onNotify($request)->getStatusCode());
     }
@@ -160,7 +161,7 @@ class HandleRefundTest extends RequestBuilderKernelTestBase {
           ->setStatus(RefundResponse::STATUS_OK)
       );
     $payment = $this->createPayment(TRUE);
-    $sut = $this->getGatewayPluginForBuilder($builder->reveal());
+    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
     $sut->refundPayment($payment);
 
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */

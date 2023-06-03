@@ -35,7 +35,7 @@ final class Header {
     public string $method,
     public string $nonce,
     public int|string $timestamp,
-    public ?string $platformName = NULL,
+    public ?string $platformName = 'drupal/commerce_paytrail',
     public ?string $transactionId = NULL,
     public ?string $tokenizationId = NULL,
   ) {
@@ -54,7 +54,7 @@ final class Header {
       'checkout-method' => $this->method,
       'checkout-nonce' => $this->nonce,
       'checkout-timestamp' => (int) $this->timestamp,
-      'platform-name' => $this->platformName ?: 'drupal/commerce_paytrail',
+      'platform-name' => $this->platformName,
     ];
     if ($this->transactionId) {
       $array['checkout-transaction-id'] = $this->transactionId;

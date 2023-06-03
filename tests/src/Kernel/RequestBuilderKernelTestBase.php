@@ -7,15 +7,15 @@ namespace Drupal\Tests\commerce_paytrail\Kernel;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
-use Drupal\commerce_paytrail\RequestBuilder\RequestBuilderInterface;
+use Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilderInterface;
+use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
-use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
-use Prophecy\Prophecy\ObjectProphecy;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -28,6 +28,7 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
   use TaxTestTrait;
   use OrderTestTrait;
   use ProphecyTrait;
+  use SignatureTrait;
 
   /**
    * {@inheritdoc}
@@ -55,20 +56,32 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
   }
 
   /**
-   * Creates a Paytrail plugin using mocked request builder.
+   * Creates a Paytrail plugin using mocked request builders.
    *
-   * @param \Drupal\commerce_paytrail\RequestBuilder\RequestBuilderInterface $builder
-   *   The mocked request builder.
+   * @param \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface|null $paymentRequestBuilder
+   *   The request payment builder or null.
+   * @param \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface|null $refundRequestBuilder
+   *   The refund request builder or null.
+   * @param \Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilderInterface|null $tokenPaymentRequestBuilder
+   *   The token payment request builder or null.
    *
    * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
    *   The payment gateway plugin.
    */
-  protected function getGatewayPluginForBuilder(RequestBuilderInterface $builder) : Paytrail {
-    $service = match(TRUE) {
-      $builder instanceof PaymentRequestBuilderInterface => 'commerce_paytrail.payment_request',
-      $builder instanceof RefundRequestBuilderInterface => 'commerce_paytrail.refund_request',
-    };
-    $this->container->set($service, $builder);
+  protected function mockPaymentGatewayPlugin(
+    PaymentRequestBuilderInterface $paymentRequestBuilder = NULL,
+    RefundRequestBuilderInterface $refundRequestBuilder = NULL,
+    TokenPaymentRequestBuilderInterface $tokenPaymentRequestBuilder = NULL,
+  ) : Paytrail {
+    if ($paymentRequestBuilder) {
+      $this->container->set('commerce_paytrail.payment_request', $paymentRequestBuilder);
+    }
+    if ($refundRequestBuilder) {
+      $this->container->set('commerce_paytrail.refund_request', $refundRequestBuilder);
+    }
+    if ($tokenPaymentRequestBuilder) {
+      $this->container->set('commerce_paytrail.token_payment_request', $tokenPaymentRequestBuilder);
+    }
     $this->refreshServices();
 
     $gateway = $this->createGatewayPlugin('test');
@@ -82,15 +95,25 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
    *
    * @param int|string $orderId
    *   The order id.
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   *   The payment plugin.
    *
    * @return \Symfony\Component\HttpFoundation\Request
    *   The request.
    */
-  protected function createRequest(int|string $orderId) : Request {
+  protected function createRequest(int|string $orderId, PaytrailBase $plugin) : Request {
     $request = Request::createFromGlobals();
     $request->query->set('checkout-reference', $orderId);
     $request->query->set('checkout-transaction-id', '123');
     $request->query->set('checkout-stamp', '123');
+    $request->query
+      ->set(
+        'signature',
+        $this->signature(
+          $plugin->getClientConfiguration()->getApiKey('secret'),
+          $request->query->all()
+        )
+      );
 
     return $request;
   }
@@ -109,20 +132,6 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
       ->get('entity_type.manager')
       ->getStorage('commerce_payment')
       ->loadByRemoteId($transactionId);
-  }
-
-  /**
-   * Creates a mock builder for PaymentRequest builder.
-   *
-   * @return \Prophecy\Prophecy\ObjectProphecy
-   *   The mock builder.
-   */
-  protected function createRequestBuilderMock() : ObjectProphecy {
-    $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
-    $builder->validateSignature(Argument::any(), Argument::any())
-      ->shouldBeCalled()
-      ->willReturn($builder->reveal());
-    return $builder;
   }
 
   /**

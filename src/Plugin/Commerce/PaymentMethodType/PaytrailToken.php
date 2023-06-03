@@ -7,7 +7,6 @@ namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentMethodType;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentMethodType\CreditCard;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\entity\BundleFieldDefinition;
 
 /**
  * Provides the Paytrail payment method type.
@@ -29,18 +28,6 @@ final class PaytrailToken extends CreditCard {
     }
 
     return $this->t('Paytrail (Credit card)');
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function buildFieldDefinitions() : array {
-    $fields = parent::buildFieldDefinitions();
-    $fields['paytrail_card_token'] = BundleFieldDefinition::create('string')
-      ->setLabel(new TranslatableMarkup('Card token'))
-      ->setDescription(new TranslatableMarkup('The token used to charge this card'));
-
-    return $fields;
   }
 
 }

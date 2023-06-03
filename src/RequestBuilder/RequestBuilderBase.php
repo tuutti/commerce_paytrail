@@ -42,6 +42,8 @@ abstract class RequestBuilderBase implements RequestBuilderInterface {
     string $method,
     Configuration $configuration,
     ?string $platformName = NULL,
+    ?string $transactionId = NULL,
+    ?string $tokenizationId = NULL,
   ) : Header {
     return new Header(
       $configuration->getApiKey('account'),
@@ -49,7 +51,9 @@ abstract class RequestBuilderBase implements RequestBuilderInterface {
       $method,
       $this->uuidService->generate(),
       $this->time->getCurrentTime(),
-      $platformName
+      $platformName,
+      $transactionId,
+      $tokenizationId,
     );
   }
 

@@ -70,8 +70,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
    */
   public function getCardForToken(PaytrailToken $plugin, string $token) : TokenizationRequestResponse {
     $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration);
-    $headers->tokenizationId = $token;
+    $headers = $this->createHeaders('POST', $configuration, tokenizationId: $token);
 
     $request = (new GetTokenRequest())
       ->setCheckoutTokenizationId($token);
@@ -103,12 +102,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $plugin = $this
       ->getPaymentPlugin($payment->getOrder());
     $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration);
-    $headers->transactionId = $payment->getRemoteId();
+    $headers = $this->createHeaders('POST', $configuration, transactionId: $payment->getRemoteId());
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenRevertWithHttpInfo(
-        $payment->getRemoteId(),
+        $headers->transactionId,
         $headers->account,
         $headers->hashAlgorithm,
         $headers->method,
@@ -131,18 +129,17 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $plugin = $this
       ->getPaymentPlugin($order);
     $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration);
-    $headers->transactionId = $payment->getRemoteId();
+    $headers = $this->createHeaders('POST', $configuration, transactionId: $payment->getRemoteId());
 
     $tokenRequest = (new TokenPaymentRequest())
-      ->setToken($payment->getRemoteId());
+      ->setToken($headers->transactionId);
     $request = $this->populatePaymentRequest($tokenRequest, $payment->getOrder())
       // Override the capture amount.
       ->setAmount($this->converter->toMinorUnits($amount));
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenCommitWithHttpInfo(
-        $payment->getRemoteId(),
+        $headers->transactionId,
         $request,
         $headers->account,
         $headers->hashAlgorithm,

@@ -2,13 +2,14 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\Tests\commerce_paytrail\Kernel;
+namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_price\Price;
 use Drupal\profile\Entity\Profile;
+use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
 use Paytrail\Payment\Model\Address;
 use Paytrail\Payment\Model\PaymentRequest;
 

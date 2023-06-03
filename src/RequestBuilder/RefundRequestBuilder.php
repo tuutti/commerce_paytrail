@@ -55,19 +55,18 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
   public function refund(string $transactionId, OrderInterface $order, Price $amount) : RefundResponse {
     $plugin = $this->getPaymentPlugin($order);
     $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration);
-    $headers->transactionId = $transactionId;
+    $headers = $this->createHeaders('POST', $configuration, transactionId: $transactionId);
 
     $request = $this->createRefundRequest($order, $amount, $headers->nonce);
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->refundPaymentByTransactionIdWithHttpInfo(
-        $transactionId,
+        $headers->transactionId,
         $request,
         $configuration->getApiKey('account'),
         $headers->hashAlgorithm,
         $headers->method,
-        $transactionId,
+        $headers->transactionId,
         $headers->timestamp,
         $headers->nonce,
         $this->signature(

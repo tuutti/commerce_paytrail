@@ -73,7 +73,7 @@ class NotificationWorkerTest extends RequestBuilderKernelTestBase {
           ->setStatus($status)
           ->setTransactionId('123')
       );
-    $this->getGatewayPluginForBuilder($builder->reveal());
+    $this->mockPaymentGatewayPlugin($builder->reveal());
     $order = $this->createOrder();
     /** @var \Drupal\Core\Queue\QueueInterface $queue */
     $queue = $this->container->get('queue')
