@@ -21,6 +21,8 @@ trait PaymentGatewayPluginTrait {
    *
    * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface
    *   The payment plugin.
+   *
+   * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
    */
   protected function getPaymentPlugin(OrderInterface $order) : PaytrailInterface {
     static $plugins = [];
