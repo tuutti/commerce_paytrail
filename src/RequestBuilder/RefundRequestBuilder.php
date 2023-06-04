@@ -42,11 +42,11 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
   public function __construct(
     UuidInterface $uuidService,
     TimeInterface $time,
-    private EventDispatcherInterface $eventDispatcher,
+    EventDispatcherInterface $eventDispatcher,
     private ClientInterface $client,
     private MinorUnitsConverterInterface $converter
   ) {
-    parent::__construct($uuidService, $time);
+    parent::__construct($uuidService, $time, $eventDispatcher);
   }
 
   /**
@@ -75,7 +75,9 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         ),
       );
-    return $this->getResponse($plugin, $response);
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, $order, 'create_refund_response')
+    );
   }
 
   /**
@@ -98,7 +100,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
       ->setRefundStamp($nonce);
 
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, order: $order));
+      ->dispatch(new ModelEvent($request, order: $order, event: 'create_refund_request'));
 
     return $request;
   }

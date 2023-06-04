@@ -5,7 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail;
 
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 
 /**
  * A trait to create and validate Paytrail signatures.
@@ -13,7 +13,17 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 trait SignatureTrait {
 
   /**
-   * {@inheritdoc}
+   * Calculates a HMAC.
+   *
+   * @param string $secret
+   *   The secret.
+   * @param array $headers
+   *   The headers.
+   * @param string|null $body
+   *   The body.
+   *
+   * @return string
+   *   The signature.
    */
   public function signature(string $secret, array $headers, ?string $body = '') : string {
     // Filter non-checkout headers.
@@ -39,9 +49,21 @@ trait SignatureTrait {
   }
 
   /**
-   * {@inheritdoc}
+   * Validates the response.
+   *
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface $plugin
+   *   The payment gateway plugin.
+   * @param array $headers
+   *   The headers.
+   * @param string $body
+   *   The body.
+   *
+   * @return $this
+   *   The self.
+   *
+   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
-  public function validateSignature(PaytrailBase $plugin, array $headers, string $body = '') : self {
+  public function validateSignature(PaytrailInterface $plugin, array $headers, string $body = '') : self {
     $signature = $this->signature(
       $plugin->getClientConfiguration()->getApiKey('secret'),
       $headers,

@@ -49,7 +49,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       ->setCheckoutCallbackCancelUrl($plugin->getNotifyUrl()->toString());
 
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, $order));
+      ->dispatch(new ModelEvent($request, $headers, $order, self::TOKEN_ADD_CARD_FORM_EVENT));
 
     $signature = $this->signature(
       $configuration->getApiKey('secret'),
@@ -76,6 +76,9 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       ->setCheckoutTokenizationId($token);
     $paymentsApi = new TokenPaymentsApi($this->client, $configuration);
 
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers, event: self::TOKEN_GET_CARD_EVENT));
+
     $response = $paymentsApi
       ->requestTokenForTokenizationIdWithHttpInfo(
         $token,
@@ -92,7 +95,9 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         )
       );
-    return $this->getResponse($plugin, $response);
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, event: self::TOKEN_GET_CARD_RESPONSE_EVENT)
+    );
   }
 
   /**
@@ -118,7 +123,10 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
           $headers->toArray(),
         )
       );
-    return $this->getResponse($plugin, $response);
+
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, event: self::TOKEN_REVERT_RESPONSE_EVENT)
+    );
   }
 
   /**
@@ -159,7 +167,10 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     if ($response instanceof Error) {
       throw new ApiException($response->getMessage() ?: 'Failed to capture the payment. No message was given by Paytrail API.');
     }
-    return $response;
+
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, event: self::TOKEN_COMMIT_RESPONSE_EVENT)
+    );
   }
 
   /**
@@ -188,6 +199,9 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $headers = $this->createHeaders('POST', $configuration);
     $request = $this->populateTokenMitRequest($order, $token);
 
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers, event: self::TOKEN_MIT_AUTHORIZE_EVENT));
+
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitAuthorizationHoldWithHttpInfo(
         $request,
@@ -202,7 +216,10 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         )
       );
-    return $this->getResponse($plugin, $response);
+
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, event: self::TOKEN_MIT_AUTHORIZE_RESPONSE_EVENT)
+    );
   }
 
   /**
@@ -214,6 +231,9 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $headers = $this->createHeaders('POST', $configuration);
 
     $request = $this->populateTokenMitRequest($order, $token);
+
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent($request, $headers, event: self::TOKEN_MIT_CHARGE_EVENT));
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitChargeWithHttpInfo(
@@ -229,7 +249,10 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         )
       );
-    return $this->getResponse($plugin, $response);
+
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, event: self::TOKEN_MIT_CHARGE_RESPONSE_EVENT)
+    );
   }
 
 }

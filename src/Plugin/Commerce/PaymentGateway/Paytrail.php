@@ -87,6 +87,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
           $this->assertResponseStatus($paymentResponse->getStatus(), [
             Payment::STATUS_OK,
           ]);
+
           $this->createPayment($order, $paymentResponse);
 
           return new Response();

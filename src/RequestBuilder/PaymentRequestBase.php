@@ -7,7 +7,7 @@ namespace Drupal\commerce_paytrail\RequestBuilder;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
@@ -45,12 +45,12 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
   public function __construct(
     UuidInterface $uuidService,
     TimeInterface $time,
-    protected EventDispatcherInterface $eventDispatcher,
+    EventDispatcherInterface $eventDispatcher,
     protected ClientInterface $client,
     protected MinorUnitsConverterInterface $converter,
     protected int $callbackDelay,
   ) {
-    parent::__construct($uuidService, $time);
+    parent::__construct($uuidService, $time, $eventDispatcher);
   }
 
   /**
@@ -151,14 +151,21 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
 
     $request->setCustomer($customer);
 
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, order: $order));
+    $this
+      ->eventDispatcher
+      ->dispatch(new ModelEvent(
+        $request,
+        order: $order,
+        event: $request instanceof PaymentRequest ?
+          PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT :
+          TokenPaymentRequestBuilderInterface::TOKEN_COMMIT_EVENT,
+      ));
 
     // Paytrail does not support order level discounts, such as giftcards.
     // Remove order items if order has any discounts applied.
     // See https://www.drupal.org/project/commerce_paytrail/issues/3339269.
     if (
-      $plugin->orderDiscountStrategy() === PaytrailBase::STRATEGY_REMOVE_ITEMS &&
+      $plugin->orderDiscountStrategy() === PaytrailInterface::STRATEGY_REMOVE_ITEMS &&
       $this->orderHasDiscounts($order)
     ) {
       $request['items'] = NULL;

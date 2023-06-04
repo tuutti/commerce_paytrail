@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_paytrail\Event\ModelEvent;
 use Paytrail\Payment\Api\PaymentsApi;
 use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\PaymentRequest;
@@ -41,7 +42,9 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
           $headers->toArray(),
         ),
       );
-    return $this->getResponse($plugin, $response);
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, $order, self::PAYMENT_GET_RESPONSE_EVENT)
+    );
   }
 
   /**
@@ -77,7 +80,9 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
         ),
       );
-    return $this->getResponse($plugin, $response);
+    return $this->getResponse($plugin, $response,
+      new ModelEvent($response, $headers, $order, self::PAYMENT_CREATE_RESPONSE_EVENT)
+    );
   }
 
 }

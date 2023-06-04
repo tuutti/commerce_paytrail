@@ -50,10 +50,10 @@ final class ExceptionHelper {
       $message = $body->message;
     }
 
-    if (isset($body->acquirerResponseCodeDescription)) {
+    if (isset($body->acquirerResponseCodeDescription, $body->acquirerResponseCode)) {
       $message = $body->acquirerResponseCodeDescription;
 
-      if (isset($body->acquirerResponseCode) && in_array($body->acquirerResponseCode, self::HARD_DECLINE_RESPONSE_CODES)) {
+      if (in_array((int) $body->acquirerResponseCode, self::HARD_DECLINE_RESPONSE_CODES)) {
         return new HardDeclineException($message, previous: $exception);
       }
       return new SoftDeclineException($message, previous: $exception);
@@ -74,8 +74,6 @@ final class ExceptionHelper {
     if ($exception instanceof PaytrailApiException) {
       $exception = self::handleApiException($exception);
     }
-    \Drupal::logger('commerce_paytrail')->error($exception->getMessage());
-
     if ($exception instanceof PaymentGatewayException) {
       throw $exception;
     }

@@ -23,11 +23,14 @@ final class ModelEvent extends Event {
    *   The header.
    * @param \Drupal\commerce_order\Entity\OrderInterface|null $order
    *   The order.
+   * @param string|null $event
+   *   The event.
    */
   public function __construct(
     public ModelInterface $model,
     public ?Header $headers = NULL,
-    public ?OrderInterface $order = NULL
+    public ?OrderInterface $order = NULL,
+    public ?string $event = NULL,
   ) {
   }
 

@@ -5,7 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_paytrail\Header;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Paytrail\Payment\Configuration;
 
 /**
@@ -50,7 +50,7 @@ interface RequestBuilderInterface {
   /**
    * Validates the response.
    *
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
+   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface $plugin
    *   The payment gateway plugin.
    * @param array $headers
    *   The headers.
@@ -62,6 +62,6 @@ interface RequestBuilderInterface {
    *
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
-  public function validateSignature(PaytrailBase $plugin, array $headers, string $body = '') : self;
+  public function validateSignature(PaytrailInterface $plugin, array $headers, string $body = '') : self;
 
 }

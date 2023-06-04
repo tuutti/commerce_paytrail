@@ -14,6 +14,10 @@ use Paytrail\Payment\Model\PaymentRequestResponse;
  */
 interface PaymentRequestBuilderInterface extends RequestBuilderInterface {
 
+  public const PAYMENT_GET_RESPONSE_EVENT = 'payment_get_response';
+  public const PAYMENT_CREATE_EVENT = 'payment_create';
+  public const PAYMENT_CREATE_RESPONSE_EVENT = 'payment_create_response';
+
   /**
    * Gets the payment for given order.
    *
