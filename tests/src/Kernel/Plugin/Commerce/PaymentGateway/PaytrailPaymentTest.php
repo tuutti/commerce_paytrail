@@ -100,6 +100,7 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    * Tests that payment can be fully captured.
    *
    * @covers ::onReturn
+   * @covers ::createPayment
    * @covers ::validateResponse
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
@@ -129,6 +130,7 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    * Tests that payment can be fully captured via onNotify().
    *
    * @covers ::onNotify
+   * @covers ::createPayment
    * @covers ::validateResponse
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
