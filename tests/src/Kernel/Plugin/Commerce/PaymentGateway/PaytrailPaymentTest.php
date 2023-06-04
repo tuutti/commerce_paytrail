@@ -25,7 +25,7 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    * @covers ::onReturn
    * @covers ::onNotify
    * @covers ::validateResponse
-   * @covers ::createPayment
+   * @covers ::handlePayment
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testSignatureValidationFailed() : void {
@@ -100,7 +100,7 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    * Tests that payment can be fully captured.
    *
    * @covers ::onReturn
-   * @covers ::createPayment
+   * @covers ::handlePayment
    * @covers ::validateResponse
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
@@ -130,7 +130,7 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    * Tests that payment can be fully captured via onNotify().
    *
    * @covers ::onNotify
-   * @covers ::createPayment
+   * @covers ::handlePayment
    * @covers ::validateResponse
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */

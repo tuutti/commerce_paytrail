@@ -8,7 +8,6 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotificationsInterface;
-use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\ExceptionHelper;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
@@ -32,7 +31,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   requires_billing_information = FALSE,
  * )
  */
-final class Paytrail extends PaytrailBase implements SupportsNotificationsInterface, SupportsRefundsInterface, OffsitePaymentGatewayInterface {
+final class Paytrail extends PaytrailBase implements SupportsNotificationsInterface, OffsitePaymentGatewayInterface {
 
   /**
    * The payment request builder.
@@ -88,7 +87,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
             Payment::STATUS_OK,
           ]);
 
-          $this->createPayment($order, $paymentResponse);
+          $this->handlePayment($order, $paymentResponse);
 
           return new Response();
         }
@@ -123,11 +122,66 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
         Payment::STATUS_PENDING,
         Payment::STATUS_DELAYED,
       ]);
-      $this->createPayment($order, $paymentResponse);
+      $this->handlePayment($order, $paymentResponse);
     }
     catch (SecurityHashMismatchException | ApiException $e) {
       ExceptionHelper::handle($e);
     }
+  }
+
+  /**
+   * Creates or captures a payment for given order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The commerce order.
+   * @param \Paytrail\Payment\Model\Payment $paymentResponse
+   *   The payment response.
+   */
+  public function handlePayment(
+    OrderInterface $order,
+    Payment $paymentResponse
+  ) : void {
+    /** @var \Drupal\commerce_payment\PaymentStorageInterface $storage */
+    $storage = $this->entityTypeManager->getStorage('commerce_payment');
+
+    // Create payment if one does not exist yet.
+    if (!$payment = $storage->loadByRemoteId($paymentResponse->getTransactionId())) {
+      /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
+      $payment = $storage->create([
+        'payment_gateway' => $this->parentEntity->id(),
+        'order_id' => $order->id(),
+        'test' => !$this->isLive(),
+      ]);
+      $payment->setAmount($order->getBalance())
+        ->setRemoteId($paymentResponse->getTransactionId())
+        ->setAuthorizedTime($this->time->getCurrentTime())
+        ->setRemoteState($paymentResponse->getStatus())
+        ->getState()
+        ->applyTransitionById('authorize');
+    }
+    if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
+      $payment->getState()
+        ->applyTransitionById('capture');
+    }
+    $payment->save();
+  }
+
+  /**
+   * Creates or captures payment for given order.
+   *
+   * @deprecated in commerce_paytrail:3.0.1 and is removed from commerce_paytrail:4.0.0.
+   * SupportsStoredPaymentMethodsInterface defines createPayment method and this can be
+   * confused with that. Use ::authorizeOrCapturePayment() instead.
+   *
+   * @see
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param \Paytrail\Payment\Model\Payment $paymentResponse
+   *   The payment response.
+   */
+  public function createPayment(OrderInterface $order, Payment $paymentResponse) : void {
+    $this->handlePayment($order, $paymentResponse);
   }
 
   /**
@@ -160,43 +214,6 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
       throw new SecurityHashMismatchException('Order ID mismatch.');
     }
     $this->validateSignature($this, $request->query->all());
-  }
-
-  /**
-   * Creates or captures a payment for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The commerce order.
-   * @param \Paytrail\Payment\Model\Payment $paymentResponse
-   *   The payment response.
-   */
-  public function createPayment(
-    OrderInterface $order,
-    Payment $paymentResponse
-  ) : void {
-    /** @var \Drupal\commerce_payment\PaymentStorageInterface $storage */
-    $storage = $this->entityTypeManager->getStorage('commerce_payment');
-
-    // Create payment if one does not exist yet.
-    if (!$payment = $storage->loadByRemoteId($paymentResponse->getTransactionId())) {
-      /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
-      $payment = $storage->create([
-        'payment_gateway' => $this->parentEntity->id(),
-        'order_id' => $order->id(),
-        'test' => !$this->isLive(),
-      ]);
-      $payment->setAmount($order->getBalance())
-        ->setRemoteId($paymentResponse->getTransactionId())
-        ->setAuthorizedTime($this->time->getCurrentTime())
-        ->setRemoteState($paymentResponse->getStatus())
-        ->getState()
-        ->applyTransitionById('authorize');
-    }
-    if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
-      $payment->getState()
-        ->applyTransitionById('capture');
-    }
-    $payment->save();
   }
 
 }
