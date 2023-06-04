@@ -76,7 +76,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
         ),
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, $order, 'create_refund_response')
+      new ModelEvent($response[0], $headers, $order, 'create_refund_response')
     );
   }
 

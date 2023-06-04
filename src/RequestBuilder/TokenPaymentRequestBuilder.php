@@ -96,7 +96,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
         )
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, event: self::TOKEN_GET_CARD_RESPONSE_EVENT)
+      new ModelEvent($response[0], $headers, event: self::TOKEN_GET_CARD_RESPONSE_EVENT)
     );
   }
 
@@ -125,7 +125,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       );
 
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, event: self::TOKEN_REVERT_RESPONSE_EVENT)
+      new ModelEvent($response[0], $headers, event: self::TOKEN_REVERT_RESPONSE_EVENT)
     );
   }
 
@@ -162,15 +162,14 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
         )
       );
 
-    $response = $this->getResponse($plugin, $response);
+    $response = $this->getResponse($plugin, $response,
+      new ModelEvent($response[0], $headers, event: self::TOKEN_COMMIT_RESPONSE_EVENT)
+    );
 
     if ($response instanceof Error) {
       throw new ApiException($response->getMessage() ?: 'Failed to capture the payment. No message was given by Paytrail API.');
     }
-
-    return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, event: self::TOKEN_COMMIT_RESPONSE_EVENT)
-    );
+    return $response;
   }
 
   /**
@@ -218,7 +217,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       );
 
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, event: self::TOKEN_MIT_AUTHORIZE_RESPONSE_EVENT)
+      new ModelEvent($response[0], $headers, event: self::TOKEN_MIT_AUTHORIZE_RESPONSE_EVENT)
     );
   }
 
@@ -251,7 +250,7 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       );
 
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, event: self::TOKEN_MIT_CHARGE_RESPONSE_EVENT)
+      new ModelEvent($response[0], $headers, event: self::TOKEN_MIT_CHARGE_RESPONSE_EVENT)
     );
   }
 

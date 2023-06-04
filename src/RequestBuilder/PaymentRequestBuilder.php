@@ -43,7 +43,7 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
         ),
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, $order, self::PAYMENT_GET_RESPONSE_EVENT)
+      new ModelEvent($response[0], $headers, $order, self::PAYMENT_GET_RESPONSE_EVENT)
     );
   }
 
@@ -81,7 +81,7 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
         ),
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response, $headers, $order, self::PAYMENT_CREATE_RESPONSE_EVENT)
+      new ModelEvent($response[0], $headers, $order, self::PAYMENT_CREATE_RESPONSE_EVENT)
     );
   }
 
