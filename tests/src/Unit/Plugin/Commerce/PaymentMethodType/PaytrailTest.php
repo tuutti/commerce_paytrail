@@ -31,4 +31,5 @@ class PaytrailTest extends UnitTestCase {
     $sut = new Paytrail([], '', []);
     $this->assertEquals('Paytrail', $sut->buildLabel($paymentMethodType->reveal()));
   }
+
 }
