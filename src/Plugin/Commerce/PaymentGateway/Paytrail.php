@@ -169,16 +169,18 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   /**
    * Creates or captures payment for given order.
    *
-   * @deprecated in commerce_paytrail:3.0.1 and is removed from commerce_paytrail:4.0.0.
-   * SupportsStoredPaymentMethodsInterface defines createPayment method and this can be
-   * confused with that. Use ::authorizeOrCapturePayment() instead.
-   *
-   * @see
-   *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    * @param \Paytrail\Payment\Model\Payment $paymentResponse
    *   The payment response.
+   *
+   * @deprecated in commerce_paytrail:3.0.1 and is removed from commerce_paytrail:4.0.0.
+   * SupportsStoredPaymentMethodsInterface defines createPayment() method and
+   * this doesn't match the interface definition.
+   *
+   * Use ::authorizeOrCapturePayment() instead.
+   *
+   * @see https://www.drupal.org/project/commerce_paytrail/issues/336468
    */
   public function createPayment(OrderInterface $order, Payment $paymentResponse) : void {
     $this->handlePayment($order, $paymentResponse);
