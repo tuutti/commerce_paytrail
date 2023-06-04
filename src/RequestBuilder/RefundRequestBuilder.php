@@ -76,7 +76,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
         ),
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, $order, 'create_refund_response')
+      new ModelEvent($response[0], $headers, $order, self::REFUND_CREATE_RESPONSE)
     );
   }
 
@@ -100,7 +100,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
       ->setRefundStamp($nonce);
 
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, order: $order, event: 'create_refund_request'));
+      ->dispatch(new ModelEvent($request, order: $order, event: self::REFUND_CREATE));
 
     return $request;
   }

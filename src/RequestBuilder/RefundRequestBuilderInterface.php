@@ -14,6 +14,9 @@ use Paytrail\Payment\Model\RefundResponse;
  */
 interface RefundRequestBuilderInterface extends RequestBuilderInterface {
 
+  public const REFUND_CREATE_RESPONSE = 'create_refund_response';
+  public const REFUND_CREATE = 'create_refund_request';
+
   /**
    * Refunds the given order and amount.
    *
