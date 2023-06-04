@@ -45,6 +45,8 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
    * @covers ::__construct
    * @covers ::getPaymentPlugin
    * @covers ::createRefundRequest
+   * @covers ::createHeaders
+   * @covers ::getResponse
    */
   public function testCreateRefundRequest() : void {
     $order = $this->createOrder();
@@ -60,21 +62,11 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
   }
 
   /**
-   * Make sure we can subscribe to model events.
-   *
-   * @covers ::createRefundRequest
-   * @covers ::getPaymentPlugin
-   */
-  public function testEventSubscriberEvent() : void {
-    $this->assertCaughtEvents(1, function () {
-      $order = $this->createOrder();
-      $this->getSut()->createRefundRequest($order, $order->getTotalPrice(), '123');
-    });
-  }
-
-  /**
+   * @covers ::__construct
    * @covers ::createRefundRequest
    * @covers ::refund
+   * @covers ::createHeaders
+   * @covers ::getResponse
    */
   public function testRefund() : void {
     $mock = new MockHandler([

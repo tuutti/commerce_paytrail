@@ -5,13 +5,20 @@ declare(strict_types = 1);
 namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Adjustment;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Drupal\profile\Entity\Profile;
 use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
 use Paytrail\Payment\Model\Address;
+use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\PaymentRequest;
+use Paytrail\Payment\Model\PaymentRequestResponse;
 
 /**
  * Tests Payment requests.
@@ -22,18 +29,20 @@ use Paytrail\Payment\Model\PaymentRequest;
 class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
 
   /**
-   * The payment request builder.
+   * Gets the system under testing.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+   * @return \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+   *   The SUT.
    */
-  protected ?PaymentRequestBuilder $sut;
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function setUp() : void {
-    parent::setUp();
-    $this->sut = $this->container->get('commerce_paytrail.payment_request');
+  private function getSut() : PaymentRequestBuilder {
+    return new PaymentRequestBuilder(
+      $this->container->get('uuid'),
+      $this->container->get('datetime.time'),
+      $this->container->get('event_dispatcher'),
+      $this->container->get('http_client'),
+      $this->container->get('commerce_price.minor_units_converter'),
+      123,
+    );
   }
 
   /**
@@ -63,10 +72,10 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   /**
    * Tests ::createPaymentRequest().
    */
-  public function testCreate() : void {
+  public function testPaymentRequest() : void {
     $order = $this->createOrder();
 
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getSut()->createPaymentRequest($order);
     static::assertInstanceOf(PaymentRequest::class, $request);
     static::assertCount(1, $request->getItems());
     static::assertEquals($order->id(), $request->getReference());
@@ -83,12 +92,12 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   /**
    * Make sure taxes are included in prices.
    */
-  public function testCreatePricesIncludeTax() : void {
+  public function testPricesIncludeTax() : void {
     $order = $this
       ->setPricesIncludeTax(TRUE, ['FI'])
       ->createOrder();
 
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getSut()->createPaymentRequest($order);
     // Order should have prices included in unit prices.
     $this->assertTaxes($request, 2200, 1100, 24);
   }
@@ -96,12 +105,12 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   /**
    * Make sure taxes are added to total price.
    */
-  public function testCreatePricesIncludeNoTax() : void {
+  public function testPricesIncludeNoTax() : void {
     $order = $this
       ->setPricesIncludeTax(FALSE, ['FI'])
       ->createOrder();
 
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getSut()->createPaymentRequest($order);
     // Taxes should be added to unit price.
     $this->assertTaxes($request, 2728, 1364, 24);
   }
@@ -119,9 +128,9 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
           'amount' => new Price('-5', 'EUR'),
         ]),
       ]);
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getSut()->createPaymentRequest($order);
     // Make sure order items are not removed.
-    $this->assertNotNull($request->getItems());
+    static::assertNotNull($request->getItems());
 
     $this->assertTaxes($request, 1700, 850, 24);
   }
@@ -131,10 +140,10 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    */
   public function testOrderLevelDiscount() : void {
     $this->gateway->getPlugin()->setConfiguration([
-      'order_discount_strategy' => PaytrailBase::STRATEGY_REMOVE_ITEMS,
+      'order_discount_strategy' => PaytrailInterface::STRATEGY_REMOVE_ITEMS,
     ]);
     $this->gateway->save();
-    $this->assertEquals(PaytrailBase::STRATEGY_REMOVE_ITEMS, $this->gateway->getPlugin()->orderDiscountStrategy());
+    static::assertEquals(PaytrailInterface::STRATEGY_REMOVE_ITEMS, $this->gateway->getPlugin()->orderDiscountStrategy());
 
     $order = $this
       ->setPricesIncludeTax(TRUE, ['FI'])
@@ -147,7 +156,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
       ]));
     $order->save();
 
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getSut()->createPaymentRequest($order);
     // Make sure order item level discounts remove order items.
     $this->assertNull($request->getItems());
     // Make sure discount is still applied to total price.
@@ -173,17 +182,72 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
 
     $order->setBillingProfile($profile)
       ->save();
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getSut()->createPaymentRequest($order);
     static::assertInstanceOf(Address::class, $request->getInvoicingAddress());
   }
 
   /**
-   * Make sure we can subscribe to model events.
+   * @covers ::createHeaders
+   * @covers ::get
+   * @covers ::getResponse
    */
-  public function testEventSubscriberEvent() : void {
-    $this->assertCaughtEvents(1, function () {
-      $this->sut->createPaymentRequest($this->createOrder());
-    });
+  public function testGet() : void {
+    $mock = new MockHandler([
+      new Response(200, [
+        // The signature is just copied from ::validateSignature().
+        'signature' => 'a22b396d0e5bef499654f73400632d530cf7c43efe64cd112c04660bd27036b8e3979906959256a28d7be8d5d302aa06c54d1597ad99f5cb56303f18acf01ab3',
+      ],
+        json_encode([
+          'status' => 'ok',
+          'amount' => '123',
+          'currency' => 'EUR',
+          'stamp' => '123',
+          'reference' => '1',
+          'created_at' => '123',
+          'transaction_id' => '123',
+        ])),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+    $this->container->set('http_client', $client);
+
+    $order = $this->createOrder();
+    $response = $this->getSut()->get('123', $order);
+    static::assertInstanceOf(Payment::class, $response);
+    // Make sure event dispatcher was triggered for response.
+    static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT, $this->caughtEvents[0]->event);
+    static::assertCount(1, $this->caughtEvents);
+  }
+
+  /**
+   * @covers ::create
+   * @covers ::createHeaders
+   * @covers ::createPaymentRequest
+   * @covers ::createOrderLine
+   * @covers ::getResponse
+   * @covers ::populatePaymentRequest
+   */
+  public function testCreate() : void {
+    $mock = new MockHandler([
+      new Response(201, [
+        // The signature is just copied from ::validateSignature().
+        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
+      ],
+        json_encode([])),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+    $this->container->set('http_client', $client);
+
+    $order = $this->createOrder();
+    $response = $this->getSut()->create($order);
+    static::assertInstanceOf(PaymentRequestResponse::class, $response);
+    // Make sure event dispatcher was triggered for both, request and response.
+    static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT, $this->caughtEvents[0]->event);
+    static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT, $this->caughtEvents[1]->event);
+    static::assertCount(2, $this->caughtEvents);
   }
 
 }
