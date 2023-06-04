@@ -28,8 +28,8 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * @CommercePaymentGateway(
  *   id = "paytrail_token",
- *   label = "Paytrail (Add card)",
- *   display_label = "Paytrail (Add card)",
+ *   label = "Paytrail (Credit card)",
+ *   display_label = "Paytrail (Credit card)",
  *   forms = {
  *     "offsite-payment" = "Drupal\commerce_paytrail\PluginForm\OffsiteRedirect\PaytrailTokenForm",
  *   },

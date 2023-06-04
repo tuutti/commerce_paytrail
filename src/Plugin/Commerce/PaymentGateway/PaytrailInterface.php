@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 use Drupal\Core\Url;
 use Paytrail\Payment\Configuration;
@@ -12,7 +13,7 @@ use Paytrail\Payment\Configuration;
 /**
  * Interface for paytrail gateway plugins.
  */
-interface PaytrailInterface extends SupportsRefundsInterface {
+interface PaytrailInterface extends PaymentGatewayInterface, SupportsRefundsInterface {
 
   public const ACCOUNT = '375917';
   public const SECRET = 'SAIPPUAKAUPPIAS';
