@@ -22,7 +22,7 @@ use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
  * @group commerce_paytrail
  * @coversDefaultClass \Drupal\commerce_paytrail\Commerce\Shipping\ShippingEventSubscriber
  */
-class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
+class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
 
   use ApiTestTrait;
   use OrderTestTrait;

@@ -141,7 +141,8 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
 
     $tokenRequest = (new TokenPaymentRequest())
       ->setToken($headers->transactionId);
-    $request = $this->populatePaymentRequest($tokenRequest, $payment->getOrder())
+    $request = $this
+      ->populatePaymentRequest($tokenRequest, $payment->getOrder(), self::TOKEN_COMMIT_EVENT)
       // Override the capture amount.
       ->setAmount($this->converter->toMinorUnits($amount));
 
@@ -173,20 +174,12 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
   }
 
   /**
-   * Constructs a new token payment request object.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param string $token
-   *   The token.
-   *
-   * @return \Paytrail\Payment\Model\TokenPaymentRequest
-   *   The token payment request.
+   * {@inheritdoc}
    */
-  private function populateTokenMitRequest(OrderInterface $order, string $token) : TokenPaymentRequest {
+  public function createTokenPaymentRequest(OrderInterface $order, string $token, string $event) : TokenPaymentRequest {
     $tokenRequest = (new TokenPaymentRequest())
       ->setToken($token);
-    return $this->populatePaymentRequest($tokenRequest, $order);
+    return $this->populatePaymentRequest($tokenRequest, $order, $event);
   }
 
   /**
@@ -196,10 +189,8 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $plugin = $this->getPaymentPlugin($order);
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
-    $request = $this->populateTokenMitRequest($order, $token);
-
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, event: self::TOKEN_MIT_AUTHORIZE_EVENT));
+    $request = $this
+      ->createTokenPaymentRequest($order, $token, self::TOKEN_MIT_AUTHORIZE_EVENT);
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitAuthorizationHoldWithHttpInfo(
@@ -229,10 +220,8 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
 
-    $request = $this->populateTokenMitRequest($order, $token);
-
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, event: self::TOKEN_MIT_CHARGE_EVENT));
+    $request = $this
+      ->createTokenPaymentRequest($order, $token, self::TOKEN_MIT_CHARGE_EVENT);
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitChargeWithHttpInfo(

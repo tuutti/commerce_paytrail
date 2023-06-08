@@ -114,13 +114,15 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
    *   The base request.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
+   * @param string $event
+   *   The event dispatcher event.
    *
    * @return \Paytrail\Payment\Model\PaymentRequest|\Paytrail\Payment\Model\TokenPaymentRequest
    *   The payment request
    *
    * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
    */
-  protected function populatePaymentRequest(PaymentRequest|TokenPaymentRequest $request, OrderInterface $order) : PaymentRequest|TokenPaymentRequest {
+  protected function populatePaymentRequest(PaymentRequest|TokenPaymentRequest $request, OrderInterface $order, string $event) : PaymentRequest|TokenPaymentRequest {
     $plugin = $this->getPaymentPlugin($order);
 
     $request->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
@@ -156,9 +158,7 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
       ->dispatch(new ModelEvent(
         $request,
         order: $order,
-        event: $request instanceof PaymentRequest ?
-          PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT :
-          TokenPaymentRequestBuilderInterface::TOKEN_COMMIT_EVENT,
+        event: $event,
       ));
 
     // Paytrail does not support order level discounts, such as giftcards.

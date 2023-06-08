@@ -51,7 +51,7 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
    * {@inheritdoc}
    */
   public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
-    return $this->populatePaymentRequest(new PaymentRequest(), $order);
+    return $this->populatePaymentRequest(new PaymentRequest(), $order, self::PAYMENT_CREATE_EVENT);
   }
 
   /**

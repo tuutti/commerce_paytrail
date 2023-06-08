@@ -32,6 +32,17 @@ trait ApiTestTrait {
   }
 
   /**
+   * Overrides the default http_client service with mocked client.
+   *
+   * @param \Psr\Http\Message\ResponseInterface[] $responses
+   *   The expected responses.
+   */
+  protected function setupMockHttpClient(array $responses) : void {
+    $client = $this->createMockHttpClient($responses);
+    $this->container->set('http_client', $client);
+  }
+
+  /**
    * Creates a new gateway plugin.
    *
    * @return \Drupal\commerce_payment\Entity\PaymentGatewayInterface

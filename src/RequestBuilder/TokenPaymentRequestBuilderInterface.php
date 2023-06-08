@@ -10,6 +10,7 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken;
 use Drupal\commerce_price\Price;
 use Paytrail\Payment\Model\TokenizationRequestResponse;
 use Paytrail\Payment\Model\TokenMITPaymentResponse;
+use Paytrail\Payment\Model\TokenPaymentRequest;
 
 /**
  * The token payment request builder.
@@ -100,5 +101,20 @@ interface TokenPaymentRequestBuilderInterface {
    *   The payment response.
    */
   public function tokenMitCharge(OrderInterface $order, string $token): TokenMITPaymentResponse;
+
+  /**
+   * Constructs a new token payment request object.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param string $token
+   *   The token.
+   * @param string $event
+   *   The event.
+   *
+   * @return \Paytrail\Payment\Model\TokenPaymentRequest
+   *   The token payment request.
+   */
+  public function createTokenPaymentRequest(OrderInterface $order, string $token, string $event) : TokenPaymentRequest;
 
 }
