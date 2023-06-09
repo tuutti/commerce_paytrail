@@ -10,12 +10,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php-version: ['8.0', '8.1']
-        core: ['9.5.x']
-        # Test php 8.2 only on 10.x core.
+        php-version: ['8.2', '8.1']
+        core: ['10.1.x']
         include:
-          - core: 10.1.x
-            php-version: 8.2
+          - core: 9.5.x
+            php-version: 8.0
     container:
       image: ghcr.io/tuutti/drupal-php-docker:${{ matrix.php-version }}
 
@@ -54,6 +53,8 @@ jobs:
           composer config repositories.0 path $GITHUB_WORKSPACE
           composer require drupal/$MODULE_NAME -W
           composer require drupal/commerce_shipping
+          # @todo remove this
+          composer require tuutti/php-paytrail-payment-api:2.x-dev
           composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
           composer require --dev "drupal/coder"
