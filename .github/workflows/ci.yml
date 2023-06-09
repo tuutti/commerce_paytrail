@@ -14,7 +14,7 @@ jobs:
         core: ['10.1.x']
         include:
           - core: 9.5.x
-            php-version: 8.0
+            php-version: '8.0'
     container:
       image: ghcr.io/tuutti/drupal-php-docker:${{ matrix.php-version }}
 
