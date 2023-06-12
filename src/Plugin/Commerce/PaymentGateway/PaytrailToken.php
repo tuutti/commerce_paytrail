@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
+use Drupal\commerce_checkout\Entity\CheckoutFlowInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
@@ -82,7 +83,42 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
   public function defaultConfiguration() : array {
     return [
       'payment_method_types' => ['paytrail_token'],
+      'capture' => TRUE,
     ] + parent::defaultConfiguration();
+  }
+
+  /**
+   * Whether to capture the payment automatically on return.
+   *
+   * @return bool
+   *   TRUE if payment should be captured on return.
+   */
+  public function autoCaptureEnabled(OrderInterface $order) : bool {
+    $captureSetting = (bool) $this->configuration['capture'];
+
+    // Capture setting is explicitly set to false.
+    if ($captureSetting === FALSE) {
+      return FALSE;
+    }
+
+    // Attempt to mirror 'Transaction mode' setting in checkout flow.
+    if (!$order->hasField('checkout_flow')) {
+      return TRUE;
+    }
+    $checkoutFlow = $order->get('checkout_flow')?->entity;
+
+    if (!$checkoutFlow instanceof CheckoutFlowInterface) {
+      return TRUE;
+    }
+
+    $configuration = $checkoutFlow->getPlugin()
+      ?->getPane('payment_process')
+      ?->getConfiguration();
+
+    if (isset($configuration['capture'])) {
+      return (bool) $configuration['capture'];
+    }
+    return TRUE;
   }
 
   /**
@@ -118,8 +154,7 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
         'test' => !$this->isLive(),
         'payment_method' => $paymentMethod,
       ]);
-      // @todo Figure out if we should capture the payment here.
-      $this->createPayment($payment, FALSE);
+      $this->createPayment($payment, $this->autoCaptureEnabled($order));
       $paymentMethod->save();
     }
     catch (SecurityHashMismatchException | ApiException | \InvalidArgumentException $e) {

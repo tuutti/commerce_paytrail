@@ -35,4 +35,7 @@ commerce_payment.commerce_payment_gateway.plugin.paytrail_token:
     collect_billing_information:
       type: boolean
       label: 'Collect billing information'
+    capture:
+      type: boolean
+      label: Transaction mode
 

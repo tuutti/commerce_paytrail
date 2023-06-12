@@ -4,6 +4,9 @@ declare(strict_types = 1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\commerce_checkout\Entity\CheckoutFlowInterface;
+use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowWithPanesInterface;
+use Drupal\commerce_checkout\Plugin\Commerce\CheckoutPane\CheckoutPaneInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\language\Entity\ConfigurableLanguage;
@@ -68,6 +71,7 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
         'config' => [
           'display_label' => 'Paytrail (Credit card)',
           'payment_method_types' => ['paytrail_token'],
+          'capture' => TRUE,
         ],
       ],
     ];
@@ -166,6 +170,67 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
       $plugin->setConfiguration(['language' => 'FI']);
       static::assertEquals('FI', $plugin->getLanguage());
     }
+  }
+
+  /**
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::autoCaptureEnabled
+   */
+  public function testAutoCapture() : void {
+    $gateway = $this->createGatewayPlugin($this->randomMachineName(), 'paytrail_token');
+    $plugin = $gateway->getPlugin();
+    static::assertTrue($gateway->getPluginConfiguration()['capture']);
+    $plugin->setConfiguration(['capture' => FALSE]);
+    static::assertFalse($plugin->getConfiguration()['capture']);
+
+    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken $plugin */
+    $gateway = $this->createGatewayPlugin($this->randomMachineName(), 'paytrail_token');
+    $plugin = $gateway->getPlugin();
+
+    $pane = $this->prophesize(CheckoutPaneInterface::class);
+    $pane->getConfiguration()
+      ->willReturn(
+        ['capture' => FALSE],
+        ['capture' => TRUE],
+      );
+
+    $checkoutFlowPlugin = $this->prophesize(CheckoutFlowWithPanesInterface::class);
+    $checkoutFlowPlugin->getPane('payment_process')
+      ->willReturn(
+        NULL,
+        $pane->reveal(),
+      );
+    $checkoutFlowEntity = $this->prophesize(CheckoutFlowInterface::class);
+    $checkoutFlowEntity->getPlugin()
+      ->willReturn(
+        NULL,
+        $checkoutFlowPlugin->reveal()
+      );
+
+    $order = $this->prophesize(OrderInterface::class);
+    $order->hasField('checkout_flow')
+      ->willReturn(
+        FALSE,
+        TRUE
+      );
+    $order->get('checkout_flow')
+      ->willReturn(
+        NULL,
+        (object) ['entity' => $checkoutFlowEntity->reveal()]
+      );
+
+    $order = $order->reveal();
+
+    // Should return TRUE when checkout module is not enabled.
+    static::assertTrue($plugin->autoCaptureEnabled($order));
+    // Should be TRUE when order returns no checkout flow (NULL).
+    static::assertTrue($plugin->autoCaptureEnabled($order));
+    // Should be TRUE when checkout flow returns no plugin or configuration.
+    static::assertTrue($plugin->autoCaptureEnabled($order));
+    static::assertTrue($plugin->autoCaptureEnabled($order));
+    // Should be FALSE when checkout pane's capture is set to FALSE.
+    static::assertFalse($plugin->autoCaptureEnabled($order));
+    // Should be TRUE when checkout pane's capture is set to TRUE.
+    static::assertTrue($plugin->autoCaptureEnabled($order));
   }
 
 }
