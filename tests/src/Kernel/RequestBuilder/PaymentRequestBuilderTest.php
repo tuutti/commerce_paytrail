@@ -68,6 +68,10 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
     $order = $this->createOrder();
     $response = $this->getSut()->get('123', $order);
+
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
+
     static::assertInstanceOf(Payment::class, $response);
     // Make sure event dispatcher was triggered for response.
     static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT, $this->caughtEvents[0]->event);
@@ -93,6 +97,9 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
     $order = $this->createOrder();
     $response = $this->getSut()->create($order);
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
+
     static::assertInstanceOf(PaymentRequestResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
     static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT, $this->caughtEvents[0]->event);

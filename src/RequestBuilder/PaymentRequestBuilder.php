@@ -30,14 +30,15 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->getPaymentByTransactionIdWithHttpInfo(
-        $headers->transactionId,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->transactionId,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        transaction_id: $headers->transactionId,
+        checkout_account: $configuration->getApiKey('account'),
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_transaction_id: $headers->transactionId,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: $headers->platformName,
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
         ),
@@ -78,12 +79,13 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
     $response = (new PaymentsApi($this->client, $configuration))
       ->createPaymentWithHttpInfo(
         $request,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        checkout_account: $configuration->getApiKey('account'),
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: $headers->platformName,
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)

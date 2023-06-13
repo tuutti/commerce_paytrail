@@ -15,6 +15,7 @@ use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
+use GuzzleHttp\Psr7\Request as PsrRequest;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -139,6 +140,17 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
    */
   public static function getEventClassName(): string {
     return ModelEvent::class;
+  }
+
+  /**
+   * Asserts that request has required headers.
+   *
+   * @param \GuzzleHttp\Psr7\Request $request
+   *   The request.
+   */
+  protected function assertRequestHeaders(PsrRequest $request) : void {
+    static::assertEquals('drupal/commerce_paytrail', $request->getHeader('user-agent')[0]);
+    static::assertEquals('drupal/commerce_paytrail', $request->getHeader('platform-name')[0]);
   }
 
 }

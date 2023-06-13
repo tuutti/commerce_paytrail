@@ -90,15 +90,16 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
 
     $response = $paymentsApi
       ->requestTokenForTokenizationIdWithHttpInfo(
-        $token,
-        $request,
-        $headers->account,
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->timestamp,
-        $headers->nonce,
-        $token,
-        $this->signature(
+        checkout_tokenization_id: $token,
+        get_token_request: $request,
+        checkout_account: $headers->account,
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        checkout_tokenization_id2: $token,
+        platform_name: $headers->platformName,
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
@@ -124,14 +125,15 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenRevertWithHttpInfo(
-        $headers->transactionId,
-        $headers->account,
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->transactionId,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        transaction_id: $headers->transactionId,
+        checkout_account: $headers->account,
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_transaction_id: $headers->transactionId,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: $headers->platformName,
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
         )
@@ -169,15 +171,16 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenCommitWithHttpInfo(
-        $headers->transactionId,
-        $request,
-        $headers->account,
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->transactionId,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        transaction_id: $headers->transactionId,
+        token_payment_request: $request,
+        checkout_account: $headers->account,
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_transaction_id: $headers->transactionId,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: $headers->platformName,
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
@@ -223,13 +226,14 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitAuthorizationHoldWithHttpInfo(
-        $request,
-        $headers->account,
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        token_payment_request: $request,
+        checkout_account: $headers->account,
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: $headers->platformName,
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
@@ -262,13 +266,14 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitChargeWithHttpInfo(
-        $request,
-        $headers->account,
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        token_payment_request: $request,
+        checkout_account: $headers->account,
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: $headers->platformName,
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)

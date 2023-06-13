@@ -56,7 +56,7 @@ abstract class RequestBuilderBase implements RequestBuilderInterface {
       $method,
       $this->uuidService->generate(),
       $this->time->getCurrentTime(),
-      $platformName,
+      $platformName ?: 'drupal/commerce_paytrail',
       $transactionId,
       $tokenizationId,
     );

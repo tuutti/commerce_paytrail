@@ -72,6 +72,9 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
     $response = $this->getSut()
       ->getCardForToken($this->gateway->getPlugin(), '123');
+
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
     static::assertInstanceOf(TokenizationRequestResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
     static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_GET_CARD_EVENT, $this->caughtEvents[0]->event);
@@ -97,6 +100,9 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
     $payment->getRemoteId()->willReturn('123');
 
     $response = $this->getSut()->tokenRevert($payment->reveal());
+
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
     static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for response.
     static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_REVERT_RESPONSE_EVENT, $this->caughtEvents[0]->event);
@@ -149,6 +155,9 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
     $response = $this->getSut()
       ->tokenCommit($payment->reveal(), new Price('123', 'EUR'));
+
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
     static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
     static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_COMMIT_EVENT, $this->caughtEvents[0]->event);
@@ -173,6 +182,9 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
     $response = $this->getSut()
       ->tokenMitAuthorize($this->createOrder(), '123');
+
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
     static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
     static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_MIT_AUTHORIZE_EVENT, $this->caughtEvents[0]->event);
@@ -197,6 +209,9 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
     $response = $this->getSut()
       ->tokenMitCharge($this->createOrder(), '123');
+
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
     static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
     static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_MIT_CHARGE_EVENT, $this->caughtEvents[0]->event);

@@ -22,7 +22,7 @@ abstract class PaymentRequestBuilderTestBase extends RequestBuilderKernelTestBas
   /**
    * Asserts order taxes.
    *
-   * @param \Paytrail\Payment\Model\PaymentRequest $request
+   * @param \Paytrail\Payment\Model\PaymentRequest|\Paytrail\Payment\Model\TokenPaymentRequest $request
    *   The request to validate.
    * @param int $expectedTotalPrice
    *   The expected total price.

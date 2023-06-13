@@ -9,11 +9,19 @@ use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 
 /**
  * Api test trait.
  */
 trait ApiTestTrait {
+
+  /**
+   * The request history.
+   *
+   * @var array
+   */
+  protected array $requestHistory = [];
 
   /**
    * Creates HTTP client stub.
@@ -25,8 +33,10 @@ trait ApiTestTrait {
    *   The client.
    */
   protected function createMockHttpClient(array $responses) : Client {
+    $history = Middleware::history($this->requestHistory);
     $mock = new MockHandler($responses);
     $handlerStack = HandlerStack::create($mock);
+    $handlerStack->push($history);
 
     return new Client(['handler' => $handlerStack]);
   }
@@ -36,10 +46,14 @@ trait ApiTestTrait {
    *
    * @param \Psr\Http\Message\ResponseInterface[] $responses
    *   The expected responses.
+   *
+   * @return \GuzzleHttp\Client
+   *   The client.
    */
-  protected function setupMockHttpClient(array $responses) : void {
+  protected function setupMockHttpClient(array $responses) : Client {
     $client = $this->createMockHttpClient($responses);
     $this->container->set('http_client', $client);
+    return $client;
   }
 
   /**

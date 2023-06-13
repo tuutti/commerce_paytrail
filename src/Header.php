@@ -35,7 +35,7 @@ final class Header {
     public string $method,
     public string $nonce,
     public int|string $timestamp,
-    public ?string $platformName = 'drupal/commerce_paytrail',
+    public ?string $platformName = NULL,
     public ?string $transactionId = NULL,
     public ?string $tokenizationId = NULL,
   ) {
