@@ -49,7 +49,12 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       ->setCheckoutCallbackCancelUrl($plugin->getNotifyUrl()->toString());
 
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, $order, self::TOKEN_ADD_CARD_FORM_EVENT));
+      ->dispatch(new ModelEvent(
+        $request,
+        $headers,
+        $order,
+        TokenPaymentRequestBuilderInterface::TOKEN_ADD_CARD_FORM_EVENT
+      ));
 
     $signature = $this->signature(
       $configuration->getApiKey('secret'),
@@ -77,7 +82,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $paymentsApi = new TokenPaymentsApi($this->client, $configuration);
 
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $headers, event: self::TOKEN_GET_CARD_EVENT));
+      ->dispatch(new ModelEvent(
+        $request,
+        $headers,
+        event: TokenPaymentRequestBuilderInterface::TOKEN_GET_CARD_EVENT
+      ));
 
     $response = $paymentsApi
       ->requestTokenForTokenizationIdWithHttpInfo(
@@ -96,7 +105,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
         )
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, event: self::TOKEN_GET_CARD_RESPONSE_EVENT)
+      new ModelEvent(
+        $response[0],
+        $headers,
+        event: TokenPaymentRequestBuilderInterface::TOKEN_GET_CARD_RESPONSE_EVENT
+      )
     );
   }
 
@@ -125,7 +138,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       );
 
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, event: self::TOKEN_REVERT_RESPONSE_EVENT)
+      new ModelEvent(
+        $response[0],
+        $headers,
+        event: TokenPaymentRequestBuilderInterface::TOKEN_REVERT_RESPONSE_EVENT
+      )
     );
   }
 
@@ -142,7 +159,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $tokenRequest = (new TokenPaymentRequest())
       ->setToken($headers->transactionId);
     $request = $this
-      ->populatePaymentRequest($tokenRequest, $payment->getOrder(), self::TOKEN_COMMIT_EVENT)
+      ->populatePaymentRequest(
+        $tokenRequest,
+        $payment->getOrder(),
+        TokenPaymentRequestBuilderInterface::TOKEN_COMMIT_EVENT
+      )
       // Override the capture amount.
       ->setAmount($this->converter->toMinorUnits($amount));
 
@@ -164,7 +185,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       );
 
     $response = $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, event: self::TOKEN_COMMIT_RESPONSE_EVENT)
+      new ModelEvent(
+        $response[0],
+        $headers,
+        event: TokenPaymentRequestBuilderInterface::TOKEN_COMMIT_RESPONSE_EVENT
+      )
     );
 
     if ($response instanceof Error) {
@@ -190,7 +215,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $configuration = $plugin->getClientConfiguration();
     $headers = $this->createHeaders('POST', $configuration);
     $request = $this
-      ->createTokenPaymentRequest($order, $token, self::TOKEN_MIT_AUTHORIZE_EVENT);
+      ->createTokenPaymentRequest(
+        $order,
+        $token,
+        TokenPaymentRequestBuilderInterface::TOKEN_MIT_AUTHORIZE_EVENT
+      );
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitAuthorizationHoldWithHttpInfo(
@@ -208,7 +237,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
       );
 
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, event: self::TOKEN_MIT_AUTHORIZE_RESPONSE_EVENT)
+      new ModelEvent(
+        $response[0],
+        $headers,
+        event: TokenPaymentRequestBuilderInterface::TOKEN_MIT_AUTHORIZE_RESPONSE_EVENT
+      )
     );
   }
 
@@ -221,7 +254,11 @@ final class TokenPaymentRequestBuilder extends PaymentRequestBase implements Tok
     $headers = $this->createHeaders('POST', $configuration);
 
     $request = $this
-      ->createTokenPaymentRequest($order, $token, self::TOKEN_MIT_CHARGE_EVENT);
+      ->createTokenPaymentRequest(
+        $order,
+        $token,
+        TokenPaymentRequestBuilderInterface::TOKEN_MIT_CHARGE_EVENT
+      );
 
     $response = (new TokenPaymentsApi($this->client, $configuration))
       ->tokenMitChargeWithHttpInfo(

@@ -96,7 +96,6 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
   public function autoCaptureEnabled(OrderInterface $order) : bool {
     $captureSetting = (bool) $this->configuration['capture'];
 
-    // Capture setting is explicitly set to false.
     if ($captureSetting === FALSE) {
       return FALSE;
     }

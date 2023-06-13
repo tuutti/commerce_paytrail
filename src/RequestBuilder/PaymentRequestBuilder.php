@@ -43,7 +43,12 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
         ),
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, $order, self::PAYMENT_GET_RESPONSE_EVENT)
+      new ModelEvent(
+        $response[0],
+        $headers,
+        $order,
+        PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT
+      )
     );
   }
 
@@ -51,7 +56,11 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
    * {@inheritdoc}
    */
   public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
-    return $this->populatePaymentRequest(new PaymentRequest(), $order, self::PAYMENT_CREATE_EVENT);
+    return $this->populatePaymentRequest(
+      new PaymentRequest(),
+      $order,
+      PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT
+    );
   }
 
   /**
@@ -81,7 +90,12 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
         ),
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, $order, self::PAYMENT_CREATE_RESPONSE_EVENT)
+      new ModelEvent(
+        $response[0],
+        $headers,
+        $order,
+        PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT
+      )
     );
   }
 

@@ -59,6 +59,13 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
 
     $request = $this->createRefundRequest($order, $amount, $headers->nonce);
 
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent(
+        $request,
+        order: $order,
+        event: RefundRequestBuilderInterface::REFUND_CREATE
+      ));
+
     $response = (new PaymentsApi($this->client, $configuration))
       ->refundPaymentByTransactionIdWithHttpInfo(
         $headers->transactionId,
@@ -76,7 +83,12 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
         ),
       );
     return $this->getResponse($plugin, $response,
-      new ModelEvent($response[0], $headers, $order, self::REFUND_CREATE_RESPONSE)
+      new ModelEvent(
+        $response[0],
+        $headers,
+        $order,
+        RefundRequestBuilderInterface::REFUND_CREATE_RESPONSE
+      )
     );
   }
 
@@ -90,7 +102,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
   ) : Refund {
     $plugin = $this->getPaymentPlugin($order);
 
-    $request = (new Refund())
+    return (new Refund())
       ->setRefundReference($order->id())
       ->setAmount($this->converter->toMinorUnits($amount))
       ->setCallbackUrls(new Callbacks([
@@ -98,11 +110,6 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
         'cancel' => $plugin->getNotifyUrl('refund-cancel')->toString(),
       ]))
       ->setRefundStamp($nonce);
-
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, order: $order, event: self::REFUND_CREATE));
-
-    return $request;
   }
 
 }
