@@ -6,7 +6,7 @@
     "require": {
         "php": ">=8.0",
         "drupal/commerce": "^2",
-        "tuutti/php-paytrail-payment-api": "^1.4 || ^2.0"
+        "tuutti/php-paytrail-payment-api": "^2.0"
     },
     "require-dev": {
         "drupal/commerce_shipping": "^2.0"
