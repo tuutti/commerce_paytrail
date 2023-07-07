@@ -86,8 +86,6 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
     $this->refreshServices();
 
     $gateway = $this->createGatewayPlugin('test');
-    $this->gateway = $gateway;
-
     return $gateway->getPlugin();
   }
 
