@@ -8,6 +8,7 @@ use Drupal\commerce_checkout\Entity\CheckoutFlowInterface;
 use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowWithPanesInterface;
 use Drupal\commerce_checkout\Plugin\Commerce\CheckoutPane\CheckoutPaneInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_paytrail\Http\PaytrailClient;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\language\Entity\ConfigurableLanguage;
 use Prophecy\PhpUnit\ProphecyTrait;
@@ -47,12 +48,25 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::defaultConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getSecret
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getAccount
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::isLive
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::setConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::orderDiscountStrategy
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::create
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::create
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::defaultConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getSecret
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getAccount
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::orderDiscountStrategy
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::isLive
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::setConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::defaultConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getSecret
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getAccount
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::orderDiscountStrategy
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::isLive
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::setConfiguration
    */
   public function testDefaultValues() : void {
     $gateways = [
@@ -214,6 +228,28 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
     static::assertFalse($plugin->autoCaptureEnabled($order));
     // Should be TRUE when checkout pane's capture is set to TRUE.
     static::assertTrue($plugin->autoCaptureEnabled($order));
+  }
+
+  /**
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getClient
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getClient
+   * @covers \Drupal\commerce_paytrail\Http\PaytrailClientFactory::__construct
+   * @covers \Drupal\commerce_paytrail\Http\PaytrailClientFactory::create
+   * @covers \Drupal\commerce_paytrail\Http\PaytrailClient::__construct
+   */
+  public function testGetClient() : void {
+    $gateways = [
+      $this->createGatewayPlugin($this->randomMachineName(), 'paytrail'),
+      $this->createGatewayPlugin($this->randomMachineName(), 'paytrail_token'),
+    ];
+
+    // Test automatic language detection.
+    foreach ($gateways as $gateway) {
+      /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface $plugin */
+      $plugin = $gateway->getPlugin();
+      $this->assertInstanceOf(PaytrailClient::class, $plugin->getClient());
+    }
   }
 
 }

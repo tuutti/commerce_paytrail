@@ -63,6 +63,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * @covers ::getCardForToken
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\Http\PaytrailClientFactory::create
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testGetCardForToken() : void {
@@ -108,7 +109,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::tokenRevert
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenRevert() : void {
@@ -138,7 +138,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::tokenCommit
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenCommit() : void {
@@ -171,7 +170,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenMitAuthorize() : void {
@@ -199,7 +197,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenMitCharge() : void {
