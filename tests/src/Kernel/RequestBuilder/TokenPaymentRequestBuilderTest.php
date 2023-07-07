@@ -48,6 +48,23 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   }
 
   /**
+   * @covers ::createAddCardFormForOrder
+   */
+  public function testCreateAddCardFormForOrder() : void {
+    $response = $this->getSut()
+      ->createAddCardFormForOrder($this->createOrder($this->createGatewayPlugin('paytrail_token', 'paytrail_token')));
+
+    static::assertCount(1, $this->requestHistory);
+    $this->assertRequestHeaders($this->requestHistory[0]['request']);
+    static::assertArrayHasKey('uri', $response);
+    static::assertArrayHasKey('data', $response);
+    // Make sure event dispatcher was triggered for both, request and response.
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_GET_CARD_EVENT, $this->caughtEvents[0]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_GET_CARD_RESPONSE_EVENT, $this->caughtEvents[1]->event);
+    static::assertCount(2, $this->caughtEvents);
+  }
+
+  /**
    * @covers ::getCardForToken
    */
   public function testGetCardForToken() : void {
@@ -120,6 +137,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * @covers ::tokenCommit
    * @covers ::populatePaymentRequest
+   * @covers ::createMitPaymentAction
    */
   public function testTokenCommit() : void {
     $this->setupMockHttpClient([
@@ -150,6 +168,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::tokenMitAuthorize
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
+   * @covers ::createMitPaymentAction
    */
   public function testTokenMitAuthorize() : void {
     $this->setupMockHttpClient([
@@ -175,6 +194,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::tokenMitCharge
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
+   * @covers ::createMitPaymentAction
    */
   public function testTokenMitCharge() : void {
     $this->setupMockHttpClient([
