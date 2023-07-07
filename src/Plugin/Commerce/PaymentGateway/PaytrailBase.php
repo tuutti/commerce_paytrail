@@ -9,6 +9,8 @@ use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\commerce_paytrail\ExceptionHelper;
+use Drupal\commerce_paytrail\PaytrailClient;
+use Drupal\commerce_paytrail\PaytrailClientFactory;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\commerce_price\Price;
@@ -16,7 +18,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\Url;
-use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\RefundResponse;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -51,6 +52,13 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
   protected RefundRequestBuilderInterface $refundRequest;
 
   /**
+   * The paytrail client factory.
+   *
+   * @var \Drupal\commerce_paytrail\PaytrailClientFactory
+   */
+  protected PaytrailClientFactory $clientFactory;
+
+  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
@@ -58,6 +66,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
     $instance->languageManager = $container->get('language_manager');
     $instance->logger = $container->get('logger.channel.commerce_paytrail');
     $instance->refundRequest = $container->get('commerce_paytrail.refund_request');
+    $instance->clientFactory = $container->get('commerce_paytrail.paytrail_client_factory');
 
     return $instance;
   }
@@ -73,6 +82,20 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
       'payment_method_types' => ['paytrail'],
       'order_discount_strategy' => NULL,
     ] + parent::defaultConfiguration();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getAccount() : int {
+    return (int) $this->configuration['account'];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getSecret() : string {
+    return $this->configuration['secret'];
   }
 
   /**
@@ -227,11 +250,14 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
   /**
    * {@inheritdoc}
    */
-  public function getClientConfiguration() : Configuration {
-    return (new Configuration())
-      ->setApiKey('account', $this->configuration['account'])
-      ->setApiKey('secret', $this->configuration['secret'])
-      ->setUserAgent('drupal/commerce_paytrail');
+  public function getClient() : PaytrailClient {
+    static $client;
+
+    if (!$client) {
+      $client = $this->clientFactory
+        ->create($this->getAccount(), $this->getSecret(), 'drupal/commerce_paytrail');
+    }
+    return $client;
   }
 
   /**

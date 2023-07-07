@@ -8,7 +8,7 @@ use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
-use Paytrail\Payment\Model\Item;
+use Paytrail\SDK\Model\Item;
 
 /**
  * Provides a shipping support.

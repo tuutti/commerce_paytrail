@@ -100,7 +100,7 @@ class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
     ]);
     $shipping_method->save();
 
-    $order = $this->createOrder();
+    $order = $this->createOrder($this->createGatewayPlugin('test'));
 
     /** @var \Drupal\profile\Entity\ProfileInterface $shipping_profile */
     $shipping_profile = Profile::create([

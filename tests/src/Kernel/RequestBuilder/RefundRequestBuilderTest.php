@@ -9,7 +9,7 @@ use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
 use GuzzleHttp\Psr7\Response;
-use Paytrail\Payment\Model\RefundResponse;
+use Paytrail\SDK\Response\RefundResponse;
 use Prophecy\PhpUnit\ProphecyTrait;
 
 /**
@@ -33,7 +33,6 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
       $this->container->get('uuid'),
       $this->container->get('datetime.time'),
       $this->container->get('event_dispatcher'),
-      $this->container->get('http_client'),
       $this->container->get('commerce_price.minor_units_converter')
     );
   }
@@ -46,16 +45,15 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
    * @covers ::getResponse
    */
   public function testCreateRefundRequest() : void {
-    $order = $this->createOrder();
-    $request = $this->getSut()->createRefundRequest($order, new Price('10', 'EUR'), '123');
+    $order = $this->createOrder($this->createGatewayPlugin());
+    $request = $this->getSut()->createRefundRequest($order, new Price('10', 'EUR'));
 
-    foreach (['success', 'cancel'] as $type) {
-      // Make sure callback-type query parameter is set.
-      static::assertStringEndsWith('event=refund-' . $type, $request->getCallbackUrls()[$type]);
-    }
+    // Make sure callback-type query parameter is set.
+    static::assertStringEndsWith('event=refund-success', $request->getCallbackUrls()->getSuccess());
+    static::assertStringEndsWith('event=refund-cancel', $request->getCallbackUrls()->getCancel());
     static::assertEquals(1, $request->getRefundReference());
     static::assertEquals(1000, $request->getAmount());
-    static::assertEquals('123', $request->getRefundStamp());
+    static::assertIsString($request->getRefundStamp());
   }
 
   /**
@@ -68,8 +66,7 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
   public function testRefund() : void {
     $this->setupMockHttpClient([
       new Response(201, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '6eb50789b1bbe9e713e9268ae1ff7197c5cadfeb9a32a69982182f1584d6fbd71812192ca217ae7aaafe268d1ff6c99ef206f70cf171eb3c2114743e430fe0da',
+        'signature' => '4393b6d81367fd8c71718d0895c3c51020984f25f2790d133f1c4a402dcfa51d',
       ],
         json_encode([
           'status' => 'ok',
@@ -77,7 +74,7 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
         ])),
     ]);
 
-    $order = $this->createOrder();
+    $order = $this->createOrder($this->createGatewayPlugin());
     $response = $this->getSut()->refund('123', $order, new Price('10', 'EUR'));
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);

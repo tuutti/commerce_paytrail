@@ -8,9 +8,9 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use GuzzleHttp\Psr7\Response;
-use Paytrail\Payment\Model\Payment;
-use Paytrail\Payment\Model\PaymentRequest;
-use Paytrail\Payment\Model\PaymentRequestResponse;
+use Paytrail\SDK\Request\AbstractPaymentRequest;
+use Paytrail\SDK\Response\PaymentResponse;
+use Paytrail\SDK\Response\PaymentStatusResponse;
 
 /**
  * Tests Payment requests.
@@ -31,7 +31,6 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
       $this->container->get('uuid'),
       $this->container->get('datetime.time'),
       $this->container->get('event_dispatcher'),
-      $this->container->get('http_client'),
       $this->container->get('commerce_price.minor_units_converter'),
       123,
     );
@@ -40,7 +39,7 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function getRequest(OrderInterface $order) : PaymentRequest {
+  protected function getRequest(OrderInterface $order) : AbstractPaymentRequest {
     return $this->getSut()->createPaymentRequest($order);
   }
 
@@ -52,27 +51,25 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   public function testGet() : void {
     $this->setupMockHttpClient([
       new Response(200, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => 'a22b396d0e5bef499654f73400632d530cf7c43efe64cd112c04660bd27036b8e3979906959256a28d7be8d5d302aa06c54d1597ad99f5cb56303f18acf01ab3',
+        'signature' => '79e472405352ae8cb3df67b93d3ef5fe55a5c0fca11277f0569665d81d142698',
       ],
         json_encode([
           'status' => 'ok',
-          'amount' => '123',
+          'amount' => 123,
           'currency' => 'EUR',
           'stamp' => '123',
           'reference' => '1',
-          'created_at' => '123',
-          'transaction_id' => '123',
+          'createdAt' => '123',
+          'transactionId' => '123',
         ])),
     ]);
-
-    $order = $this->createOrder();
+    $order = $this->createOrder($this->createGatewayPlugin());
     $response = $this->getSut()->get('123', $order);
 
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
 
-    static::assertInstanceOf(Payment::class, $response);
+    static::assertInstanceOf(PaymentStatusResponse::class, $response);
     // Make sure event dispatcher was triggered for response.
     static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT, $this->caughtEvents[0]->event);
     static::assertCount(1, $this->caughtEvents);
@@ -89,18 +86,17 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   public function testCreate() : void {
     $this->setupMockHttpClient([
       new Response(201, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
+        'signature' => 'd8e92eed91585b7a1ad80761064db7d7e9b960a69cd15f6c2581c5d3142ceaa2',
       ],
         json_encode([])),
     ]);
 
-    $order = $this->createOrder();
+    $order = $this->createOrder($this->createGatewayPlugin());
     $response = $this->getSut()->create($order);
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
 
-    static::assertInstanceOf(PaymentRequestResponse::class, $response);
+    static::assertInstanceOf(PaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
     static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT, $this->caughtEvents[0]->event);
     static::assertEquals(PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT, $this->caughtEvents[1]->event);

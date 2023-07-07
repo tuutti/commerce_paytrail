@@ -32,9 +32,10 @@ information.
 
 @todo fill this.
 
-### Respond to or alter Paytrail API requests/responses
+### Alter Paytrail API requests/responses
 
 Create an event subscriber that responds to `\Drupal\commerce_paytrail\Event\ModelEvent::class` events:
+
 ```php
 
 class YourEventSubscriber implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {

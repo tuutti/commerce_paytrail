@@ -17,10 +17,9 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsVoidsInterfac
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\ExceptionHelper;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
-use Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder;
 use Drupal\commerce_price\Price;
-use Paytrail\Payment\ApiException;
-use Paytrail\Payment\Model\Payment;
+use GuzzleHttp\Exception\RequestException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -46,9 +45,9 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
   /**
    * The token payment request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder
    */
-  private TokenPaymentRequestBuilder $paymentTokenRequest;
+  private TokenRequestBuilder $paymentTokenRequest;
 
   /**
    * The payment request builder.
@@ -125,7 +124,7 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
    */
   public function onReturn(OrderInterface $order, Request $request) : void {
     try {
-      $this->validateSignature($this, $request->query->all());
+      $this->validateSignature($this->getSecret(), $request->query->all());
 
       if (!$token = $request->query->get('checkout-tokenization-id')) {
         throw new SecurityHashMismatchException('Missing required "checkout-tokenization-id".');
@@ -156,7 +155,7 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
       $this->createPayment($payment, $this->autoCaptureEnabled($order));
       $paymentMethod->save();
     }
-    catch (SecurityHashMismatchException | ApiException | \InvalidArgumentException $e) {
+    catch (SecurityHashMismatchException | RequestException | \InvalidArgumentException $e) {
       ExceptionHelper::handle($e);
     }
   }
@@ -214,21 +213,13 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
         ->setAuthorizedTime($this->time->getCurrentTime())
         ->getState()
         ->applyTransitionById('authorize');
+      $payment->save();
 
       if ($capture) {
         $this->capturePayment($payment);
-
-        $paymentResponse = $this->paymentRequestBuilder
-          ->get($response->getTransactionId(), $order);
-
-        if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
-          $payment->getState()
-            ->applyTransitionById('capture');
-        }
       }
-      $payment->save();
     }
-    catch (ApiException $e) {
+    catch (RequestException $e) {
       ExceptionHelper::handle($e);
     }
   }
@@ -250,7 +241,7 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
       $this->paymentTokenRequest
         ->tokenRevert($payment);
     }
-    catch (ApiException $e) {
+    catch (RequestException $e) {
       ExceptionHelper::handle($e);
     }
     $payment->setState('authorization_voided');
@@ -274,13 +265,13 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
       $paymentResponse = $this->paymentRequestBuilder
         ->get($response->getTransactionId(), $payment->getOrder());
 
-      if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
+      if (!$payment->isCompleted() && $paymentResponse->getStatus() === 'ok') {
         $payment->getState()
           ->applyTransitionById('capture');
       }
       $payment->save();
     }
-    catch (ApiException $e) {
+    catch (RequestException $e) {
       ExceptionHelper::handle($e);
     }
   }

@@ -42,20 +42,17 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
   }
 
   /**
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::create
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::defaultConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getSecret
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getAccount
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::isLive
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::setConfiguration
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::orderDiscountStrategy
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::create
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::defaultConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::setConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::isLive
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::orderDiscountStrategy
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getClientConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::create
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::defaultConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::setConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::isLive
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::orderDiscountStrategy
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getClientConfiguration
    */
   public function testDefaultValues() : void {
     $gateways = [
@@ -92,21 +89,16 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
       static::assertFalse($plugin->isLive());
       static::assertNull($plugin->orderDiscountStrategy());
 
-      static::assertEquals(PaytrailInterface::ACCOUNT, $plugin->getClientConfiguration()->getApiKey('account'));
-      static::assertEquals(PaytrailInterface::SECRET, $plugin->getClientConfiguration()->getApiKey('secret'));
-      static::assertEquals('drupal/commerce_paytrail', $plugin->getClientConfiguration()->getUserAgent());
+      static::assertEquals(PaytrailInterface::ACCOUNT, $plugin->getAccount());
+      static::assertEquals(PaytrailInterface::SECRET, $plugin->getSecret());
     }
   }
 
   /**
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::buildReturnUrl
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getNotifyUrl
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getCancelUrl
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getReturnUrl
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::buildReturnUrl
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getNotifyUrl
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getCancelUrl
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getReturnUrl
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::buildReturnUrl
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getNotifyUrl
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getCancelUrl
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getReturnUrl
    */
   public function testUrls() : void {
     $gateways = [
@@ -129,16 +121,7 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
   }
 
   /**
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::create
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::defaultConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::setConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getLanguage
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::create
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::defaultConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::setConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getLanguage
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getLanguage
    */
   public function testLanguage() : void {
     $languages = [

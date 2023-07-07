@@ -6,16 +6,14 @@ namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
+use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_price\Price;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
-use GuzzleHttp\ClientInterface;
-use Paytrail\Payment\Api\PaymentsApi;
-use Paytrail\Payment\Model\Callbacks;
-use Paytrail\Payment\Model\Refund;
-use Paytrail\Payment\Model\RefundResponse;
-use Paytrail\Payment\ObjectSerializer;
+use Paytrail\SDK\Model\CallbackUrl;
+use Paytrail\SDK\Request\RefundRequest;
+use Paytrail\SDK\Response\RefundResponse;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -23,7 +21,9 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  *
  * @internal
  */
-final class RefundRequestBuilder extends RequestBuilderBase implements RefundRequestBuilderInterface {
+final class RefundRequestBuilder implements RefundRequestBuilderInterface {
+
+  use PaymentGatewayPluginTrait;
 
   /**
    * Constructs a new instance.
@@ -34,19 +34,39 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
    *   The time service.
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
    *   The event dispatcher.
-   * @param \GuzzleHttp\ClientInterface $client
-   *   The HTTP client.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
    *   The minor unit converter.
    */
   public function __construct(
-    UuidInterface $uuidService,
-    TimeInterface $time,
-    EventDispatcherInterface $eventDispatcher,
-    private ClientInterface $client,
+    private UuidInterface $uuidService,
+    private TimeInterface $time,
+    private EventDispatcherInterface $eventDispatcher,
     private MinorUnitsConverterInterface $converter
   ) {
-    parent::__construct($uuidService, $time, $eventDispatcher);
+  }
+
+  /**
+   * Constructs a refund request.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param \Drupal\commerce_price\Price $amount
+   *   The price.
+   *
+   * @return \Paytrail\SDK\Request\RefundRequest
+   *   The refund request.
+   */
+  public function createRefundRequest(OrderInterface $order, Price $amount) : RefundRequest {
+    $plugin = $this->getPaymentPlugin($order);
+
+    return (new RefundRequest())
+      ->setRefundReference($order->id())
+      ->setAmount($this->converter->toMinorUnits($amount))
+      ->setCallbackUrls((new CallbackUrl())
+        ->setSuccess($plugin->getNotifyUrl('refund-success')->toString())
+        ->setCancel($plugin->getNotifyUrl('refund-cancel')->toString())
+      )
+      ->setRefundStamp($this->uuidService->generate());
   }
 
   /**
@@ -54,63 +74,17 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
    */
   public function refund(string $transactionId, OrderInterface $order, Price $amount) : RefundResponse {
     $plugin = $this->getPaymentPlugin($order);
-    $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration, transactionId: $transactionId);
 
-    $request = $this->createRefundRequest($order, $amount, $headers->nonce);
-
+    $request = $this->createRefundRequest($order, $amount);
     $this->eventDispatcher
-      ->dispatch(new ModelEvent(
-        $request,
-        order: $order,
-        event: RefundRequestBuilderInterface::REFUND_CREATE
-      ));
+      ->dispatch(new ModelEvent($request, $order, RefundRequestBuilderInterface::REFUND_CREATE));
 
-    $response = (new PaymentsApi($this->client, $configuration))
-      ->refundPaymentByTransactionIdWithHttpInfo(
-        transaction_id: $headers->transactionId,
-        refund: $request,
-        checkout_account: $configuration->getApiKey('account'),
-        checkout_algorithm: $headers->hashAlgorithm,
-        checkout_method: $headers->method,
-        checkout_transaction_id: $headers->transactionId,
-        checkout_timestamp: $headers->timestamp,
-        checkout_nonce: $headers->nonce,
-        platform_name: $headers->platformName,
-        signature: $this->signature(
-          $configuration->getApiKey('secret'),
-          $headers->toArray(),
-          json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
-        ),
-      );
-    return $this->getResponse($plugin, $response,
-      new ModelEvent(
-        $response[0],
-        $headers,
-        $order,
-        RefundRequestBuilderInterface::REFUND_CREATE_RESPONSE
-      )
-    );
-  }
+    $response = $plugin->getClient()
+      ->refund($request, $transactionId);
 
-  /**
-   * {@inheritdoc}
-   */
-  public function createRefundRequest(
-    OrderInterface $order,
-    Price $amount,
-    string $nonce
-  ) : Refund {
-    $plugin = $this->getPaymentPlugin($order);
+    $this->eventDispatcher->dispatch(new ModelEvent($response, $order, RefundRequestBuilderInterface::REFUND_CREATE_RESPONSE));
 
-    return (new Refund())
-      ->setRefundReference($order->id())
-      ->setAmount($this->converter->toMinorUnits($amount))
-      ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl('refund-success')->toString(),
-        'cancel' => $plugin->getNotifyUrl('refund-cancel')->toString(),
-      ]))
-      ->setRefundStamp($nonce);
+    return $response;
   }
 
 }

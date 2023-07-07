@@ -8,14 +8,14 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken;
 use Drupal\commerce_price\Price;
-use Paytrail\Payment\Model\TokenizationRequestResponse;
-use Paytrail\Payment\Model\TokenMITPaymentResponse;
-use Paytrail\Payment\Model\TokenPaymentRequest;
+use Paytrail\SDK\Response\GetTokenResponse;
+use Paytrail\SDK\Response\MitPaymentResponse;
+use Paytrail\SDK\Response\RevertPaymentAuthHoldResponse;
 
 /**
  * The token payment request builder.
  */
-interface TokenPaymentRequestBuilderInterface {
+interface TokenRequestBuilderInterface {
 
   public const TOKEN_ADD_CARD_FORM_EVENT = 'token_payment_add_card_form';
   public const TOKEN_GET_CARD_EVENT = 'token_payment_get_card';
@@ -32,7 +32,7 @@ interface TokenPaymentRequestBuilderInterface {
    * Creates a new add card form for given order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order to create form for.
+   *   The order to create a form for.
    *
    * @return array
    *   The add card form.
@@ -47,10 +47,10 @@ interface TokenPaymentRequestBuilderInterface {
    * @param string $token
    *   The token.
    *
-   * @return \Paytrail\Payment\Model\TokenizationRequestResponse
+   * @return \Paytrail\SDK\Response\GetTokenResponse
    *   The tokenization response.
    */
-  public function getCardForToken(PaytrailToken $plugin, string $token): TokenizationRequestResponse;
+  public function getCardForToken(PaytrailToken $plugin, string $token): GetTokenResponse;
 
   /**
    * Reverts the given token.
@@ -58,10 +58,10 @@ interface TokenPaymentRequestBuilderInterface {
    * @param \Drupal\commerce_payment\Entity\PaymentInterface $payment
    *   The payment to revert.
    *
-   * @return \Paytrail\Payment\Model\TokenMITPaymentResponse
+   * @return \Paytrail\SDK\Response\RevertPaymentAuthHoldResponse
    *   The payment response.
    */
-  public function tokenRevert(PaymentInterface $payment): TokenMITPaymentResponse;
+  public function tokenRevert(PaymentInterface $payment): RevertPaymentAuthHoldResponse;
 
   /**
    * Commits the authorization hold.
@@ -71,10 +71,10 @@ interface TokenPaymentRequestBuilderInterface {
    * @param \Drupal\commerce_price\Price $amount
    *   The price to charge from card.
    *
-   * @return \Paytrail\Payment\Model\TokenMITPaymentResponse
+   * @return \Paytrail\SDK\Response\MitPaymentResponse
    *   The payment response.
    */
-  public function tokenCommit(PaymentInterface $payment, Price $amount): TokenMITPaymentResponse;
+  public function tokenCommit(PaymentInterface $payment, Price $amount): MitPaymentResponse;
 
   /**
    * Performs a MIT authorization for given order and token.
@@ -84,10 +84,10 @@ interface TokenPaymentRequestBuilderInterface {
    * @param string $token
    *   The token.
    *
-   * @return \Paytrail\Payment\Model\TokenMITPaymentResponse
+   * @return \Paytrail\SDK\Response\MitPaymentResponse
    *   The payment response.
    */
-  public function tokenMitAuthorize(OrderInterface $order, string $token): TokenMITPaymentResponse;
+  public function tokenMitAuthorize(OrderInterface $order, string $token): MitPaymentResponse;
 
   /**
    * Performs a MIT charge for given token and order.
@@ -100,21 +100,6 @@ interface TokenPaymentRequestBuilderInterface {
    * @return \Paytrail\Payment\Model\TokenMITPaymentResponse
    *   The payment response.
    */
-  public function tokenMitCharge(OrderInterface $order, string $token): TokenMITPaymentResponse;
-
-  /**
-   * Constructs a new token payment request object.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param string $token
-   *   The token.
-   * @param string $event
-   *   The event.
-   *
-   * @return \Paytrail\Payment\Model\TokenPaymentRequest
-   *   The token payment request.
-   */
-  public function createTokenPaymentRequest(OrderInterface $order, string $token, string $event) : TokenPaymentRequest;
+  public function tokenMitCharge(OrderInterface $order, string $token): MitPaymentResponse;
 
 }

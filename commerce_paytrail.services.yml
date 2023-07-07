@@ -11,7 +11,6 @@ services:
       - '@uuid'
       - '@datetime.time'
       - '@event_dispatcher'
-      - '@http_client'
       - '@commerce_price.minor_units_converter'
 
   commerce_paytrail.payment_request:
@@ -20,17 +19,15 @@ services:
       - '@uuid'
       - '@datetime.time'
       - '@event_dispatcher'
-      - '@http_client'
       - '@commerce_price.minor_units_converter'
       - '%commerce_paytrail.callback_delay%'
 
   commerce_paytrail.token_payment_request:
-    class: Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder
+    class: Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder
     arguments:
       - '@uuid'
       - '@datetime.time'
       - '@event_dispatcher'
-      - '@http_client'
       - '@commerce_price.minor_units_converter'
       - '%commerce_paytrail.callback_delay%'
 
@@ -38,3 +35,8 @@ services:
     class: Drupal\commerce_paytrail\EventSubscriber\BillingInformationCollector
     tags:
       - { name: event_subscriber }
+
+  commerce_paytrail.paytrail_client_factory:
+    class: Drupal\commerce_paytrail\PaytrailClientFactory
+    arguments:
+      - '@http_client_factory'

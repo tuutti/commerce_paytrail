@@ -6,7 +6,9 @@ namespace Drupal\Tests\commerce_paytrail\Traits;
 
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
+use Drupal\Core\Http\ClientFactory;
 use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
@@ -52,7 +54,26 @@ trait ApiTestTrait {
    */
   protected function setupMockHttpClient(array $responses) : Client {
     $client = $this->createMockHttpClient($responses);
-    $this->container->set('http_client', $client);
+
+    $this->container->set('http_client_factory', new class ($client) extends ClientFactory {
+
+      /**
+       * Constructs a new instance.
+       *
+       * @param \GuzzleHttp\ClientInterface $client
+       *   The http client.
+       */
+      public function __construct(private ClientInterface $client) {
+      }
+
+      /**
+       * {@inheritdoc}
+       */
+      public function fromOptions(array $config = []) {
+        return $this->client;
+      }
+
+    });
     return $client;
   }
 

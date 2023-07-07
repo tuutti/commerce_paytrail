@@ -6,11 +6,10 @@ namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
-use Paytrail\Payment\Api\PaymentsApi;
-use Paytrail\Payment\Model\Payment;
-use Paytrail\Payment\Model\PaymentRequest;
-use Paytrail\Payment\Model\PaymentRequestResponse;
-use Paytrail\Payment\ObjectSerializer;
+use Paytrail\SDK\Request\PaymentRequest;
+use Paytrail\SDK\Request\PaymentStatusRequest;
+use Paytrail\SDK\Response\PaymentResponse;
+use Paytrail\SDK\Response\PaymentStatusResponse;
 
 /**
  * The payment request builder.
@@ -22,83 +21,56 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
   /**
    * {@inheritdoc}
    */
-  public function get(string $transactionId, OrderInterface $order) : Payment {
+  public function get(string $transactionId, OrderInterface $order) : PaymentStatusResponse {
     $plugin = $this->getPaymentPlugin($order);
 
-    $configuration = $plugin->getClientConfiguration();
-    $headers = $this->createHeaders('GET', $configuration, transactionId: $transactionId);
+    $request = (new PaymentStatusRequest())
+      ->setTransactionId($transactionId);
+    $request->setTransactionId($transactionId);
 
-    $response = (new PaymentsApi($this->client, $configuration))
-      ->getPaymentByTransactionIdWithHttpInfo(
-        transaction_id: $headers->transactionId,
-        checkout_account: $configuration->getApiKey('account'),
-        checkout_algorithm: $headers->hashAlgorithm,
-        checkout_method: $headers->method,
-        checkout_transaction_id: $headers->transactionId,
-        checkout_timestamp: $headers->timestamp,
-        checkout_nonce: $headers->nonce,
-        platform_name: $headers->platformName,
-        signature: $this->signature(
-          $configuration->getApiKey('secret'),
-          $headers->toArray(),
-        ),
-      );
-    return $this->getResponse($plugin, $response,
-      new ModelEvent(
-        $response[0],
-        $headers,
-        $order,
-        PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT
-      )
-    );
+    $response = $plugin->getClient()
+      ->getPaymentStatus($request);
+
+    $this->eventDispatcher->dispatch(new ModelEvent(
+      $response,
+      $order,
+      PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT
+    ));
+    return $response;
   }
 
   /**
-   * {@inheritdoc}
+   * Constructs a new payment request.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return \Paytrail\SDK\Request\PaymentRequest
+   *   The request.
    */
   public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
     return $this->populatePaymentRequest(
       new PaymentRequest(),
       $order,
-      PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT
+      PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT,
     );
   }
 
   /**
    * {@inheritdoc}
    */
-  public function create(OrderInterface $order) : PaymentRequestResponse {
-    $plugin = $this->getPaymentPlugin($order);
-
-    $configuration = $plugin
-      ->getClientConfiguration();
-
-    $headers = $this->createHeaders('POST', $configuration);
+  public function create(OrderInterface $order) : PaymentResponse {
     $request = $this->createPaymentRequest($order);
 
-    $response = (new PaymentsApi($this->client, $configuration))
-      ->createPaymentWithHttpInfo(
-        $request,
-        checkout_account: $configuration->getApiKey('account'),
-        checkout_algorithm: $headers->hashAlgorithm,
-        checkout_method: $headers->method,
-        checkout_timestamp: $headers->timestamp,
-        checkout_nonce: $headers->nonce,
-        platform_name: $headers->platformName,
-        signature: $this->signature(
-          $configuration->getApiKey('secret'),
-          $headers->toArray(),
-          json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
-        ),
-      );
-    return $this->getResponse($plugin, $response,
-      new ModelEvent(
-        $response[0],
-        $headers,
-        $order,
-        PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT
-      )
-    );
+    $response = $this->getPaymentPlugin($order)
+      ->getClient()
+      ->createPayment($request);
+    $this->eventDispatcher->dispatch(new ModelEvent(
+      $response,
+      $order,
+      PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT
+    ));
+    return $response;
   }
 
 }

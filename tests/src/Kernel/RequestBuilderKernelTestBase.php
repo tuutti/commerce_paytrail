@@ -10,7 +10,7 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
-use Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilderInterface;
+use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface;
 use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
@@ -63,7 +63,7 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
    *   The request payment builder or null.
    * @param \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface|null $refundRequestBuilder
    *   The refund request builder or null.
-   * @param \Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilderInterface|null $tokenPaymentRequestBuilder
+   * @param \Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface|null $tokenPaymentRequestBuilder
    *   The token payment request builder or null.
    *
    * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
@@ -72,7 +72,7 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
   protected function mockPaymentGatewayPlugin(
     PaymentRequestBuilderInterface $paymentRequestBuilder = NULL,
     RefundRequestBuilderInterface $refundRequestBuilder = NULL,
-    TokenPaymentRequestBuilderInterface $tokenPaymentRequestBuilder = NULL,
+    TokenRequestBuilderInterface $tokenPaymentRequestBuilder = NULL,
   ) : Paytrail {
     if ($paymentRequestBuilder) {
       $this->container->set('commerce_paytrail.payment_request', $paymentRequestBuilder);
@@ -111,7 +111,7 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
       ->set(
         'signature',
         $this->signature(
-          $plugin->getClientConfiguration()->getApiKey('secret'),
+          $plugin->getSecret(),
           $request->query->all()
         )
       );
@@ -149,7 +149,6 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
    *   The request.
    */
   protected function assertRequestHeaders(PsrRequest $request) : void {
-    static::assertEquals('drupal/commerce_paytrail', $request->getHeader('user-agent')[0]);
     static::assertEquals('drupal/commerce_paytrail', $request->getHeader('platform-name')[0]);
   }
 

@@ -7,24 +7,25 @@ namespace Drupal\commerce_paytrail\RequestBuilder;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
+use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Uuid\UuidInterface;
-use GuzzleHttp\ClientInterface;
-use Paytrail\Payment\Model\Callbacks;
-use Paytrail\Payment\Model\Customer;
-use Paytrail\Payment\Model\Item;
-use Paytrail\Payment\Model\PaymentRequest;
-use Paytrail\Payment\Model\TokenPaymentRequest;
+use Paytrail\SDK\Model\CallbackUrl;
+use Paytrail\SDK\Model\Customer;
+use Paytrail\SDK\Model\Item;
+use Paytrail\SDK\Request\AbstractPaymentRequest;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * A base class for payment requests.
  */
-abstract class PaymentRequestBase extends RequestBuilderBase {
+abstract class PaymentRequestBase {
+
+  use PaymentGatewayPluginTrait;
 
   /**
    * Constructs a new instance.
@@ -35,26 +36,22 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
    *   The time service.
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
    *   The event dispatcher.
-   * @param \GuzzleHttp\ClientInterface $client
-   *   The HTTP client.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
    *   The minor unit converter.
    * @param int $callbackDelay
    *   The callback delay.
    */
   public function __construct(
-    UuidInterface $uuidService,
-    TimeInterface $time,
-    EventDispatcherInterface $eventDispatcher,
-    protected ClientInterface $client,
+    protected UuidInterface $uuidService,
+    protected TimeInterface $time,
+    protected EventDispatcherInterface $eventDispatcher,
     protected MinorUnitsConverterInterface $converter,
     protected int $callbackDelay,
   ) {
-    parent::__construct($uuidService, $time, $eventDispatcher);
   }
 
   /**
-   * Checks if given order has any discounts applied.
+   * Check if given order has any discounts applied.
    *
    * Note: This only applies to order level discounts, such as giftcards.
    *
@@ -79,7 +76,7 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
    * @param \Drupal\commerce_order\Entity\OrderItemInterface $orderItem
    *   The commerce order item.
    *
-   * @return \Paytrail\Payment\Model\Item
+   * @return \Paytrail\SDK\Model\Item
    *   The paytrail order item.
    */
   protected function createOrderLine(OrderItemInterface $orderItem) : Item {
@@ -89,7 +86,7 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
       ->setVatPercentage(0);
 
     if ($purchasedEntityId = $orderItem->getPurchasedEntityId()) {
-      $item->setProductCode($purchasedEntityId);
+      $item->setProductCode((string) $purchasedEntityId);
     }
 
     if ($taxes = $orderItem->getAdjustments(['tax'])) {
@@ -110,23 +107,22 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
   /**
    * Populates the given payment request.
    *
-   * @param \Paytrail\Payment\Model\PaymentRequest|\Paytrail\Payment\Model\TokenPaymentRequest $request
+   * @param \Paytrail\SDK\Request\AbstractPaymentRequest $request
    *   The base request.
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
    * @param string $event
    *   The event dispatcher event.
    *
-   * @return \Paytrail\Payment\Model\PaymentRequest|\Paytrail\Payment\Model\TokenPaymentRequest
+   * @return \Paytrail\SDK\Request\AbstractPaymentRequest
    *   The payment request
    *
    * @throws \Drupal\commerce_paytrail\Exception\PaytrailPluginException
    */
-  protected function populatePaymentRequest(PaymentRequest|TokenPaymentRequest $request, OrderInterface $order, string $event) : PaymentRequest|TokenPaymentRequest {
+  protected function populatePaymentRequest(AbstractPaymentRequest $request, OrderInterface $order, string $event) : AbstractPaymentRequest {
     $plugin = $this->getPaymentPlugin($order);
 
     $request->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
-      ->setReference($order->id())
       ->setStamp($this->uuidService->generate())
       ->setLanguage($plugin->getLanguage())
       ->setItems(array_map(
@@ -135,18 +131,18 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
       ))
       // Only EUR is supported.
       ->setCurrency('EUR')
-      ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl()->toString(),
-        'cancel' => $plugin->getNotifyUrl()->toString(),
-      ]))
+      ->setCallbackUrls((new CallbackUrl())
+        ->setSuccess($plugin->getNotifyUrl()->toString())
+        ->setCancel($plugin->getNotifyUrl()->toString())
+      )
       // Delay callback polling to minimize the chance of Paytrail
       // calling ::onNotify() before customer returns from the payment
       // gateway.
       ->setCallbackDelay($this->callbackDelay)
-      ->setRedirectUrls(new Callbacks([
-        'success' => $plugin->getReturnUrl($order)->toString(),
-        'cancel' => $plugin->getCancelUrl($order)->toString(),
-      ]));
+      ->setRedirectUrls((new CallbackUrl())
+        ->setSuccess($plugin->getReturnUrl($order)->toString())
+        ->setCancel($plugin->getCancelUrl($order)->toString())
+      );
 
     $customer = (new Customer())
       ->setEmail($order->getEmail());
@@ -168,13 +164,11 @@ abstract class PaymentRequestBase extends RequestBuilderBase {
       $plugin->orderDiscountStrategy() === PaytrailInterface::STRATEGY_REMOVE_ITEMS &&
       $this->orderHasDiscounts($order)
     ) {
-      $request['items'] = NULL;
+      $request->setItems(NULL);
     }
-
-    // We use reference field to load the order. Make sure it cannot be changed.
-    if ($request->getReference() !== $order->id()) {
-      throw new \LogicException('The value of "reference" field cannot be changed.');
-    }
+    // We use the reference field to load the order. Make sure it cannot be
+    // changed.
+    $request->setReference($order->id());
 
     return $request;
   }

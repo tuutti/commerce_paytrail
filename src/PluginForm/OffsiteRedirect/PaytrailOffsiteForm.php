@@ -63,12 +63,12 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
       return $form;
     }
 
-    /** @var \Paytrail\Payment\Model\PaymentMethodProvider $selectedProvider */
+    /** @var \Paytrail\SDK\Model\Provider $selectedProvider */
     if ($selectedProvider = $form_state->getTemporaryValue('provider')) {
       $data = [];
 
       foreach ($selectedProvider->getParameters() as $parameter) {
-        $data[$parameter->getName()] = $parameter->getValue();
+        $data[$parameter->name] = $parameter->value;
       }
       return $this->buildRedirectForm($form, $form_state, $selectedProvider->getUrl(), $data, self::REDIRECT_POST);
     }

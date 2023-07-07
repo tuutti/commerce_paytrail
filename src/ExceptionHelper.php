@@ -7,7 +7,7 @@ namespace Drupal\commerce_paytrail;
 use Drupal\commerce_payment\Exception\HardDeclineException;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Exception\SoftDeclineException;
-use Paytrail\Payment\ApiException as PaytrailApiException;
+use GuzzleHttp\Exception\RequestException;
 
 /**
  * A helper class to deal with API exceptions.
@@ -36,14 +36,14 @@ final class ExceptionHelper {
   /**
    * Constructs a new payment gateway exception for given API exception.
    *
-   * @param \Paytrail\Payment\ApiException $exception
+   * @param \GuzzleHttp\Exception\RequestException $exception
    *   The API exception.
    *
    * @return \Drupal\commerce_payment\Exception\PaymentGatewayException
    *   The API exception converted into PaymentGatewayException.
    */
-  private static function handleApiException(PaytrailApiException $exception) : PaymentGatewayException {
-    $body = json_decode($exception->getResponseBody() ?? '');
+  private static function handleApiException(RequestException $exception) : PaymentGatewayException {
+    $body = json_decode($exception->getResponse() ?? '');
     $message = $exception->getMessage() ?: 'API request failed with no error message.';
 
     if (isset($body->message)) {
@@ -71,7 +71,7 @@ final class ExceptionHelper {
    *   The exception.
    */
   public static function handle(\Exception $exception) : void {
-    if ($exception instanceof PaytrailApiException) {
+    if ($exception instanceof RequestException) {
       $exception = self::handleApiException($exception);
     }
     if ($exception instanceof PaymentGatewayException) {

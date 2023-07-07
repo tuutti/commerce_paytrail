@@ -11,8 +11,7 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotifications
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\ExceptionHelper;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
-use Paytrail\Payment\ApiException;
-use Paytrail\Payment\Model\Payment;
+use Paytrail\SDK\Response\PaymentStatusResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -84,7 +83,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
             $order
           );
           $this->assertResponseStatus($paymentResponse->getStatus(), [
-            Payment::STATUS_OK,
+            'ok',
           ]);
 
           $this->handlePayment($order, $paymentResponse);
@@ -118,13 +117,13 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
         $order
       );
       $this->assertResponseStatus($paymentResponse->getStatus(), [
-        Payment::STATUS_OK,
-        Payment::STATUS_PENDING,
-        Payment::STATUS_DELAYED,
+        'ok',
+        'pending',
+        'delayed',
       ]);
       $this->handlePayment($order, $paymentResponse);
     }
-    catch (SecurityHashMismatchException | ApiException $e) {
+    catch (\Exception $e) {
       ExceptionHelper::handle($e);
     }
   }
@@ -134,12 +133,14 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The commerce order.
-   * @param \Paytrail\Payment\Model\Payment $paymentResponse
+   * @param \Paytrail\SDK\Response\PaymentStatusResponse $paymentResponse
    *   The payment response.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function handlePayment(
     OrderInterface $order,
-    Payment $paymentResponse
+    PaymentStatusResponse $paymentResponse
   ) : void {
     /** @var \Drupal\commerce_payment\PaymentStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage('commerce_payment');
@@ -159,31 +160,11 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
         ->getState()
         ->applyTransitionById('authorize');
     }
-    if (!$payment->isCompleted() && $paymentResponse->getStatus() === Payment::STATUS_OK) {
+    if (!$payment->isCompleted() && $paymentResponse->getStatus() === 'ok') {
       $payment->getState()
         ->applyTransitionById('capture');
     }
     $payment->save();
-  }
-
-  /**
-   * Creates or captures payment for given order.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   * @param \Paytrail\Payment\Model\Payment $paymentResponse
-   *   The payment response.
-   *
-   * @deprecated in commerce_paytrail:3.0.1 and is removed from commerce_paytrail:4.0.0.
-   * SupportsStoredPaymentMethodsInterface defines createPayment() method and
-   * this doesn't match the interface definition.
-   *
-   * Use ::authorizeOrCapturePayment() instead.
-   *
-   * @see https://www.drupal.org/project/commerce_paytrail/issues/336468
-   */
-  public function createPayment(OrderInterface $order, Payment $paymentResponse) : void {
-    $this->handlePayment($order, $paymentResponse);
   }
 
   /**
@@ -215,7 +196,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
     if (!$requestOrderId || $requestOrderId !== $order->id()) {
       throw new SecurityHashMismatchException('Order ID mismatch.');
     }
-    $this->validateSignature($this, $request->query->all());
+    $this->validateSignature($this->getSecret(), $request->query->all());
   }
 
 }

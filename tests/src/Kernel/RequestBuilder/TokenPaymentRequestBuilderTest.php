@@ -6,44 +6,34 @@ namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
-use Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder;
-use Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilderInterface;
+use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use GuzzleHttp\Psr7\Response;
-use Paytrail\Payment\ApiException;
-use Paytrail\Payment\Model\TokenizationRequestResponse;
-use Paytrail\Payment\Model\TokenMITPaymentResponse;
-use Paytrail\Payment\Model\TokenPaymentRequest;
+use Paytrail\SDK\Request\MitPaymentRequest;
+use Paytrail\SDK\Response\GetTokenResponse;
+use Paytrail\SDK\Response\MitPaymentResponse;
+use Paytrail\SDK\Response\RevertPaymentAuthHoldResponse;
 
 /**
  * Tests Token Payment requests.
  *
  * @group commerce_paytrail
- * @coversDefaultClass \Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder
+ * @coversDefaultClass \Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder
  */
 class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
-   * {@inheritdoc}
-   */
-  protected function setUp(): void {
-    parent::setUp();
-
-    $this->gateway = $this->createGatewayPlugin('paytrail_token', 'paytrail_token');
-  }
-
-  /**
    * Gets the SUT.
    *
-   * @return \Drupal\commerce_paytrail\RequestBuilder\TokenPaymentRequestBuilder
+   * @return \Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder
    *   The system under testing.
    */
-  private function getSut() : TokenPaymentRequestBuilder {
-    return new TokenPaymentRequestBuilder(
+  private function getSut() : TokenRequestBuilder {
+    return new TokenRequestBuilder(
       $this->container->get('uuid'),
       $this->container->get('datetime.time'),
       $this->container->get('event_dispatcher'),
-      $this->container->get('http_client'),
       $this->container->get('commerce_price.minor_units_converter'),
       123,
     );
@@ -52,9 +42,9 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function getRequest(OrderInterface $order) : TokenPaymentRequest {
+  protected function getRequest(OrderInterface $order) : MitPaymentRequest {
     return $this->getSut()
-      ->createTokenPaymentRequest($order, '123', TokenPaymentRequestBuilderInterface::TOKEN_MIT_CHARGE_EVENT);
+      ->createTokenPaymentRequest($order, '123', TokenRequestBuilderInterface::TOKEN_MIT_CHARGE_EVENT);
   }
 
   /**
@@ -64,21 +54,41 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   public function testGetCardForToken() : void {
     $this->setupMockHttpClient([
       new Response(200, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
+        'signature' => 'a7082f6aa570a6e8d194a3bdc3f74863037be637112a4f3a23410df6156d5c1b',
       ],
-        json_encode([])),
+        json_encode([
+          'token' => '123',
+          'card' => [
+            'type' => 'visa',
+            'bin' => '1234',
+            'partial_pan' => '1234',
+            'expire_year' => '2023',
+            'expire_month' => '12',
+            'cvc_required' => FALSE,
+            'funding' => '',
+            'category' => '',
+            'country_code' => '',
+            'pan_fingerprint' => '',
+            'card_fingerprint' => '',
+          ],
+          'customer' => [
+            'network_address'  => '',
+            'country_code' => '',
+          ],
+        ])),
     ]);
 
+    $gateway = $this->createGatewayPlugin('paytrail_token', 'paytrail_token');
+
     $response = $this->getSut()
-      ->getCardForToken($this->gateway->getPlugin(), '123');
+      ->getCardForToken($gateway->getPlugin(), '123');
 
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
-    static::assertInstanceOf(TokenizationRequestResponse::class, $response);
+    static::assertInstanceOf(GetTokenResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_GET_CARD_EVENT, $this->caughtEvents[0]->event);
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_GET_CARD_RESPONSE_EVENT, $this->caughtEvents[1]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_GET_CARD_EVENT, $this->caughtEvents[0]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_GET_CARD_RESPONSE_EVENT, $this->caughtEvents[1]->event);
     static::assertCount(2, $this->caughtEvents);
   }
 
@@ -89,50 +99,24 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   public function testTokenRevert() : void {
     $this->setupMockHttpClient([
       new Response(200, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
+        'signature' => 'd8e92eed91585b7a1ad80761064db7d7e9b960a69cd15f6c2581c5d3142ceaa2',
       ],
         json_encode([])),
     ]);
 
     $payment = $this->prophesize(PaymentInterface::class);
-    $payment->getOrder()->willReturn($this->createOrder());
+    $payment->getOrder()
+      ->willReturn($this->createOrder($this->createGatewayPlugin('paytrail_token', 'paytrail_token')));
     $payment->getRemoteId()->willReturn('123');
 
     $response = $this->getSut()->tokenRevert($payment->reveal());
 
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
-    static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
+    static::assertInstanceOf(RevertPaymentAuthHoldResponse::class, $response);
     // Make sure event dispatcher was triggered for response.
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_REVERT_RESPONSE_EVENT, $this->caughtEvents[0]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_REVERT_RESPONSE_EVENT, $this->caughtEvents[0]->event);
     static::assertCount(1, $this->caughtEvents);
-  }
-
-  /**
-   * @covers ::tokenCommit
-   * @covers ::createHeaders
-   */
-  public function testTokenCommitApiException() : void {
-    $this->setupMockHttpClient([
-      // Response is expected to be 201. Return non-200 response to return
-      // Error model.
-      new Response(200, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
-      ],
-        json_encode([])),
-    ]);
-
-    $payment = $this->prophesize(PaymentInterface::class);
-    $payment->getOrder()->willReturn($this->createOrder());
-    $payment->getRemoteId()->willReturn('123');
-
-    $this->expectException(ApiException::class);
-    $this->expectExceptionMessage('Failed to capture the payment. No message was given by Paytrail API.');
-
-    $this->getSut()
-      ->tokenCommit($payment->reveal(), new Price('123', 'EUR'));
   }
 
   /**
@@ -143,14 +127,14 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   public function testTokenCommit() : void {
     $this->setupMockHttpClient([
       new Response(201, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
+        'signature' => 'd8e92eed91585b7a1ad80761064db7d7e9b960a69cd15f6c2581c5d3142ceaa2',
       ],
         json_encode([])),
     ]);
 
     $payment = $this->prophesize(PaymentInterface::class);
-    $payment->getOrder()->willReturn($this->createOrder());
+    $payment->getOrder()
+      ->willReturn($this->createOrder($this->createGatewayPlugin('paytrail_token', 'paytrail_token')));
     $payment->getRemoteId()->willReturn('123');
 
     $response = $this->getSut()
@@ -158,10 +142,10 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
-    static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
+    static::assertInstanceOf(MitPaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_COMMIT_EVENT, $this->caughtEvents[0]->event);
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_COMMIT_RESPONSE_EVENT, $this->caughtEvents[1]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_COMMIT_EVENT, $this->caughtEvents[0]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_COMMIT_RESPONSE_EVENT, $this->caughtEvents[1]->event);
     static::assertCount(2, $this->caughtEvents);
   }
 
@@ -174,21 +158,20 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   public function testTokenMitAuthorize() : void {
     $this->setupMockHttpClient([
       new Response(201, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
+        'signature' => 'd8e92eed91585b7a1ad80761064db7d7e9b960a69cd15f6c2581c5d3142ceaa2',
       ],
         json_encode([])),
     ]);
 
     $response = $this->getSut()
-      ->tokenMitAuthorize($this->createOrder(), '123');
+      ->tokenMitAuthorize($this->createOrder($this->createGatewayPlugin('paytrail_token', 'paytrail_token')), '123');
 
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
-    static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
+    static::assertInstanceOf(MitPaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_MIT_AUTHORIZE_EVENT, $this->caughtEvents[0]->event);
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_MIT_AUTHORIZE_RESPONSE_EVENT, $this->caughtEvents[1]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_MIT_AUTHORIZE_EVENT, $this->caughtEvents[0]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_MIT_AUTHORIZE_RESPONSE_EVENT, $this->caughtEvents[1]->event);
     static::assertCount(2, $this->caughtEvents);
   }
 
@@ -201,21 +184,20 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   public function testTokenMitCharge() : void {
     $this->setupMockHttpClient([
       new Response(201, [
-        // The signature is just copied from ::validateSignature().
-        'signature' => '84a0d7a81958c74064a31046365ce344fc38d96e168541684d6ea6596463169b0bd34819e0bab4f56a8a2378a0cb728a55d5a5902c59584ae039482eb449c0a2',
+        'signature' => 'd8e92eed91585b7a1ad80761064db7d7e9b960a69cd15f6c2581c5d3142ceaa2',
       ],
         json_encode([])),
     ]);
 
     $response = $this->getSut()
-      ->tokenMitCharge($this->createOrder(), '123');
+      ->tokenMitCharge($this->createOrder($this->createGatewayPlugin('paytrail_token', 'paytrail_token')), '123');
 
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
-    static::assertInstanceOf(TokenMITPaymentResponse::class, $response);
+    static::assertInstanceOf(MitPaymentResponse::class, $response);
     // Make sure event dispatcher was triggered for both, request and response.
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_MIT_CHARGE_EVENT, $this->caughtEvents[0]->event);
-    static::assertEquals(TokenPaymentRequestBuilderInterface::TOKEN_MIT_CHARGE_RESPONSE_EVENT, $this->caughtEvents[1]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_MIT_CHARGE_EVENT, $this->caughtEvents[0]->event);
+    static::assertEquals(TokenRequestBuilderInterface::TOKEN_MIT_CHARGE_RESPONSE_EVENT, $this->caughtEvents[1]->event);
     static::assertCount(2, $this->caughtEvents);
   }
 

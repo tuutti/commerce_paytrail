@@ -7,8 +7,8 @@ namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
+use Drupal\commerce_paytrail\PaytrailClient;
 use Drupal\Core\Url;
-use Paytrail\Payment\Configuration;
 
 /**
  * Interface for paytrail gateway plugins.
@@ -18,6 +18,22 @@ interface PaytrailInterface extends PaymentGatewayInterface, SupportsRefundsInte
   public const ACCOUNT = '375917';
   public const SECRET = 'SAIPPUAKAUPPIAS';
   public const STRATEGY_REMOVE_ITEMS = 'remove_items';
+
+  /**
+   * Gets the merchant account.
+   *
+   * @return int
+   *   The merchant account.
+   */
+  public function getAccount() : int;
+
+  /**
+   * Gets the merchant secret.
+   *
+   * @return string
+   *   The merchant secret.
+   */
+  public function getSecret() : string;
 
   /**
    * Get used langcode.
@@ -89,11 +105,11 @@ interface PaytrailInterface extends PaymentGatewayInterface, SupportsRefundsInte
   public function getNotifyUrl(string $eventName = NULL): Url;
 
   /**
-   * Gets the client configuration.
+   * Gets the Paytrail HTTP client.
    *
-   * @return \Paytrail\Payment\Configuration
-   *   The client configuration.
+   * @return \Drupal\commerce_paytrail\PaytrailClient
+   *   The client.
    */
-  public function getClientConfiguration(): Configuration;
+  public function getClient(): PaytrailClient;
 
 }

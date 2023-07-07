@@ -23,13 +23,6 @@ abstract class PaytrailKernelTestBase extends OrderKernelTestBase {
   ];
 
   /**
-   * The payment gateway.
-   *
-   * @var \Drupal\commerce_payment\Entity\PaymentGateway
-   */
-  protected $gateway;
-
-  /**
    * The default store.
    *
    * @var \Drupal\commerce_store\Entity\StoreInterface
@@ -46,7 +39,6 @@ abstract class PaytrailKernelTestBase extends OrderKernelTestBase {
     $this->installConfig('commerce_payment');
     $this->installConfig('commerce_paytrail');
     $this->store = $this->createStore(country: 'FI', currency: 'EUR');
-    $this->gateway = $this->createGatewayPlugin();
   }
 
 }

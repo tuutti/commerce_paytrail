@@ -34,7 +34,7 @@ class SignatureTraitTest extends UnitTestCase {
   public function testValidateSignature(array $flatHeaders, array $arrayHeaders) : void {
     $secret = '123';
     $plugin = $this->prophesize(PaytrailInterface::class);
-    $plugin->getClientConfiguration()->willReturn(
+    $plugin->getClient()->willReturn(
       (new Configuration())
         ->setApiKey('secret', $secret)
     );
@@ -83,7 +83,7 @@ class SignatureTraitTest extends UnitTestCase {
   public function testSignatureMissingException() : void {
     $secret = '123';
     $plugin = $this->prophesize(PaytrailInterface::class);
-    $plugin->getClientConfiguration()->willReturn(
+    $plugin->getClient()->willReturn(
       (new Configuration())
         ->setApiKey('secret', $secret)
     );
@@ -99,7 +99,7 @@ class SignatureTraitTest extends UnitTestCase {
   public function testInvalidSignatureException() : void {
     $secret = '123';
     $plugin = $this->prophesize(PaytrailInterface::class);
-    $plugin->getClientConfiguration()->willReturn(
+    $plugin->getClient()->willReturn(
       (new Configuration())
         ->setApiKey('secret', $secret)
     );

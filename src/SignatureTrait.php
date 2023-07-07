@@ -5,7 +5,6 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail;
 
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 
 /**
  * A trait to create and validate Paytrail signatures.
@@ -45,14 +44,14 @@ trait SignatureTrait {
 
     $payload[] = $body;
 
-    return hash_hmac('sha512', implode("\n", $payload), $secret);
+    return hash_hmac('sha256', implode("\n", $payload), $secret);
   }
 
   /**
    * Validates the response.
    *
-   * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface $plugin
-   *   The payment gateway plugin.
+   * @param string $secret
+   *   The secret.
    * @param array $headers
    *   The headers.
    * @param string $body
@@ -63,9 +62,12 @@ trait SignatureTrait {
    *
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
-  public function validateSignature(PaytrailInterface $plugin, array $headers, string $body = '') : self {
+  public function validateSignature(string $secret, array $headers, string $body = '') : self {
+    if (empty($secret)) {
+      throw new SecurityHashMismatchException('Secret is empty.');
+    }
     $signature = $this->signature(
-      $plugin->getClientConfiguration()->getApiKey('secret'),
+      $secret,
       $headers,
       $body
     );

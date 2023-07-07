@@ -2,14 +2,14 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\Tests\commerce_paytrail\Kernel\Plugin\Commerce;
+namespace Drupal\Tests\commerce_paytrail\Kernel\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
-use Paytrail\Payment\Model\RefundResponse;
+use Paytrail\SDK\Response\RefundResponse;
 use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
 
@@ -33,7 +33,7 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
    *   The payment.
    */
   private function createPayment(bool $capture) : PaymentInterface {
-    $order = $this->createOrder();
+    $order = $this->createOrder($this->createGatewayPlugin());
     $payment = Payment::create([
       'payment_gateway' => 'paytrail',
       'order_id' => $order->id(),
@@ -88,7 +88,7 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
       ->shouldBeCalled()
       ->willReturn(
         (new RefundResponse())
-          ->setStatus(RefundResponse::STATUS_FAIL)
+          ->setStatus('fail')
       );
     $payment = $this->createPayment(TRUE);
     $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
@@ -113,7 +113,7 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
       ->shouldBeCalled()
       ->willReturn(
         (new RefundResponse())
-          ->setStatus(RefundResponse::STATUS_OK)
+          ->setStatus('ok')
       );
     $payment = $this->createPayment(TRUE);
     $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
@@ -158,7 +158,7 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
       ->shouldBeCalled()
       ->willReturn(
         (new RefundResponse())
-          ->setStatus(RefundResponse::STATUS_OK)
+          ->setStatus('ok')
       );
     $payment = $this->createPayment(TRUE);
     $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
