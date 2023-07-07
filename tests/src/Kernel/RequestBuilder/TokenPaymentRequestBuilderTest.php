@@ -63,6 +63,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * @covers ::getCardForToken
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testGetCardForToken() : void {
     $this->setupMockHttpClient([
@@ -108,6 +109,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * @covers ::tokenRevert
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenRevert() : void {
     $this->setupMockHttpClient([
@@ -137,6 +139,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenCommit() : void {
     $this->setupMockHttpClient([
@@ -169,6 +172,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenMitAuthorize() : void {
     $this->setupMockHttpClient([
@@ -196,6 +200,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenMitCharge() : void {
     $this->setupMockHttpClient([

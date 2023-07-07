@@ -46,6 +46,7 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * @covers ::get
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testGet() : void {
     $this->setupMockHttpClient([
@@ -80,6 +81,7 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createOrderLine
    * @covers ::populatePaymentRequest
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
+   * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testCreate() : void {
     $this->setupMockHttpClient([
