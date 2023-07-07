@@ -25,7 +25,6 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    * @covers ::onReturn
    * @covers ::onNotify
    * @covers ::validateResponse
-   * @covers ::handlePayment
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testSignatureValidationFailed() : void {
@@ -42,6 +41,29 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
 
     $this->expectException(PaymentGatewayException::class);
     $this->expectExceptionMessage('Signature does not match.');
+    $sut->onReturn($order, $request);
+  }
+
+  /**
+   * @covers ::onReturn
+   * @covers ::onNotify
+   * @covers ::validateResponse
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
+   */
+  public function testTransactionIdNotSetException() : void {
+    $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
+    $order = $this->createOrder($this->createGatewayPlugin());
+    $sut = $this->mockPaymentGatewayPlugin($builder->reveal());
+    $request = $this->createRequest($order->id(), $sut);
+    $request->query->set('checkout-transaction-id', NULL);
+
+    $response = $sut
+      ->onNotify($request);
+    static::assertEquals(403, $response->getStatusCode());
+    static::assertEquals('Transaction ID not set.', $response->getContent());
+
+    $this->expectException(PaymentGatewayException::class);
+    $this->expectExceptionMessage('Transaction ID not set.');
     $sut->onReturn($order, $request);
   }
 
