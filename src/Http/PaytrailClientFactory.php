@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\commerce_paytrail;
+namespace Drupal\commerce_paytrail\Http;
 
 use Drupal\Core\Http\ClientFactory;
 use Paytrail\SDK\Client;
@@ -31,7 +31,7 @@ final class PaytrailClientFactory {
    * @param string $platformName
    *   The platform name.
    *
-   * @return \Drupal\commerce_paytrail\PaytrailClient
+   * @return \Drupal\commerce_paytrail\Http\PaytrailClient
    *   The initialized paytrail client.
    */
   public function create(int $merchantId, string $merchantSecret, string $platformName) : PaytrailClient {

@@ -37,6 +37,6 @@ services:
       - { name: event_subscriber }
 
   commerce_paytrail.paytrail_client_factory:
-    class: Drupal\commerce_paytrail\PaytrailClientFactory
+    class: Drupal\commerce_paytrail\Http\PaytrailClientFactory
     arguments:
       - '@http_client_factory'

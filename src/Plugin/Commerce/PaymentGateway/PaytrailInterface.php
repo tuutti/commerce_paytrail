@@ -7,7 +7,7 @@ namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
-use Drupal\commerce_paytrail\PaytrailClient;
+use Drupal\commerce_paytrail\Http\PaytrailClient;
 use Drupal\Core\Url;
 
 /**
@@ -107,7 +107,7 @@ interface PaytrailInterface extends PaymentGatewayInterface, SupportsRefundsInte
   /**
    * Gets the Paytrail HTTP client.
    *
-   * @return \Drupal\commerce_paytrail\PaytrailClient
+   * @return \Drupal\commerce_paytrail\Http\PaytrailClient
    *   The client.
    */
   public function getClient(): PaytrailClient;

@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\commerce_paytrail;
+namespace Drupal\commerce_paytrail\Http;
 
 use Paytrail\SDK\Client;
 

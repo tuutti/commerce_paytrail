@@ -9,8 +9,8 @@ use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\commerce_paytrail\ExceptionHelper;
-use Drupal\commerce_paytrail\PaytrailClient;
-use Drupal\commerce_paytrail\PaytrailClientFactory;
+use Drupal\commerce_paytrail\Http\PaytrailClient;
+use Drupal\commerce_paytrail\Http\PaytrailClientFactory;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\commerce_price\Price;
@@ -54,7 +54,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
   /**
    * The paytrail client factory.
    *
-   * @var \Drupal\commerce_paytrail\PaytrailClientFactory
+   * @var \Drupal\commerce_paytrail\Http\PaytrailClientFactory
    */
   protected PaytrailClientFactory $clientFactory;
 
