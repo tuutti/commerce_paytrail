@@ -5,10 +5,8 @@ declare(strict_types = 1);
 namespace Drupal\Tests\commerce_paytrail\Unit;
 
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\Tests\UnitTestCase;
-use Paytrail\Payment\Configuration;
 use Prophecy\PhpUnit\ProphecyTrait;
 
 /**
@@ -33,18 +31,12 @@ class SignatureTraitTest extends UnitTestCase {
    */
   public function testValidateSignature(array $flatHeaders, array $arrayHeaders) : void {
     $secret = '123';
-    $plugin = $this->prophesize(PaytrailInterface::class);
-    $plugin->getClient()->willReturn(
-      (new Configuration())
-        ->setApiKey('secret', $secret)
-    );
-
     $arrayHeaders['signature'] = $this->signature($secret, $flatHeaders);
-    $this->validateSignature($plugin->reveal(), $arrayHeaders);
+    $this->validateSignature($secret, $arrayHeaders);
 
     unset($arrayHeaders['signature']);
     $arrayHeaders['signature'][] = $this->signature($secret, $flatHeaders);
-    $this->validateSignature($plugin->reveal(), $arrayHeaders);
+    $this->validateSignature($secret, $arrayHeaders);
   }
 
   /**
@@ -82,15 +74,9 @@ class SignatureTraitTest extends UnitTestCase {
    */
   public function testSignatureMissingException() : void {
     $secret = '123';
-    $plugin = $this->prophesize(PaytrailInterface::class);
-    $plugin->getClient()->willReturn(
-      (new Configuration())
-        ->setApiKey('secret', $secret)
-    );
-
     $this->expectException(SecurityHashMismatchException::class);
     $this->expectExceptionMessage('Signature missing.');
-    $this->validateSignature($plugin->reveal(), []);
+    $this->validateSignature($secret, []);
   }
 
   /**
@@ -98,15 +84,9 @@ class SignatureTraitTest extends UnitTestCase {
    */
   public function testInvalidSignatureException() : void {
     $secret = '123';
-    $plugin = $this->prophesize(PaytrailInterface::class);
-    $plugin->getClient()->willReturn(
-      (new Configuration())
-        ->setApiKey('secret', $secret)
-    );
-
     $this->expectException(SecurityHashMismatchException::class);
     $this->expectExceptionMessage('Signature does not match');
-    $this->validateSignature($plugin->reveal(), ['signature' => '123']);
+    $this->validateSignature($secret, ['signature' => '123']);
   }
 
 }

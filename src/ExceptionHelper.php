@@ -43,7 +43,7 @@ final class ExceptionHelper {
    *   The API exception converted into PaymentGatewayException.
    */
   private static function handleApiException(RequestException $exception) : PaymentGatewayException {
-    $body = json_decode($exception->getResponse() ?? '');
+    $body = json_decode($exception->getResponse()?->getBody()?->getContents() ?? '');
     $message = $exception->getMessage() ?: 'API request failed with no error message.';
 
     if (isset($body->message)) {

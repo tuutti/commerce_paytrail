@@ -49,7 +49,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::getCardForToken
-   * @covers ::createHeaders
    */
   public function testGetCardForToken() : void {
     $this->setupMockHttpClient([
@@ -93,7 +92,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   }
 
   /**
-   * @covers ::createHeaders
    * @covers ::tokenRevert
    */
   public function testTokenRevert() : void {
@@ -121,7 +119,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::tokenCommit
-   * @covers ::createHeaders
    * @covers ::populatePaymentRequest
    */
   public function testTokenCommit() : void {
@@ -151,7 +148,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::tokenMitAuthorize
-   * @covers ::createHeaders
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
    */
@@ -177,7 +173,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::tokenMitCharge
-   * @covers ::createHeaders
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
    */

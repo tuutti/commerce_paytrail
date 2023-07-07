@@ -44,9 +44,7 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   }
 
   /**
-   * @covers ::createHeaders
    * @covers ::get
-   * @covers ::getResponse
    */
   public function testGet() : void {
     $this->setupMockHttpClient([
@@ -77,10 +75,8 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::create
-   * @covers ::createHeaders
    * @covers ::createPaymentRequest
    * @covers ::createOrderLine
-   * @covers ::getResponse
    * @covers ::populatePaymentRequest
    */
   public function testCreate() : void {

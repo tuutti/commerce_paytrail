@@ -41,8 +41,6 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
    * @covers ::__construct
    * @covers ::getPaymentPlugin
    * @covers ::createRefundRequest
-   * @covers ::createHeaders
-   * @covers ::getResponse
    */
   public function testCreateRefundRequest() : void {
     $order = $this->createOrder($this->createGatewayPlugin());
@@ -60,8 +58,6 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
    * @covers ::__construct
    * @covers ::createRefundRequest
    * @covers ::refund
-   * @covers ::createHeaders
-   * @covers ::getResponse
    */
   public function testRefund() : void {
     $this->setupMockHttpClient([

@@ -9,7 +9,10 @@ use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Exception\SoftDeclineException;
 use Drupal\commerce_paytrail\ExceptionHelper;
 use Drupal\Tests\UnitTestCase;
-use Paytrail\Payment\ApiException;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+use Prophecy\PhpUnit\ProphecyTrait;
 
 /**
  * Tests exception helper.
@@ -17,6 +20,8 @@ use Paytrail\Payment\ApiException;
  * @coversDefaultClass \Drupal\commerce_paytrail\ExceptionHelper
  */
 class ExceptionHelperTest extends UnitTestCase {
+
+  use ProphecyTrait;
 
   /**
    * @covers ::handleApiException
@@ -36,34 +41,36 @@ class ExceptionHelperTest extends UnitTestCase {
    *   The data.
    */
   public function exceptionData() : array {
+    $request = $this->prophesize(Request::class)->reveal();
+
     return [
       [
         PaymentGatewayException::class,
         'API request failed with no error message.',
-        new ApiException(),
+        new RequestException('', $request, new Response()),
       ],
       [
         PaymentGatewayException::class,
         'Test body',
-        new ApiException(responseBody: json_encode(['message' => 'Test body'])),
+        new RequestException('', $request, new Response(body: json_encode(['message' => 'Test body']))),
       ],
       [
         HardDeclineException::class,
         'description',
-        new ApiException(responseBody: json_encode([
+        new RequestException('', $request, new Response(body: json_encode([
           'message' => 'Test body',
           'acquirerResponseCodeDescription' => 'description',
           'acquirerResponseCode' => '200',
-        ])),
+        ]))),
       ],
       [
         SoftDeclineException::class,
         'description',
-        new ApiException(responseBody: json_encode([
+        new RequestException('', $request, new Response(body: json_encode([
           'message' => 'Test body',
           'acquirerResponseCodeDescription' => 'description',
           'acquirerResponseCode' => '0',
-        ])),
+        ]))),
       ],
       [
         PaymentGatewayException::class,
