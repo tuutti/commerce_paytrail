@@ -11,11 +11,11 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface;
-use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
 use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
 use GuzzleHttp\Psr7\Request as PsrRequest;
+use Paytrail\SDK\Util\Signature;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,7 +29,6 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
   use TaxTestTrait;
   use OrderTestTrait;
   use ProphecyTrait;
-  use SignatureTrait;
 
   /**
    * {@inheritdoc}
@@ -108,9 +107,9 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
     $request->query
       ->set(
         'signature',
-        $this->signature(
-          $plugin->getSecret(),
-          $request->query->all()
+        Signature::calculateHmac(
+          $request->query->all(),
+          secretKey: $plugin->getSecret(),
         )
       );
 

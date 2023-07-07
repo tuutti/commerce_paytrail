@@ -8,7 +8,6 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken;
-use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\commerce_price\Price;
 use Paytrail\SDK\Client;
 use Paytrail\SDK\Request\AddCardFormRequest;
@@ -18,6 +17,7 @@ use Paytrail\SDK\Request\RevertPaymentAuthHoldRequest;
 use Paytrail\SDK\Response\GetTokenResponse;
 use Paytrail\SDK\Response\MitPaymentResponse;
 use Paytrail\SDK\Response\RevertPaymentAuthHoldResponse;
+use Paytrail\SDK\Util\Signature;
 
 /**
  * The token payment request builder.
@@ -25,8 +25,6 @@ use Paytrail\SDK\Response\RevertPaymentAuthHoldResponse;
  * @internal
  */
 final class TokenRequestBuilder extends PaymentRequestBase implements TokenRequestBuilderInterface {
-
-  use SignatureTrait;
 
   /**
    * {@inheritdoc}
@@ -53,9 +51,9 @@ final class TokenRequestBuilder extends PaymentRequestBase implements TokenReque
         TokenRequestBuilderInterface::TOKEN_ADD_CARD_FORM_EVENT
       ));
 
-    $signature = $this->signature(
-      $plugin->getSecret(),
+    $signature = Signature::calculateHmac(
       $request->toArray(),
+      secretKey: $plugin->getSecret()
     );
     $request->setSignature($signature);
 

@@ -7,6 +7,7 @@ namespace Drupal\Tests\commerce_paytrail\Unit;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\SignatureTrait;
 use Drupal\Tests\UnitTestCase;
+use Paytrail\SDK\Util\Signature;
 use Prophecy\PhpUnit\ProphecyTrait;
 
 /**
@@ -18,24 +19,16 @@ class SignatureTraitTest extends UnitTestCase {
   use ProphecyTrait;
 
   /**
-   * @covers \Drupal\commerce_paytrail\SignatureTrait::signature
-   * @dataProvider headerDataProvider
-   */
-  public function testSignature(array $flatHeaders, array $arrayHeaders) : void {
-    $this->assertEquals($this->signature('123', $flatHeaders), $this->signature('123', $arrayHeaders));
-  }
-
-  /**
    * @covers \Drupal\commerce_paytrail\SignatureTrait::validateSignature
    * @dataProvider headerDataProvider
    */
   public function testValidateSignature(array $flatHeaders, array $arrayHeaders) : void {
     $secret = '123';
-    $arrayHeaders['signature'] = $this->signature($secret, $flatHeaders);
+    $arrayHeaders['signature'] = Signature::calculateHmac($flatHeaders, secretKey: $secret);
     $this->validateSignature($secret, $arrayHeaders);
 
     unset($arrayHeaders['signature']);
-    $arrayHeaders['signature'][] = $this->signature($secret, $flatHeaders);
+    $arrayHeaders['signature'] = Signature::calculateHmac($flatHeaders, secretKey: $secret);
     $this->validateSignature($secret, $arrayHeaders);
   }
 
@@ -77,6 +70,15 @@ class SignatureTraitTest extends UnitTestCase {
     $this->expectException(SecurityHashMismatchException::class);
     $this->expectExceptionMessage('Signature missing.');
     $this->validateSignature($secret, []);
+  }
+
+  /**
+   * @covers \Drupal\commerce_paytrail\SignatureTrait::validateSignature
+   */
+  public function testSecretMissingException() : void {
+    $this->expectException(SecurityHashMismatchException::class);
+    $this->expectExceptionMessage('Signature missing.');
+    $this->validateSignature('', ['signature' => '123']);
   }
 
   /**
