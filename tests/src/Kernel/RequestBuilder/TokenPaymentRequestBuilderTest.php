@@ -62,6 +62,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::getCardForToken
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    */
   public function testGetCardForToken() : void {
     $this->setupMockHttpClient([
@@ -106,6 +107,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
 
   /**
    * @covers ::tokenRevert
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    */
   public function testTokenRevert() : void {
     $this->setupMockHttpClient([
@@ -134,6 +136,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::tokenCommit
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    */
   public function testTokenCommit() : void {
     $this->setupMockHttpClient([
@@ -165,6 +168,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    */
   public function testTokenMitAuthorize() : void {
     $this->setupMockHttpClient([
@@ -191,6 +195,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    */
   public function testTokenMitCharge() : void {
     $this->setupMockHttpClient([

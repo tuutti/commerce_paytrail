@@ -41,6 +41,7 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
    * @covers ::__construct
    * @covers ::getPaymentPlugin
    * @covers ::createRefundRequest
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    */
   public function testCreateRefundRequest() : void {
     $order = $this->createOrder($this->createGatewayPlugin());
@@ -58,6 +59,7 @@ class RefundRequestBuilderTest extends RequestBuilderKernelTestBase {
    * @covers ::__construct
    * @covers ::createRefundRequest
    * @covers ::refund
+   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    */
   public function testRefund() : void {
     $this->setupMockHttpClient([
