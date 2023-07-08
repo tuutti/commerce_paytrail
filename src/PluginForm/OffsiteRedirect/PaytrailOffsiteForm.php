@@ -10,7 +10,7 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Paytrail\Payment\ApiException;
+use GuzzleHttp\Exception\RequestException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -76,7 +76,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
     try {
       $response = $this->paymentRequest->create($order);
     }
-    catch (ApiException $e) {
+    catch (RequestException $e) {
       $this->logger
         ->error(sprintf('Paytrail API failure [#%s]: %s', $order->id(), $e->getMessage()));
       $this->messenger->addError(

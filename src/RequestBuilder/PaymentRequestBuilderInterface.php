@@ -39,7 +39,7 @@ interface PaymentRequestBuilderInterface {
    * @return \Paytrail\SDK\Response\PaymentResponse
    *   The payment request response.
    *
-   * @throws \Paytrail\Payment\ApiException
+   * @throws \GuzzleHttp\Exception\RequestException
    */
   public function create(OrderInterface $order) : PaymentResponse;
 

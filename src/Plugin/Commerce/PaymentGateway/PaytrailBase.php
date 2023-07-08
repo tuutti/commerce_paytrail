@@ -18,7 +18,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\Url;
-use Paytrail\Payment\Model\RefundResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -312,8 +311,8 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
       $response = $this->refundRequest->refund($payment->getRemoteId(), $order, $amount);
 
       $this->assertResponseStatus($response->getStatus(), [
-        RefundResponse::STATUS_OK,
-        RefundResponse::STATUS_PENDING,
+        'ok',
+        'pending',
       ]);
 
       $newRefundedAmount->lessThan($payment->getAmount()) ?

@@ -98,7 +98,7 @@ interface TokenRequestBuilderInterface {
    * @param string $token
    *   The token.
    *
-   * @return \Paytrail\Payment\Model\TokenMITPaymentResponse
+   * @return \Paytrail\SDK\Response\MitPaymentResponse
    *   The payment response.
    */
   public function tokenMitCharge(OrderInterface $order, string $token): MitPaymentResponse;
