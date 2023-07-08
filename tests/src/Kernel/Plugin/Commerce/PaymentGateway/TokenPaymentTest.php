@@ -82,7 +82,6 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
    */
   public function testOrderNotFoundException() : void {
     $gateway = $this->createGatewayPlugin('paytrail_token', 'paytrail_token');
-    $order = $this->createOrder($gateway);
     $sut = $gateway->getPlugin();
 
     foreach ([NULL, 55] as $orderId) {
@@ -183,6 +182,7 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
    * @covers ::onReturn
    * @covers ::onNotify
    * @covers ::onNotifySuccess
+   * @covers ::validateResponse
    * @dataProvider stampMismatchExceptionData
    */
   public function testStampMismatchException(?string $stamp, ?string $orderStamp) : void {

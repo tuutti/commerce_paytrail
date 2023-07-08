@@ -5,9 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\Tests\commerce_paytrail\Functional;
 
 use Drupal\commerce_payment\Entity\PaymentGateway;
-use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_store\Entity\StoreInterface;
 use Drupal\commerce_store\StoreCreationTrait;
 use Drupal\Tests\BrowserTestBase;
@@ -49,33 +47,12 @@ class AdminUiTest extends BrowserTestBase {
   protected StoreInterface $store;
 
   /**
-   * The payment gateway entity.
-   *
-   * @var \Drupal\commerce_payment\Entity\PaymentGatewayInterface
-   */
-  protected PaymentGatewayInterface $gateway;
-
-  /**
-   * The payment gateway.
-   *
-   * @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
-   */
-  protected Paytrail $gatewayPlugin;
-
-  /**
    * {@inheritdoc}
    */
   protected function setUp() : void {
     parent::setUp();
 
     $this->store = $this->createStore(currency: 'EUR');
-    $this->gateway = PaymentGateway::create([
-      'id' => 'paytrail',
-      'label' => 'Paytrail',
-      'plugin' => 'paytrail',
-    ]);
-    $this->gateway->save();
-    $this->gatewayPlugin = $this->gateway->getPlugin();
 
     $user = $this->createUser([
       'administer commerce_payment_gateway',
@@ -90,31 +67,34 @@ class AdminUiTest extends BrowserTestBase {
   }
 
   /**
-   * Asserts paytrail payment gateway settings form values.
+   * Assert paytrail payment gateway settings form values.
    *
-   * @param string $account
-   *   The account.
-   * @param string $secret
-   *   The secret.
-   * @param string $language
-   *   The language.
-   * @param string $discountStrategy
-   *   The discount strategy.
+   * @param string $plugin
+   *   The plugin id.
+   * @param array $values
+   *   The values.
    * @param callable|null $callback
    *   The callback to run with expected values.
+   *
+   * @throws \Behat\Mink\Exception\ExpectationException
    */
-  private function assertFormValues(string $account, string $secret, string $language, string $discountStrategy, ?callable $callback = NULL) : void {
+  private function assertFormValues(
+    string $plugin,
+    array $values,
+    ?callable $callback = NULL
+  ) : void {
     $expected = [
-      'configuration[paytrail][account]' => $account,
-      'configuration[paytrail][secret]' => $secret,
-      'configuration[paytrail][language]' => $language,
-      'configuration[paytrail][order_discount_strategy]' => $discountStrategy,
+      "configuration[$plugin][account]" => $values['account'],
+      "configuration[$plugin][secret]" => $values['secret'],
+      "configuration[$plugin][language]" => $values['language'],
+      "configuration[$plugin][order_discount_strategy]" => $values['discountStrategy'],
     ];
 
     if ($callback) {
+      $this->drupalGet('admin/commerce/config/payment-gateways/manage/' . $plugin);
       $callback($expected);
     }
-    $this->drupalGet('admin/commerce/config/payment-gateways/manage/paytrail');
+    $this->drupalGet('admin/commerce/config/payment-gateways/manage/' . $plugin);
     $this->assertSession()->statusCodeEquals(200);
 
     foreach ($expected as $field => $value) {
@@ -126,10 +106,28 @@ class AdminUiTest extends BrowserTestBase {
    * Test that payment gateway can be saved.
    */
   public function testSave() : void {
-    // Test default credentials.
-    $this->assertFormValues(PaytrailBase::ACCOUNT, PaytrailBase::SECRET, 'automatic', '');
-    // Test that we can modify values.
-    $this->assertFormValues('321', '123', 'EN', PaytrailBase::STRATEGY_REMOVE_ITEMS, fn (array $expected) => $this->submitForm($expected, 'Save'));
+    foreach (['paytrail', 'paytrail_token'] as $plugin) {
+      $gateway = PaymentGateway::create([
+        'id' => $plugin,
+        'label' => $plugin,
+        'plugin' => $plugin,
+      ]);
+      $gateway->save();
+      // Test default credentials.
+      $this->assertFormValues($plugin, [
+        'account' => PaytrailInterface::ACCOUNT,
+        'secret' => PaytrailInterface::SECRET,
+        'language' => 'automatic',
+        'discountStrategy' => '',
+      ]);
+      // Test that we can modify values.
+      $this->assertFormValues($plugin, [
+        'account' => '321',
+        'secret' => '123',
+        'language' => 'EN',
+        'discountStrategy' => PaytrailInterface::STRATEGY_REMOVE_ITEMS,
+      ], fn (array $expected) => $this->submitForm($expected, 'Save'));
+    }
   }
 
 }
