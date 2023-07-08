@@ -76,33 +76,37 @@ interface PaytrailInterface extends PaymentGatewayInterface, SupportsRefundsInte
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
+   * @param array $query
+   *   An additional query arguments.
    *
    * @return \Drupal\Core\Url
    *   The return url.
    */
-  public function getReturnUrl(OrderInterface $order): Url;
+  public function getReturnUrl(OrderInterface $order, array $query = []): Url;
 
   /**
    * Gets the cancel URL for given order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order.
+   * @param array $query
+   *   An additional query arguments.
    *
    * @return \Drupal\Core\Url
    *   The cancel url.
    */
-  public function getCancelUrl(OrderInterface $order): Url;
+  public function getCancelUrl(OrderInterface $order, array $query = []): Url;
 
   /**
    * Gets the notify URL for given event.
    *
-   * @param string|null $eventName
-   *   The event name.
+   * @param array $query
+   *   An additional query arguments.
    *
    * @return \Drupal\Core\Url
    *   The return URL.
    */
-  public function getNotifyUrl(string $eventName = NULL): Url;
+  public function getNotifyUrl(array $query = []): Url;
 
   /**
    * Gets the Paytrail HTTP client.

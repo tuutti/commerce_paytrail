@@ -4,9 +4,9 @@ declare(strict_types = 1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
@@ -64,15 +64,18 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
    *   The refund request builder or null.
    * @param \Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface|null $tokenPaymentRequestBuilder
    *   The token payment request builder or null.
+   * @param string $plugin
+   *   The payment plugin id.
    *
-   * @return \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
-   *   The payment gateway plugin.
+   * @return \Drupal\commerce_payment\Entity\PaymentGatewayInterface
+   *   The payment gateway.
    */
-  protected function mockPaymentGatewayPlugin(
+  protected function mockPaymentGateway(
     PaymentRequestBuilderInterface $paymentRequestBuilder = NULL,
     RefundRequestBuilderInterface $refundRequestBuilder = NULL,
     TokenRequestBuilderInterface $tokenPaymentRequestBuilder = NULL,
-  ) : Paytrail {
+    string $plugin = 'paytrail',
+  ) : PaymentGatewayInterface {
     if ($paymentRequestBuilder) {
       $this->container->set('commerce_paytrail.payment_request', $paymentRequestBuilder);
     }
@@ -84,26 +87,26 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
     }
     $this->refreshServices();
 
-    $gateway = $this->createGatewayPlugin('test');
-    return $gateway->getPlugin();
+    return $this->createGatewayPlugin($plugin, $plugin);
   }
 
   /**
    * Create mock request.
    *
-   * @param int|string $orderId
-   *   The order id.
    * @param \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase $plugin
    *   The payment plugin.
+   * @param array $query
+   *   The query parameters.
    *
    * @return \Symfony\Component\HttpFoundation\Request
    *   The request.
    */
-  protected function createRequest(int|string $orderId, PaytrailBase $plugin) : Request {
+  protected function createRequest(PaytrailBase $plugin, array $query = []) : Request {
     $request = Request::createFromGlobals();
-    $request->query->set('checkout-reference', $orderId);
-    $request->query->set('checkout-transaction-id', '123');
-    $request->query->set('checkout-stamp', '123');
+
+    foreach ($query as $key => $value) {
+      $request->query->set($key, $value);
+    }
     $request->query
       ->set(
         'signature',

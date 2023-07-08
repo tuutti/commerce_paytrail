@@ -9,6 +9,7 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
+use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodStorageInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsAuthorizationsInterface;
@@ -16,12 +17,13 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPayment
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsVoidsInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\ExceptionHelper;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
-use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
+use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use GuzzleHttp\Exception\RequestException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Provides the Paytrail payment gateway.
@@ -45,16 +47,16 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
   /**
    * The token payment request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface
    */
-  private TokenRequestBuilder $paymentTokenRequest;
+  private TokenRequestBuilderInterface $paymentTokenRequest;
 
   /**
    * The payment request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface
    */
-  private PaymentRequestBuilder $paymentRequestBuilder;
+  private PaymentRequestBuilderInterface $paymentRequestBuilder;
 
   /**
    * {@inheritdoc}
@@ -122,42 +124,97 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
   /**
    * {@inheritdoc}
    */
+  protected function onNotifySuccess(Request $request): Response {
+    $storage = $this->entityTypeManager->getStorage('commerce_order');
+
+    try {
+      $orderId = $request->query->get('commerce_order');
+
+      /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+      if (!$orderId || !$order = $storage->load($orderId)) {
+        throw new PaymentGatewayException('Order not found.');
+      }
+      $this->validateResponse($order, $request);
+      $this->handlePayment($order, $request->query->get('checkout-tokenization-id'));
+    }
+    catch (SecurityHashMismatchException | PaymentGatewayException $e) {
+      return new Response($e->getMessage(), Response::HTTP_FORBIDDEN);
+    }
+    return new Response();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function onReturn(OrderInterface $order, Request $request) : void {
     try {
-      $this->validateSignature($this->getSecret(), $request->query->all());
-
-      if (!$token = $request->query->get('checkout-tokenization-id')) {
-        throw new SecurityHashMismatchException('Missing required "checkout-tokenization-id".');
-      }
-      $paymentMethodStorage = $this->entityTypeManager->getStorage('commerce_payment_method');
-      assert($paymentMethodStorage instanceof PaymentMethodStorageInterface);
-
-      $paymentMethod = $paymentMethodStorage->createForCustomer(
-        'paytrail_token',
-        $this->parentEntity->id(),
-        $order->getCustomerId(),
-        $order->getBillingProfile()
-      );
-
-      $paymentMethod = $this->createPaymentMethod(
-        $paymentMethod,
-        $token,
-      );
-      /** @var \Drupal\commerce_payment\PaymentStorageInterface $paymentStorage */
-      $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
-      /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
-      $payment = $paymentStorage->create([
-        'payment_gateway' => $this->parentEntity->id(),
-        'order_id' => $order->id(),
-        'test' => !$this->isLive(),
-        'payment_method' => $paymentMethod,
-      ]);
-      $this->createPayment($payment, $this->autoCaptureEnabled($order));
-      $paymentMethod->save();
+      $this->validateResponse($order, $request);
+      $this->handlePayment($order, $request->query->get('checkout-tokenization-id'));
     }
-    catch (SecurityHashMismatchException | RequestException | \InvalidArgumentException $e) {
+    catch (SecurityHashMismatchException | RequestException $e) {
       ExceptionHelper::handle($e);
     }
+  }
+
+  /**
+   * Validates the response.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request.
+   *
+   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
+   */
+  protected function validateResponse(OrderInterface $order, Request $request) : void {
+    if (!$request->query->get('checkout-tokenization-id')) {
+      throw new SecurityHashMismatchException('Tokenization ID not set.');
+    }
+    $stamp = (string) $request->query->get('commerce_paytrail_stamp');
+    $orderStamp = (string) $order->getData(TokenRequestBuilderInterface::TOKEN_STAMP_KEY);
+
+    if (!$stamp || !$orderStamp || $stamp !== $orderStamp) {
+      throw new SecurityHashMismatchException('Order stamp does not match.');
+    }
+    $this->validateSignature($this->getSecret(), $request->query->all());
+  }
+
+  /**
+   * Handles the payment for new cards.
+   *
+   * This is only called when a customer adds a new card.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   * @param string $token
+   *   The tokenization token.
+   */
+  protected function handlePayment(OrderInterface $order, string $token) : void {
+    $paymentMethodStorage = $this->entityTypeManager->getStorage('commerce_payment_method');
+    assert($paymentMethodStorage instanceof PaymentMethodStorageInterface);
+
+    $paymentMethod = $paymentMethodStorage->createForCustomer(
+      'paytrail_token',
+      $this->parentEntity->id(),
+      $order->getCustomerId(),
+      $order->getBillingProfile()
+    );
+
+    $paymentMethod = $this->createPaymentMethod(
+      $paymentMethod,
+      $token,
+    );
+    /** @var \Drupal\commerce_payment\PaymentStorageInterface $paymentStorage */
+    $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
+    /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
+    $payment = $paymentStorage->create([
+      'payment_gateway' => $this->parentEntity->id(),
+      'order_id' => $order->id(),
+      'test' => !$this->isLive(),
+      'payment_method' => $paymentMethod,
+    ]);
+    $this->createPayment($payment, $this->autoCaptureEnabled($order));
+    $paymentMethod->save();
   }
 
   /**
@@ -170,15 +227,11 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
    *
    * @return \Drupal\commerce_payment\Entity\PaymentMethodInterface
    *   The created payment method.
-   *
-   * @throws \JsonException
    */
   public function createPaymentMethod(PaymentMethodInterface $paymentMethod, string $token) : PaymentMethodInterface {
     $response = $this->paymentTokenRequest->getCardForToken($this, $token);
+    $card = $response->getCard();
 
-    if (!$card = $response->getCard()) {
-      throw new \InvalidArgumentException('Failed to fetch card details.');
-    }
     $paymentMethod->card_type = strtolower($card->getType());
     $paymentMethod->card_number = $card->getPartialPan();
     $paymentMethod->card_exp_month = $card->getExpireMonth();
@@ -240,12 +293,12 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
     try {
       $this->paymentTokenRequest
         ->tokenRevert($payment);
+      $payment->setState('authorization_voided');
+      $payment->save();
     }
     catch (RequestException $e) {
       ExceptionHelper::handle($e);
     }
-    $payment->setState('authorization_voided');
-    $payment->save();
   }
 
   /**
@@ -265,8 +318,12 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
       $paymentResponse = $this->paymentRequestBuilder
         ->get($response->getTransactionId(), $payment->getOrder());
 
+      $payment->setRemoteState($paymentResponse->getStatus())
+        ->setAmount($amount);
+
       if (!$payment->isCompleted() && $paymentResponse->getStatus() === 'ok') {
-        $payment->getState()
+        $payment
+          ->getState()
           ->applyTransitionById('capture');
       }
       $payment->save();

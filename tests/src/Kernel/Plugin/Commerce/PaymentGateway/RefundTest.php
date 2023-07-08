@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\Tests\commerce_paytrail\Kernel\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_payment\Entity\Payment;
+use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
@@ -17,9 +18,9 @@ use Prophecy\PhpUnit\ProphecyTrait;
  * Paytrail gateway plugin tests.
  *
  * @group commerce_paytrail
- * @coversDefaultClass \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail
+ * @coversDefaultClass \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase
  */
-class PaytrailRefundTest extends RequestBuilderKernelTestBase {
+class RefundTest extends RequestBuilderKernelTestBase {
 
   use ProphecyTrait;
 
@@ -28,14 +29,16 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
    *
    * @param bool $capture
    *   Whether to capture payment or not.
+   * @param \Drupal\commerce_payment\Entity\PaymentGatewayInterface $gateway
+   *   The payment gateway.
    *
    * @return \Drupal\commerce_payment\Entity\PaymentInterface
    *   The payment.
    */
-  private function createPayment(bool $capture) : PaymentInterface {
-    $order = $this->createOrder($this->createGatewayPlugin());
+  private function createPayment(bool $capture, PaymentGatewayInterface $gateway) : PaymentInterface {
+    $order = $this->createOrder($gateway);
     $payment = Payment::create([
-      'payment_gateway' => 'paytrail',
+      'payment_gateway' => $gateway->id(),
       'order_id' => $order->id(),
       'test' => FALSE,
     ]);
@@ -65,11 +68,18 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
    */
   public function testInvalidPaymentState() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
-    $payment = $this->createPayment(FALSE);
-    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
 
-    $this->expectExceptionMessage('The provided payment is in an invalid state ("authorization").');
-    $sut->refundPayment($payment);
+    foreach (['paytrail', 'paytrail_token'] as $pluginId) {
+      $gateway = $this->mockPaymentGateway(
+        refundRequestBuilder: $builder->reveal(),
+        plugin: $pluginId
+      );
+      $sut = $gateway->getPlugin();
+      $payment = $this->createPayment(FALSE, $gateway);
+
+      $this->expectExceptionMessage('The provided payment is in an invalid state ("authorization").');
+      $sut->refundPayment($payment);
+    }
   }
 
   /**
@@ -90,11 +100,18 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
         (new RefundResponse())
           ->setStatus('fail')
       );
-    $payment = $this->createPayment(TRUE);
-    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
 
-    $this->expectExceptionMessageMatches('/Invalid status\:/s');
-    $sut->refundPayment($this->reloadEntity($payment));
+    foreach (['paytrail', 'paytrail_token'] as $pluginId) {
+      $gateway = $this->mockPaymentGateway(
+        refundRequestBuilder: $builder->reveal(),
+        plugin: $pluginId,
+      );
+      $sut = $gateway->getPlugin();
+      $payment = $this->createPayment(TRUE, $gateway);
+
+      $this->expectExceptionMessageMatches('/Invalid status\:/s');
+      $sut->refundPayment($this->reloadEntity($payment));
+    }
   }
 
   /**
@@ -115,15 +132,22 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
         (new RefundResponse())
           ->setStatus('ok')
       );
-    $payment = $this->createPayment(TRUE);
-    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
-    $sut->refundPayment($payment, new Price('10', 'EUR'));
 
-    /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
-    $payment = $this->reloadEntity($payment);
-    static::assertEquals('partially_refunded', $payment->getState()->getId());
-    static::assertEquals('12', $payment->getBalance()->getNumber());
-    static::assertEquals('10', $payment->getRefundedAmount()->getNumber());
+    foreach (['paytrail', 'paytrail_token'] as $pluginId) {
+      $gateway = $this->mockPaymentGateway(
+        refundRequestBuilder: $builder->reveal(),
+        plugin: $pluginId,
+      );
+      $payment = $this->createPayment(TRUE, $gateway);
+      $sut = $gateway->getPlugin();
+      $sut->refundPayment($payment, new Price('10', 'EUR'));
+
+      /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
+      $payment = $this->reloadEntity($payment);
+      static::assertEquals('partially_refunded', $payment->getState()->getId());
+      static::assertEquals('12', $payment->getBalance()->getNumber());
+      static::assertEquals('10', $payment->getRefundedAmount()->getNumber());
+    }
   }
 
   /**
@@ -133,12 +157,23 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
    */
   public function testOnNotifyEvent() : void {
     $builder = $this->prophesize(RefundRequestBuilderInterface::class);
-    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
 
-    foreach (['success', 'cancel'] as $event) {
-      $request = $this->createRequest(1, $sut);
-      $request->query->set('event', 'refund-' . $event);
-      static::assertEquals(200, $sut->onNotify($request)->getStatusCode());
+    foreach (['paytrail', 'paytrail_token'] as $pluginId) {
+      $sut = $this->mockPaymentGateway(
+        refundRequestBuilder: $builder->reveal(),
+        plugin: $pluginId,
+      )
+        ->getPlugin();
+
+      foreach (['success', 'cancel'] as $event) {
+        $request = $this->createRequest($sut, [
+          'checkout-reference' => '1',
+          'checkout-transaction-id' => '123',
+          'checkout-stamp' => '123',
+        ]);
+        $request->query->set('event', 'refund-' . $event);
+        static::assertEquals(200, $sut->onNotify($request)->getStatusCode());
+      }
     }
   }
 
@@ -160,15 +195,21 @@ class PaytrailRefundTest extends RequestBuilderKernelTestBase {
         (new RefundResponse())
           ->setStatus('ok')
       );
-    $payment = $this->createPayment(TRUE);
-    $sut = $this->mockPaymentGatewayPlugin(refundRequestBuilder: $builder->reveal());
-    $sut->refundPayment($payment);
 
-    /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
-    $payment = $this->reloadEntity($payment);
-    static::assertEquals('refunded', $payment->getState()->getId());
-    static::assertEquals('0', $payment->getBalance()->getNumber());
-    static::assertEquals('22', $payment->getRefundedAmount()->getNumber());
+    foreach (['paytrail', 'paytrail_token'] as $pluginId) {
+      $gateway = $this->mockPaymentGateway(
+        refundRequestBuilder: $builder->reveal(),
+        plugin: $pluginId,
+      );
+      $payment = $this->createPayment(TRUE, $gateway);
+      $gateway->getPlugin()->refundPayment($payment);
+
+      /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
+      $payment = $this->reloadEntity($payment);
+      static::assertEquals('refunded', $payment->getState()->getId());
+      static::assertEquals('0', $payment->getBalance()->getNumber());
+      static::assertEquals('22', $payment->getRefundedAmount()->getNumber());
+    }
   }
 
 }

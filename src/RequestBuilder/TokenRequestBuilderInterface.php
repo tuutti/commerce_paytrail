@@ -17,6 +17,7 @@ use Paytrail\SDK\Response\RevertPaymentAuthHoldResponse;
  */
 interface TokenRequestBuilderInterface {
 
+  public const TOKEN_STAMP_KEY = 'commerce_paytrail_token_stamp';
   public const TOKEN_ADD_CARD_FORM_EVENT = 'token_payment_add_card_form';
   public const TOKEN_GET_CARD_EVENT = 'token_payment_get_card';
   public const TOKEN_GET_CARD_RESPONSE_EVENT = 'token_payment_get_card_response';

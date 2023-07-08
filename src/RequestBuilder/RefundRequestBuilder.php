@@ -63,8 +63,8 @@ final class RefundRequestBuilder implements RefundRequestBuilderInterface {
       ->setRefundReference($order->id())
       ->setAmount($this->converter->toMinorUnits($amount))
       ->setCallbackUrls((new CallbackUrl())
-        ->setSuccess($plugin->getNotifyUrl('refund-success')->toString())
-        ->setCancel($plugin->getNotifyUrl('refund-cancel')->toString())
+        ->setSuccess($plugin->getNotifyUrl(['event' => 'refund-success'])->toString())
+        ->setCancel($plugin->getNotifyUrl(['event' => 'refund-cancel'])->toString())
       )
       ->setRefundStamp($this->uuidService->generate());
   }

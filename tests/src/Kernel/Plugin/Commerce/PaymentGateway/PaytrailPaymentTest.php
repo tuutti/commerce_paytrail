@@ -24,14 +24,20 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    *
    * @covers ::onReturn
    * @covers ::onNotify
+   * @covers ::onNotifySuccess
    * @covers ::validateResponse
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testSignatureValidationFailed() : void {
     $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
-    $order = $this->createOrder($this->createGatewayPlugin());
-    $sut = $this->mockPaymentGatewayPlugin($builder->reveal());
-    $request = $this->createRequest($order->id(), $sut);
+    $gateway = $this->mockPaymentGateway($builder->reveal());
+    $sut = $gateway->getPlugin();
+    $order = $this->createOrder($gateway);
+    $request = $this->createRequest($sut, [
+      'checkout-reference' => $order->id(),
+      'checkout-transaction-id' => '123',
+      'checkout-stamp' => '123',
+    ]);
     $request->query->set('signature', '123');
 
     $response = $sut
@@ -47,15 +53,20 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
   /**
    * @covers ::onReturn
    * @covers ::onNotify
+   * @covers ::onNotifySuccess
    * @covers ::validateResponse
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testTransactionIdNotSetException() : void {
     $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
-    $order = $this->createOrder($this->createGatewayPlugin());
-    $sut = $this->mockPaymentGatewayPlugin($builder->reveal());
-    $request = $this->createRequest($order->id(), $sut);
-    $request->query->set('checkout-transaction-id', NULL);
+    $gateway = $this->mockPaymentGateway($builder->reveal());
+    $sut = $gateway->getPlugin();
+    $order = $this->createOrder($gateway);
+    $request = $this->createRequest($sut, [
+      'checkout-reference' => $order->id(),
+      'checkout-transaction-id' => NULL,
+      'checkout-stamp' => '123',
+    ]);
 
     $response = $sut
       ->onNotify($request);
@@ -72,21 +83,33 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    *
    * @covers ::onReturn
    * @covers ::onNotify
+   * @covers ::onNotifySuccess
    * @covers ::validateResponse
    */
   public function testInvalidOrderId() : void {
-    $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
-    $order = $this->createOrder($this->createGatewayPlugin());
-    $sut = $this->mockPaymentGatewayPlugin($builder->reveal());
+    foreach ([55, NULL] as $orderId) {
+      $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
+      $gateway = $this->mockPaymentGateway($builder->reveal());
+      $sut = $gateway->getPlugin();
+      $order = $this->createOrder($gateway);
 
-    $response = $sut
-      ->onNotify($this->createRequest(55, $sut));
-    static::assertEquals(403, $response->getStatusCode());
-    static::assertEquals('Order not found.', $response->getContent());
+      $response = $sut
+        ->onNotify($this->createRequest($sut, [
+          'checkout-reference' => $orderId,
+          'checkout-transaction-id' => '123',
+          'checkout-stamp' => '123',
+        ]));
+      static::assertEquals(403, $response->getStatusCode());
+      static::assertEquals('Order not found.', $response->getContent());
 
-    $this->expectException(PaymentGatewayException::class);
-    $this->expectExceptionMessage('Order ID mismatch.');
-    $sut->onReturn($order, $this->createRequest('non-existent-order', $sut));
+      $this->expectException(PaymentGatewayException::class);
+      $this->expectExceptionMessage('Order ID mismatch.');
+      $sut->onReturn($order, $this->createRequest($sut, [
+        'checkout-reference' => $orderId,
+        'checkout-transaction-id' => '123',
+        'checkout-stamp' => '123',
+      ]));
+    }
   }
 
   /**
@@ -94,10 +117,10 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    *
    * @covers ::onReturn
    * @covers ::onNotify
+   * @covers ::onNotifySuccess
    * @covers ::validateResponse
    */
   public function testPaymentInvalidResponseStatus() : void {
-    $order = $this->createOrder($this->createGatewayPlugin());
     $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
     $builder
       ->get(Argument::any(), Argument::any())
@@ -106,8 +129,14 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
         (new PaymentStatusResponse())
           ->setStatus('fail')
       );
-    $sut = $this->mockPaymentGatewayPlugin($builder->reveal());
-    $request = $this->createRequest($order->id(), $sut);
+    $gateway = $this->mockPaymentGateway($builder->reveal());
+    $order = $this->createOrder($gateway);
+    $sut = $gateway->getPlugin();
+    $request = $this->createRequest($sut, [
+      'checkout-reference' => $order->id(),
+      'checkout-transaction-id' => '123',
+      'checkout-stamp' => '123',
+    ]);
 
     $response = $sut->onNotify($request);
     static::assertEquals(Response::HTTP_FORBIDDEN, $response->getStatusCode());
@@ -124,10 +153,10 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    * @covers ::onReturn
    * @covers ::handlePayment
    * @covers ::validateResponse
+   * @covers ::onNotifySuccess
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testPaymentCapture() : void {
-    $order = $this->createOrder($this->createGatewayPlugin());
     $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
     $builder
       ->get(Argument::any(), Argument::any())
@@ -138,9 +167,15 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
           ->setTransactionId('123')
       );
 
-    $plugin = $this->mockPaymentGatewayPlugin($builder->reveal());
-    $request = $this->createRequest($order->id(), $plugin);
-    $plugin->onReturn($order, $request);
+    $gateway = $this->mockPaymentGateway($builder->reveal());
+    $order = $this->createOrder($gateway);
+    $sut = $gateway->getPlugin();
+    $request = $this->createRequest($sut, [
+      'checkout-reference' => $order->id(),
+      'checkout-transaction-id' => '123',
+      'checkout-stamp' => '123',
+    ]);
+    $sut->onReturn($order, $request);
 
     $payment = $this->loadPayment('123');
     static::assertEquals('completed', $payment->getState()->getId());
@@ -153,11 +188,11 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
    *
    * @covers ::onNotify
    * @covers ::handlePayment
+   * @covers ::onNotifySuccess
    * @covers ::validateResponse
    * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder::get
    */
   public function testOnNotifyPaymentCapture() : void {
-    $order = $this->createOrder($this->createGatewayPlugin());
     $builder = $this->prophesize(PaymentRequestBuilderInterface::class);
     $builder
       ->get(Argument::any(), Argument::any())
@@ -167,8 +202,14 @@ class PaytrailPaymentTest extends RequestBuilderKernelTestBase {
           ->setStatus('ok')
           ->setTransactionId('123')
       );
-    $sut = $this->mockPaymentGatewayPlugin($builder->reveal());
-    $sut->onNotify($this->createRequest($order->id(), $sut));
+    $gateway = $this->mockPaymentGateway($builder->reveal());
+    $sut = $gateway->getPlugin();
+    $order = $this->createOrder($gateway);
+    $sut->onNotify($this->createRequest($sut, [
+      'checkout-reference' => $order->id(),
+      'checkout-transaction-id' => '123',
+      'checkout-stamp' => '123',
+    ]));
 
     $payment = $this->loadPayment('123');
     static::assertEquals('completed', $payment->getState()->getId());

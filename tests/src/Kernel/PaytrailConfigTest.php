@@ -173,13 +173,14 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::autoCaptureEnabled
    */
   public function testAutoCapture() : void {
+    $order = $this->prophesize(OrderInterface::class);
     $gateway = $this->createGatewayPlugin($this->randomMachineName(), 'paytrail_token');
+    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken $plugin */
     $plugin = $gateway->getPlugin();
     static::assertTrue($gateway->getPluginConfiguration()['capture']);
     $plugin->setConfiguration(['capture' => FALSE]);
-    static::assertFalse($plugin->getConfiguration()['capture']);
+    static::assertFalse($plugin->autoCaptureEnabled($order->reveal()));
 
-    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken $plugin */
     $gateway = $this->createGatewayPlugin($this->randomMachineName(), 'paytrail_token');
     $plugin = $gateway->getPlugin();
 

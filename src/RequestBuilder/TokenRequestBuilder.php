@@ -31,6 +31,14 @@ final class TokenRequestBuilder extends PaymentRequestBase implements TokenReque
    */
   public function createAddCardFormForOrder(OrderInterface $order) : array {
     $plugin = $this->getPaymentPlugin($order);
+    // Tokenization return/notify URL has no unique value that is used as a
+    // part of the hash calculation. Store a unique stamp in order's data field
+    // to make sure a valid return URL cannot be reused.
+    $query = [
+      'commerce_paytrail_stamp' => $this->uuidService->generate(),
+    ];
+    $notifyUrl = $plugin->getNotifyUrl($query + ['commerce_order' => $order->id()])
+      ->toString();
 
     $request = (new AddCardFormRequest())
       ->setLanguage($plugin->getLanguage())
@@ -39,10 +47,10 @@ final class TokenRequestBuilder extends PaymentRequestBase implements TokenReque
       ->setCheckoutTimestamp((string) $this->time->getCurrentTime())
       ->setCheckoutNonce($this->uuidService->generate())
       ->setCheckoutMethod('POST')
-      ->setCheckoutRedirectSuccessUrl($plugin->getReturnUrl($order)->toString())
-      ->setCheckoutRedirectCancelUrl($plugin->getCancelUrl($order)->toString())
-      ->setCheckoutCallbackSuccessUrl($plugin->getNotifyUrl()->toString())
-      ->setCheckoutCallbackCancelUrl($plugin->getNotifyUrl()->toString());
+      ->setCheckoutRedirectSuccessUrl($plugin->getReturnUrl($order, $query)->toString())
+      ->setCheckoutRedirectCancelUrl($plugin->getCancelUrl($order, $query)->toString())
+      ->setCheckoutCallbackSuccessUrl($notifyUrl)
+      ->setCheckoutCallbackCancelUrl($notifyUrl);
 
     $this->eventDispatcher
       ->dispatch(new ModelEvent(
@@ -56,6 +64,11 @@ final class TokenRequestBuilder extends PaymentRequestBase implements TokenReque
       secretKey: $plugin->getSecret()
     );
     $request->setSignature($signature);
+
+    // Save the generated stamp, so we can validate it's validity in
+    // PaytrailToken::onReturn() and ::onNotify().
+    $order->setData(TokenRequestBuilderInterface::TOKEN_STAMP_KEY, $query['commerce_paytrail_stamp'])
+      ->save();
 
     return [
       'uri' => Client::API_ENDPOINT . '/tokenization/addcard-form',

@@ -11,7 +11,6 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsNotifications
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\ExceptionHelper;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
-use Paytrail\SDK\Response\PaymentStatusResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,54 +49,26 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   }
 
   /**
-   * Notify callback.
-   *
-   * @param \Symfony\Component\HttpFoundation\Request $request
-   *   The request.
-   *
-   * @return \Symfony\Component\HttpFoundation\Response
-   *   The response.
+   * {@inheritdoc}
    */
-  public function onNotify(Request $request) : Response {
-    $callback = match ($request->query->get('event')) {
-      // Refunds can be asynchronous, meaning the refund can be in 'pending'
-      // state and requires a valid success/cancel callback. Payments are
-      // always marked as refunded regardless of its remote state.
-      // Return a 200 response to make sure Paytrail doesn't keep
-      // calling this for no reason.
-      'refund-success', 'refund-cancel' => function (Request $request) : Response {
-        return new Response();
-      },
-      default => function (Request $request) : Response {
-        $storage = $this->entityTypeManager->getStorage('commerce_order');
+  protected function onNotifySuccess(Request $request) : Response {
+    $storage = $this->entityTypeManager->getStorage('commerce_order');
 
-        try {
-          /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
-          if (!$order = $storage->load($request->query->get('checkout-reference'))) {
-            throw new PaymentGatewayException('Order not found.');
-          }
-          $this->validateResponse($order, $request);
+    try {
+      $orderId = $request->query->get('checkout-reference');
 
-          $paymentResponse = $this->paymentRequest->get(
-            $request->query->get('checkout-transaction-id'),
-            $order
-          );
-          $this->assertResponseStatus($paymentResponse->getStatus(), [
-            'ok',
-          ]);
-
-          $this->handlePayment($order, $paymentResponse);
-
-          return new Response();
-        }
-        catch (PaymentGatewayException | SecurityHashMismatchException $e) {
-          return new Response($e->getMessage(), Response::HTTP_FORBIDDEN);
-        }
-        return new Response(status: Response::HTTP_FORBIDDEN);
+      /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+      if (!$orderId || !$order = $storage->load($orderId)) {
+        throw new PaymentGatewayException('Order not found.');
       }
-    };
+      $this->handlePayment($order, $request, ['ok']);
 
-    return $callback($request);
+      return new Response();
+    }
+    catch (PaymentGatewayException | SecurityHashMismatchException $e) {
+      return new Response($e->getMessage(), Response::HTTP_FORBIDDEN);
+    }
+    return new Response(status: Response::HTTP_FORBIDDEN);
   }
 
   /**
@@ -110,18 +81,11 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    */
   public function onReturn(OrderInterface $order, Request $request) : void {
     try {
-      $this->validateResponse($order, $request);
-
-      $paymentResponse = $this->paymentRequest->get(
-        $request->query->get('checkout-transaction-id'),
-        $order
-      );
-      $this->assertResponseStatus($paymentResponse->getStatus(), [
+      $this->handlePayment($order, $request, [
         'ok',
         'pending',
         'delayed',
       ]);
-      $this->handlePayment($order, $paymentResponse);
     }
     catch (\Exception $e) {
       ExceptionHelper::handle($e);
@@ -133,15 +97,26 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The commerce order.
-   * @param \Paytrail\SDK\Response\PaymentStatusResponse $paymentResponse
-   *   The payment response.
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request.
+   * @param array $validPaymentStatuses
+   *   The valid payment statuses.
    *
-   * @throws \Drupal\Core\Entity\EntityStorageException
+   * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
   public function handlePayment(
     OrderInterface $order,
-    PaymentStatusResponse $paymentResponse
+    Request $request,
+    array $validPaymentStatuses,
   ) : void {
+    $this->validateResponse($order, $request);
+
+    $paymentResponse = $this->paymentRequest->get(
+      $request->query->get('checkout-transaction-id'),
+      $order
+    );
+    $this->assertResponseStatus($paymentResponse->getStatus(), $validPaymentStatuses);
+
     /** @var \Drupal\commerce_payment\PaymentStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage('commerce_payment');
 
