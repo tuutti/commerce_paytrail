@@ -11,6 +11,9 @@ use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use Paytrail\SDK\Model\Token\Card;
 use Paytrail\SDK\Response\GetTokenResponse;
 use Paytrail\SDK\Response\MitPaymentResponse;
@@ -61,6 +64,16 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
     $payment->save();
 
     return ['payment' => $payment, 'payment_method' => $paymentMethod];
+  }
+
+  /**
+   * Constructs a new mock request exception.
+   *
+   * @return \GuzzleHttp\Exception\RequestException
+   *   The exception.
+   */
+  private function createRequestException() : RequestException {
+    return new RequestException('', $this->prophesize(Request::class)->reveal(), new Response(403));
   }
 
   /**
@@ -154,6 +167,10 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
       [
         '123',
         NULL,
+      ],
+      [
+        NULL,
+        '123',
       ],
       [
         '123',
@@ -305,7 +322,7 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
   public function testCreatePaymentException() : void {
     $tokenBuilder = $this->prophesize(TokenRequestBuilderInterface::class);
     $tokenBuilder->tokenMitAuthorize(Argument::any(), Argument::any())
-      ->willThrow(new PaymentGatewayException(''));
+      ->willThrow($this->createRequestException());
 
     $gateway = $this->mockPaymentGateway(
       tokenPaymentRequestBuilder: $tokenBuilder->reveal(),
@@ -351,7 +368,7 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
   public function testVoidPaymentException() : void {
     $tokenBuilder = $this->prophesize(TokenRequestBuilderInterface::class);
     $tokenBuilder->tokenRevert(Argument::any())
-      ->willThrow(new PaymentGatewayException(''));
+      ->willThrow($this->createRequestException());
 
     $gateway = $this->mockPaymentGateway(
       tokenPaymentRequestBuilder: $tokenBuilder->reveal(),
@@ -397,7 +414,7 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
   public function testCapturePaymentException() : void {
     $tokenBuilder = $this->prophesize(TokenRequestBuilderInterface::class);
     $tokenBuilder->tokenCommit(Argument::any(), Argument::any())
-      ->willThrow(new PaymentGatewayException(''));
+      ->willThrow($this->createRequestException());
 
     $gateway = $this->mockPaymentGateway(
       tokenPaymentRequestBuilder: $tokenBuilder->reveal(),
