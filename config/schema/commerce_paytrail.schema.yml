@@ -17,3 +17,25 @@ commerce_payment.commerce_payment_gateway.plugin.paytrail:
       type: boolean
       label: 'Collect billing information'
 
+commerce_payment.commerce_payment_gateway.plugin.paytrail_token:
+  type: commerce_payment_gateway_configuration
+  mapping:
+    language:
+      type: string
+      label: 'Language'
+    account:
+      type: string
+      label: 'Merchant ID'
+    order_discount_strategy:
+      type: string
+      label: 'Order discount strategy'
+    secret:
+      type: string
+      label: 'Secret'
+    collect_billing_information:
+      type: boolean
+      label: 'Collect billing information'
+    capture:
+      type: boolean
+      label: Transaction mode
+

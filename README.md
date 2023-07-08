@@ -2,8 +2,6 @@
 
 ![CI](https://github.com/tuutti/commerce_paytrail/workflows/CI/badge.svg)
 
-## Description
-
 This module integrates [Paytrail](https://www.paytrail.com/en) payment method with Drupal Commerce.
 
  * For a full description of the module, visit the project page:
@@ -23,30 +21,87 @@ information.
 1. Configure the Commerce Paytrail gateway from the Administration > Commerce >
    Configuration > Payment Gateways (`/admin/commerce/config/payment-gateways`),
    by editing an existing or adding a new payment gateway.
-2. Select 'Paytrail' for the payment gateway plugin. Paytrail-specific fields
-   will appear in the settings.
-
+2. Select `Paytrail` or `Paytrail (Credit card)` for the payment gateway plugin.
    * `Mode`: enables the Paytrail payment gateway in test or live mode.
    * `Account`: provide your Paytrail account.
-   * `Secret`: provide your Paytrail secret
+   * `Secret`: provide your Paytrail secret.
+   * `Order discount strategy`: Choose the order discount strategy.
 3. Click Save to save your configuration.
 
-## Known issues
+## Documentation
 
-### Postal code validation
+@todo fill this.
 
-Paytrail doesn't support non-digit postal codes, so collecting billing information for countries like UK is not possible at the moment.
+### Alter Paytrail API requests/responses
 
-See:
-- https://github.com/paytrail/api-documentation/issues/34.
-- https://www.drupal.org/project/commerce_paytrail/issues/333547.
+Create an event subscriber that responds to `\Drupal\commerce_paytrail\Event\ModelEvent::class` events:
 
-To mitigate this issue, you can either:
+```php
 
-1. Disable the `Collect billing information` setting from Payment gateway settings to completely disable billing information form.
-2. Remove `commerce_paytrail.billing_information_collector` service. This prevents Drupal from sending the payment information to Paytrail, but the payment information is still collected to Drupal.
+class YourEventSubscriber implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
 
-The service can be removed by calling `$container->removeDefinition('commerce_paytrail.billing_information_collector')` in your service provider. See https://www.drupal.org/docs/drupal-apis/services-and-dependency-injection/altering-existing-services-providing-dynamic-services for more information.
+  /**
+   * Event callback.
+   *
+   * @param \Drupal\commerce_paytrail\Event\ModelEvent $event
+   *   The event.
+   */
+  public function processEvent(ModelEvent $event): void {
+    // See below for all available events.
+    if ($event->event === \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT) {
+      // Do something based on event.
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function getSubscribedEvents() : array {
+    return [
+      ModelEvent::class => ['processEvent'],
+    ];
+  }
+}
+```
+
+See https://www.drupal.org/docs/develop/creating-modules/subscribe-to-and-dispatch-events.
+
+### Available events
+
+The event name in `\Drupal\commerce_paytrail\Event\ModelEvent`.
+
+#### Payment requests
+See [src/RequestBuilder/PaymentRequestBuilderInterface.php](src/RequestBuilder/PaymentRequestBuilderInterface.php).
+
+- `\Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT`: Respond to a successful `PaymentRequestBuilder::get` request
+- `\Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT`: Allows payment create request to be altered. The request will return available payment methods show on Payment page
+- `\Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT`: Respond to a successful payment create request
+
+#### Refund requests
+See [src/RequestBuilder/RefundRequestBuilderInterface.php](src/RequestBuilder/RefundRequestBuilderInterface.php).
+
+- `\Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface::REFUND_CREATE`: Allows `RefundRequestBuilder::refund` request to be altered
+- `\Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface::REFUND_CREATE_RESPONSE`: Respond to a successful refund request
+
+#### Token payment requests
+
+See [src/RequestBuilder/TokenPaymentRequestBuilderInterface.php](src/RequestBuilder/TokenPaymentRequestBuilderInterface.php).
+
+@todo fill these
+
+
+### Prevent saved payment method from being deleted
+
+```php
+/**
+ * Implements hook_entity_predelete().
+ */
+function hook_entity_predelete(\Drupal\Core\Entity\EntityInterface $entity) : void {
+  if (condition) {
+    throw new \Drupal\commerce_payment\Exception\PaymentGatewayException('Card cannot be deleted').
+  }
+}
+```
 
 ## Maintainers
 

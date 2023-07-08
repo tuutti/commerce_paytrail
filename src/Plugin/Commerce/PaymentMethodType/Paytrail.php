@@ -21,8 +21,8 @@ final class Paytrail extends PaymentMethodTypeBase {
   /**
    * {@inheritdoc}
    */
-  public function buildLabel(PaymentMethodInterface $payment_method) {
-    return $this->t('Paytrail');
+  public function buildLabel(PaymentMethodInterface $payment_method) : string {
+    return (string) $this->t('Paytrail');
   }
 
 }

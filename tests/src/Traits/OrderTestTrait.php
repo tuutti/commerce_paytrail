@@ -7,6 +7,7 @@ namespace Drupal\Tests\commerce_paytrail\Traits;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItem;
+use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_product\Entity\ProductVariation;
 use Drupal\physical\Weight;
@@ -19,6 +20,8 @@ trait OrderTestTrait {
   /**
    * Creates new order.
    *
+   * @param \Drupal\commerce_payment\Entity\PaymentGatewayInterface $gateway
+   *   The payment gateway.
    * @param \Drupal\commerce_order\Adjustment[] $itemAdjustments
    *   The order item adjustments.
    * @param array $variationValues
@@ -30,6 +33,7 @@ trait OrderTestTrait {
    *   The order.
    */
   protected function createOrder(
+    PaymentGatewayInterface $gateway,
     array $itemAdjustments = [],
     array $variationValues = [],
     array $orderItemValues = [],
@@ -63,7 +67,7 @@ trait OrderTestTrait {
       'type' => 'default',
       'store_id' => $this->store,
       'uid' => $this->createUser(['mail' => 'admin@example.com']),
-      'payment_gateway' => $this->gateway,
+      'payment_gateway' => $gateway,
       'mail' => 'admin@example.com',
     ]);
     $order->addItem($orderItem);

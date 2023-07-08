@@ -5,217 +5,72 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Drupal\commerce_price\Calculator;
-use Drupal\commerce_price\MinorUnitsConverterInterface;
-use Drupal\commerce_product\Entity\ProductVariationInterface;
-use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Component\Uuid\UuidInterface;
-use GuzzleHttp\ClientInterface;
-use Paytrail\Payment\Api\PaymentsApi;
-use Paytrail\Payment\Model\Callbacks;
-use Paytrail\Payment\Model\Customer;
-use Paytrail\Payment\Model\Item;
-use Paytrail\Payment\Model\Payment;
-use Paytrail\Payment\Model\PaymentRequest;
-use Paytrail\Payment\Model\PaymentRequestResponse;
-use Paytrail\Payment\ObjectSerializer;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Paytrail\SDK\Request\PaymentRequest;
+use Paytrail\SDK\Request\PaymentStatusRequest;
+use Paytrail\SDK\Response\PaymentResponse;
+use Paytrail\SDK\Response\PaymentStatusResponse;
 
 /**
  * The payment request builder.
  *
  * @internal
  */
-final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentRequestBuilderInterface {
-
-  /**
-   * Constructs a new instance.
-   *
-   * @param \Drupal\Component\Uuid\UuidInterface $uuidService
-   *   The uuid service.
-   * @param \Drupal\Component\Datetime\TimeInterface $time
-   *   The time service.
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
-   *   The event dispatcher.
-   * @param \GuzzleHttp\ClientInterface $client
-   *   The HTTP client.
-   * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
-   *   The minor unit converter.
-   * @param int $callbackDelay
-   *   The callback delay.
-   */
-  public function __construct(
-    UuidInterface $uuidService,
-    TimeInterface $time,
-    private EventDispatcherInterface $eventDispatcher,
-    private ClientInterface $client,
-    private MinorUnitsConverterInterface $converter,
-    private int $callbackDelay,
-  ) {
-    parent::__construct($uuidService, $time);
-  }
-
-  /**
-   * Creates a Paytrail order item for given commerce order item.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderItemInterface $orderItem
-   *   The commerce order item.
-   *
-   * @return \Paytrail\Payment\Model\Item
-   *   The paytrail order item.
-   */
-  private function createOrderLine(OrderItemInterface $orderItem) : Item {
-    $item = (new Item())
-      ->setUnitPrice($this->converter->toMinorUnits($orderItem->getAdjustedUnitPrice()))
-      ->setUnits((int) $orderItem->getQuantity())
-      ->setVatPercentage(0);
-
-    if ($purchasedEntityId = $orderItem->getPurchasedEntityId()) {
-      $item->setProductCode($purchasedEntityId);
-    }
-
-    if ($taxes = $orderItem->getAdjustments(['tax'])) {
-      $item->setVatPercentage((int) Calculator::multiply(
-        reset($taxes)->getPercentage(),
-        '100'
-      ));
-    }
-
-    // Override default product code with SKU if possible.
-    if ($orderItem->getPurchasedEntity() instanceof ProductVariationInterface) {
-      $item->setProductCode($orderItem->getPurchasedEntity()->getSku());
-    }
-
-    return $item;
-  }
+final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentRequestBuilderInterface {
 
   /**
    * {@inheritdoc}
    */
-  public function get(string $transactionId, OrderInterface $order) : Payment {
-    $configuration = $this->getPaymentPlugin($order)->getClientConfiguration();
-    $headers = $this->createHeaders('GET', $configuration, $transactionId);
-
-    $response = (new PaymentsApi($this->client, $configuration))
-      ->getPaymentByTransactionIdWithHttpInfo(
-        $transactionId,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $transactionId,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
-          $configuration->getApiKey('secret'),
-          $headers->toArray(),
-        ),
-      );
-    return $this->getResponse($order, $response);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function create(OrderInterface $order) : PaymentRequestResponse {
-    $configuration = $this->getPaymentPlugin($order)
-      ->getClientConfiguration();
-    $headers = $this->createHeaders('POST', $configuration);
-    $request = $this->createPaymentRequest($order);
-
-    $response = (new PaymentsApi($this->client, $configuration))
-      ->createPaymentWithHttpInfo(
-        $request,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
-          $configuration->getApiKey('secret'),
-          $headers->toArray(),
-          json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
-        ),
-      );
-    return $this->getResponse($order, $response);
-  }
-
-  /**
-   * Checks if given order has any discounts applied.
-   *
-   * Note: This only applies to order level discounts, such as giftcards.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order to check.
-   *
-   * @return bool
-   *   TRUE if order has discounts.
-   */
-  private function orderHasDiscounts(OrderInterface $order) : bool {
-    foreach ($order->getAdjustments() as $adjustment) {
-      if ($adjustment->getAmount()->isNegative()) {
-        return TRUE;
-      }
-    }
-    return FALSE;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
+  public function get(string $transactionId, OrderInterface $order) : PaymentStatusResponse {
     $plugin = $this->getPaymentPlugin($order);
 
-    $request = (new PaymentRequest())
-      ->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
-      ->setReference($order->id())
-      ->setStamp($this->uuidService->generate())
-      ->setLanguage($plugin->getLanguage())
-      ->setItems(array_map(
-        fn (OrderItemInterface $item) => $this->createOrderLine($item),
-        $order->getItems()
-      ))
-      // Only EUR is supported.
-      ->setCurrency('EUR')
-      ->setCallbackUrls(new Callbacks([
-        'success' => $plugin->getNotifyUrl()->toString(),
-        'cancel' => $plugin->getNotifyUrl()->toString(),
-      ]))
-      // Delay callback polling to minimize the chance of Paytrail
-      // calling ::onNotify() before customer returns from the payment
-      // gateway.
-      ->setCallbackDelay($this->callbackDelay)
-      ->setRedirectUrls(new Callbacks([
-        'success' => $plugin->getReturnUrl($order)->toString(),
-        'cancel' => $plugin->getCancelUrl($order)->toString(),
-      ]));
+    $request = (new PaymentStatusRequest())
+      ->setTransactionId($transactionId);
+    $request->setTransactionId($transactionId);
 
-    $customer = (new Customer())
-      ->setEmail($order->getEmail());
+    $response = $plugin->getClient()
+      ->getPaymentStatus($request);
 
-    $request->setCustomer($customer);
+    $this->eventDispatcher->dispatch(new ModelEvent(
+      $response,
+      $order,
+      PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT
+    ));
+    return $response;
+  }
 
-    $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, order: $order));
+  /**
+   * Constructs a new payment request.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return \Paytrail\SDK\Request\PaymentRequest
+   *   The request.
+   */
+  public function createPaymentRequest(OrderInterface $order) : PaymentRequest {
+    return $this->populatePaymentRequest(
+      new PaymentRequest(),
+      $order,
+      PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT,
+    );
+  }
 
-    // Paytrail does not support order level discounts, such as giftcards.
-    // Remove order items if order has any discounts applied.
-    // See https://www.drupal.org/project/commerce_paytrail/issues/3339269.
-    if (
-      $plugin->orderDiscountStrategy() === PaytrailBase::STRATEGY_REMOVE_ITEMS &&
-      $this->orderHasDiscounts($order)
-    ) {
-      $request['items'] = NULL;
-    }
+  /**
+   * {@inheritdoc}
+   */
+  public function create(OrderInterface $order) : PaymentResponse {
+    $request = $this->createPaymentRequest($order);
 
-    // We use reference field to load the order. Make sure it cannot be changed.
-    if ($request->getReference() !== $order->id()) {
-      throw new \LogicException('The value of "reference" field cannot be changed.');
-    }
-
-    return $request;
+    $response = $this->getPaymentPlugin($order)
+      ->getClient()
+      ->createPayment($request);
+    $this->eventDispatcher->dispatch(new ModelEvent(
+      $response,
+      $order,
+      PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT
+    ));
+    return $response;
   }
 
 }

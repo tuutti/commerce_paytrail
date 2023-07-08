@@ -10,12 +10,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php-version: ['8.0', '8.1']
-        core: ['9.5.x']
-        # Test php 8.2 only on 10.x core.
+        php-version: ['8.2']
+        core: ['10.1.x']
         include:
-          - core: 10.0.x
-            php-version: 8.2
+          - core: 9.5.x
+            php-version: '8.1'
     container:
       image: ghcr.io/tuutti/drupal-php-docker:${{ matrix.php-version }}
 
@@ -57,6 +56,11 @@ jobs:
           composer require "drush/drush ^11.0"
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
           composer require --dev "drupal/coder"
+          # We use COMPOSER_MIRROR_PATH_REPOS=1 to mirror local repository
+          # instead of symlinking it to prevent code coverage issues with
+          # phpunit. Copy .git folder manually so codecov can generate line by
+          # line coverage.
+          cp -r $GITHUB_WORKSPACE/.git $MODULE_FOLDER/
 
       - name: Install Drupal
         working-directory: ${{ env.DRUPAL_ROOT }}
@@ -76,11 +80,11 @@ jobs:
           chromedriver --port=4444 > /dev/null 2>&1 &
 
       - name: Run PHPUnit tests
-        working-directory: ${{ env.MODULE_FOLDER }}
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          $DRUPAL_ROOT/vendor/bin/phpunit \
+          vendor/bin/phpunit \
             --bootstrap $DRUPAL_ROOT/core/tests/bootstrap.php \
             -c $MODULE_FOLDER/phpunit.xml \
             --coverage-clover=$MODULE_FOLDER/coverage.xml \
-            .
-          codecov
+            $MODULE_FOLDER
+          codecov --rootDir $MODULE_FOLDER

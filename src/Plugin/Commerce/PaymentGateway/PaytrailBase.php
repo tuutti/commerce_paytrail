@@ -5,22 +5,30 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
+use Drupal\commerce_paytrail\ExceptionHelper;
+use Drupal\commerce_paytrail\Http\PaytrailClient;
+use Drupal\commerce_paytrail\Http\PaytrailClientFactory;
+use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
+use Drupal\commerce_paytrail\SignatureTrait;
+use Drupal\commerce_price\Price;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\Url;
-use Paytrail\Payment\Configuration;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Base class for paytrail gateway plugins.
  */
-abstract class PaytrailBase extends OffsitePaymentGatewayBase {
+abstract class PaytrailBase extends OffsitePaymentGatewayBase implements PaytrailInterface {
 
   use MessengerTrait;
+  use SignatureTrait;
 
   /**
    * The language manager.
@@ -30,24 +38,27 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
   protected LanguageManagerInterface $languageManager;
 
   /**
-   * The logger.
+   * The refund request builder.
    *
-   * @var \Psr\Log\LoggerInterface
+   * @var \Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface
    */
-  protected LoggerInterface $logger;
+  protected RefundRequestBuilderInterface $refundRequest;
 
-  public const ACCOUNT = '375917';
-  public const SECRET = 'SAIPPUAKAUPPIAS';
-  public const STRATEGY_REMOVE_ITEMS = 'remove_items';
+  /**
+   * The paytrail client factory.
+   *
+   * @var \Drupal\commerce_paytrail\Http\PaytrailClientFactory
+   */
+  protected PaytrailClientFactory $clientFactory;
 
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
-    // Populate via setters to avoid overriding the parent constructor.
     $instance->languageManager = $container->get('language_manager');
-    $instance->logger = $container->get('logger.channel.commerce_paytrail');
+    $instance->refundRequest = $container->get('commerce_paytrail.refund_request');
+    $instance->clientFactory = $container->get('commerce_paytrail.paytrail_client_factory');
 
     return $instance;
   }
@@ -60,8 +71,23 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
       'language' => 'automatic',
       'account' => static::ACCOUNT,
       'secret' => static::SECRET,
+      'payment_method_types' => ['paytrail'],
       'order_discount_strategy' => NULL,
     ] + parent::defaultConfiguration();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getAccount() : int {
+    return (int) $this->configuration['account'];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getSecret() : string {
+    return $this->configuration['secret'];
   }
 
   /**
@@ -116,7 +142,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
         [
           '@link' => 'https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-',
         ]),
-
     ];
 
     return $form;
@@ -125,7 +150,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
   /**
    * {@inheritdoc}
    */
-  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) : void {
     parent::submitConfigurationForm($form, $form_state);
 
     if (!$form_state->getErrors()) {
@@ -158,7 +183,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
   }
 
   /**
-   * Get used langcode.
+   * {@inheritdoc}
    */
   public function getLanguage() : string {
     // Attempt to autodetect.
@@ -173,50 +198,83 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
   }
 
   /**
-   * Gets the live mode status.
-   *
-   * @return bool
-   *   Boolean indicating whether we are operating in live mode.
+   * {@inheritdoc}
    */
   public function isLive() : bool {
     return $this->configuration['mode'] === 'live';
   }
 
   /**
-   * Gets the order discount strategy.
-   *
-   * Paytrail does not support order level discounts (such as gift cards).
-   * This setting allows site owners to choose the strategy how to deal with
-   * them.
-   *
-   * NOTE: This only applies to ORDER level discounts.
-   *
-   * Available options:
-   *
-   * 'None': Do nothing. The API request *will* fail if order's total price does
-   * not match the total unit price.
-   * 'Remove order items': Removes order item information from the API request
-   * since it's not mandatory. See
-   * https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-.
-   *
-   * @return string|null
-   *   The discount calculation strategy.
+   * {@inheritdoc}
    */
   public function orderDiscountStrategy() : ? string {
     return $this->configuration['order_discount_strategy'];
   }
 
   /**
-   * Gets the client configuration.
-   *
-   * @return \Paytrail\Payment\Configuration
-   *   The client configuration.
+   * {@inheritdoc}
    */
-  public function getClientConfiguration() : Configuration {
-    return (new Configuration())
-      ->setApiKey('account', $this->configuration['account'])
-      ->setApiKey('secret', $this->configuration['secret'])
-      ->setUserAgent('drupal/commerce_paytrail');
+  public function getReturnUrl(OrderInterface $order, array $query = []) : Url {
+    return $this->buildReturnUrl($order, 'commerce_payment.checkout.return', $query);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCancelUrl(OrderInterface $order, array $query = []) : Url {
+    return $this->buildReturnUrl($order, 'commerce_payment.checkout.cancel', $query);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getNotifyUrl(array $query = []) : Url {
+    return Url::fromRoute(
+      'commerce_payment.notify', ['commerce_payment_gateway' => $this->parentEntity->id()],
+      ['absolute' => TRUE, 'query' => $query],
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getClient() : PaytrailClient {
+    static $client;
+
+    if (!$client) {
+      $client = $this->clientFactory
+        ->create($this->getAccount(), $this->getSecret(), 'drupal/commerce_paytrail');
+    }
+    return $client;
+  }
+
+  /**
+   * A callback for successful onNotify.
+   *
+   * @return \Symfony\Component\HttpFoundation\Response
+   *   The callback to be called on successful onNotify response.
+   */
+  abstract protected function onNotifySuccess(Request $request) : Response;
+
+  /**
+   * Notify callback.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request.
+   *
+   * @return \Symfony\Component\HttpFoundation\Response
+   *   The response.
+   */
+  public function onNotify(Request $request) : Response {
+    return match ($request->query->get('event')) {
+      // Refunds can be asynchronous, meaning the refund can be in 'pending'
+      // state and requires a valid success/cancel callback. Payments are
+      // always marked as refunded regardless of its remote state.
+      // Return a 200 response to make sure Paytrail doesn't keep
+      // calling this for no reason.
+      'refund-success', 'refund-cancel' => new Response(),
+      default => $this->onNotifySuccess($request),
+    };
   }
 
   /**
@@ -232,6 +290,40 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase {
       throw new PaymentGatewayException(
         sprintf('Invalid status: %s [allowed: %s]', $response, implode(',', $allowedStatuses))
       );
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function refundPayment(PaymentInterface $payment, Price $amount = NULL) : void {
+    $this->assertPaymentState($payment, ['completed', 'partially_refunded']);
+    // If not specified, refund the entire amount.
+    $amount = $amount ?: $payment->getAmount();
+    // Validate the requested amount.
+    $this->assertRefundAmount($payment, $amount);
+    $order = $payment->getOrder();
+
+    $oldRefundedAmount = $payment->getRefundedAmount();
+    $newRefundedAmount = $oldRefundedAmount->add($amount);
+
+    try {
+      $response = $this->refundRequest->refund($payment->getRemoteId(), $order, $amount);
+
+      $this->assertResponseStatus($response->getStatus(), [
+        'ok',
+        'pending',
+      ]);
+
+      $newRefundedAmount->lessThan($payment->getAmount()) ?
+        $payment->setState('partially_refunded') :
+        $payment->setState('refunded');
+
+      $payment->setRefundedAmount($newRefundedAmount)
+        ->save();
+    }
+    catch (\Exception $e) {
+      ExceptionHelper::handle($e);
     }
   }
 

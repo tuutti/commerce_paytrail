@@ -2,43 +2,26 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\Tests\commerce_paytrail\Kernel;
+namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Adjustment;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
+use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_price\Price;
 use Drupal\profile\Entity\Profile;
-use Paytrail\Payment\Model\Address;
-use Paytrail\Payment\Model\PaymentRequest;
+use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
+use Paytrail\SDK\Model\Address;
+use Paytrail\SDK\Request\AbstractPaymentRequest;
 
 /**
- * Tests Payment requests.
- *
- * @group commerce_paytrail
- * @coversDefaultClass \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+ * A base class for payment request tests.
  */
-class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
-
-  /**
-   * The payment request builder.
-   *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
-   */
-  protected ?PaymentRequestBuilder $sut;
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function setUp() : void {
-    parent::setUp();
-    $this->sut = $this->container->get('commerce_paytrail.payment_request');
-  }
+abstract class PaymentRequestBuilderTestBase extends RequestBuilderKernelTestBase {
 
   /**
    * Asserts order taxes.
    *
-   * @param \Paytrail\Payment\Model\PaymentRequest $request
+   * @param \Paytrail\SDK\Request\AbstractPaymentRequest $request
    *   The request to validate.
    * @param int $expectedTotalPrice
    *   The expected total price.
@@ -47,8 +30,8 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    * @param int $expectedVatPercentage
    *   The expected vat percentage.
    */
-  private function assertTaxes(
-    PaymentRequest $request,
+  protected function assertTaxes(
+    AbstractPaymentRequest $request,
     int $expectedTotalPrice,
     int $expectedUnitPrice,
     int $expectedVatPercentage
@@ -60,13 +43,25 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   }
 
   /**
-   * Tests ::createPaymentRequest().
+   * Gets the request used to test shared functionality.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   *
+   * @return \Paytrail\SDK\Request\AbstractPaymentRequest
+   *   The request.
    */
-  public function testCreate() : void {
-    $order = $this->createOrder();
+  abstract protected function getRequest(OrderInterface $order) : AbstractPaymentRequest;
 
-    $request = $this->sut->createPaymentRequest($order);
-    static::assertInstanceOf(PaymentRequest::class, $request);
+  /**
+   * Make sure order has no taxes by default.
+   *
+   * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBase::populatePaymentRequest
+   */
+  public function testPaymentRequest() : void {
+    $order = $this->createOrder($this->createGatewayPlugin());
+
+    $request = $this->getRequest($order);
     static::assertCount(1, $request->getItems());
     static::assertEquals($order->id(), $request->getReference());
     static::assertNotEmpty($request->getStamp());
@@ -82,12 +77,12 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   /**
    * Make sure taxes are included in prices.
    */
-  public function testCreatePricesIncludeTax() : void {
+  public function testPricesIncludeTax() : void {
     $order = $this
       ->setPricesIncludeTax(TRUE, ['FI'])
-      ->createOrder();
+      ->createOrder($this->createGatewayPlugin());
 
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getRequest($order);
     // Order should have prices included in unit prices.
     $this->assertTaxes($request, 2200, 1100, 24);
   }
@@ -95,12 +90,12 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   /**
    * Make sure taxes are added to total price.
    */
-  public function testCreatePricesIncludeNoTax() : void {
+  public function testPricesIncludeNoTax() : void {
     $order = $this
       ->setPricesIncludeTax(FALSE, ['FI'])
-      ->createOrder();
+      ->createOrder($this->createGatewayPlugin());
 
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getRequest($order);
     // Taxes should be added to unit price.
     $this->assertTaxes($request, 2728, 1364, 24);
   }
@@ -111,16 +106,16 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
   public function testDiscount() : void {
     $order = $this
       ->setPricesIncludeTax(TRUE, ['FI'])
-      ->createOrder([
+      ->createOrder($this->createGatewayPlugin(), [
         new Adjustment([
           'type' => 'custom',
           'label' => 'Discount',
           'amount' => new Price('-5', 'EUR'),
         ]),
       ]);
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getRequest($order);
     // Make sure order items are not removed.
-    $this->assertNotNull($request->getItems());
+    static::assertNotNull($request->getItems());
 
     $this->assertTaxes($request, 1700, 850, 24);
   }
@@ -129,15 +124,16 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    * Make sure order level discounts remove items if configured so.
    */
   public function testOrderLevelDiscount() : void {
-    $this->gateway->getPlugin()->setConfiguration([
-      'order_discount_strategy' => PaytrailBase::STRATEGY_REMOVE_ITEMS,
+    $gateway = $this->createGatewayPlugin();
+    $gateway->getPlugin()->setConfiguration([
+      'order_discount_strategy' => PaytrailInterface::STRATEGY_REMOVE_ITEMS,
     ]);
-    $this->gateway->save();
-    $this->assertEquals(PaytrailBase::STRATEGY_REMOVE_ITEMS, $this->gateway->getPlugin()->orderDiscountStrategy());
+    $gateway->save();
+    static::assertEquals(PaytrailInterface::STRATEGY_REMOVE_ITEMS, $gateway->getPlugin()->orderDiscountStrategy());
 
     $order = $this
       ->setPricesIncludeTax(TRUE, ['FI'])
-      ->createOrder();
+      ->createOrder($gateway);
     $order->addAdjustment(
       new Adjustment([
         'type' => 'custom',
@@ -146,18 +142,18 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
       ]));
     $order->save();
 
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getRequest($order);
     // Make sure order item level discounts remove order items.
-    $this->assertNull($request->getItems());
+    static::assertNull($request->getItems());
     // Make sure discount is still applied to total price.
-    $this->assertEquals(1700, $request->getAmount());
+    static::assertEquals(1700, $request->getAmount());
   }
 
   /**
    * Tests billing profile.
    */
   public function testBillingProfile() : void {
-    $order = $this->createOrder();
+    $order = $this->createOrder($this->createGatewayPlugin());
     $profile = Profile::create([
       'type' => 'customer',
       'uid' => $order->getCustomerId(),
@@ -172,17 +168,8 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
 
     $order->setBillingProfile($profile)
       ->save();
-    $request = $this->sut->createPaymentRequest($order);
+    $request = $this->getRequest($order);
     static::assertInstanceOf(Address::class, $request->getInvoicingAddress());
-  }
-
-  /**
-   * Make sure we can subscribe to model events.
-   */
-  public function testEventSubscriberEvent() : void {
-    $this->assertCaughtEvents(1, function () {
-      $this->sut->createPaymentRequest($this->createOrder());
-    });
   }
 
 }

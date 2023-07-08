@@ -10,7 +10,7 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Paytrail\Payment\ApiException;
+use GuzzleHttp\Exception\RequestException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -53,10 +53,6 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) : array {
-    $form = [
-      '#cache' => ['max-age' => 0],
-    ];
-
     if (!$order = $this->entity->getOrder()) {
       $this->logger
         ->error(sprintf('Payment %s has no order referenced.', $this->entity->id()));
@@ -67,12 +63,12 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
       return $form;
     }
 
-    /** @var \Paytrail\Payment\Model\PaymentMethodProvider $selectedProvider */
+    /** @var \Paytrail\SDK\Model\Provider $selectedProvider */
     if ($selectedProvider = $form_state->getTemporaryValue('provider')) {
       $data = [];
 
       foreach ($selectedProvider->getParameters() as $parameter) {
-        $data[$parameter->getName()] = $parameter->getValue();
+        $data[$parameter->name] = $parameter->value;
       }
       return $this->buildRedirectForm($form, $form_state, $selectedProvider->getUrl(), $data, self::REDIRECT_POST);
     }
@@ -80,7 +76,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
     try {
       $response = $this->paymentRequest->create($order);
     }
-    catch (ApiException $e) {
+    catch (RequestException $e) {
       $this->logger
         ->error(sprintf('Paytrail API failure [#%s]: %s', $order->id(), $e->getMessage()));
       $this->messenger->addError(

@@ -5,7 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\commerce_paytrail\EventSubscriber;
 
 use Drupal\commerce_paytrail\Event\ModelEvent;
-use Paytrail\Payment\Model\Address;
+use Paytrail\SDK\Model\Address;
 
 /**
  * Adds billing information to payment requests when enabled.

@@ -7,13 +7,36 @@ services:
 
   commerce_paytrail.refund_request:
     class: Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder
-    arguments: ['@uuid', '@datetime.time', '@event_dispatcher', '@http_client', '@commerce_price.minor_units_converter']
+    arguments:
+      - '@uuid'
+      - '@datetime.time'
+      - '@event_dispatcher'
+      - '@commerce_price.minor_units_converter'
 
   commerce_paytrail.payment_request:
     class: Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
-    arguments: ['@uuid', '@datetime.time', '@event_dispatcher', '@http_client', '@commerce_price.minor_units_converter', '%commerce_paytrail.callback_delay%']
+    arguments:
+      - '@uuid'
+      - '@datetime.time'
+      - '@event_dispatcher'
+      - '@commerce_price.minor_units_converter'
+      - '%commerce_paytrail.callback_delay%'
+
+  commerce_paytrail.token_payment_request:
+    class: Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder
+    arguments:
+      - '@uuid'
+      - '@datetime.time'
+      - '@event_dispatcher'
+      - '@commerce_price.minor_units_converter'
+      - '%commerce_paytrail.callback_delay%'
 
   commerce_paytrail.billing_information_collector:
     class: Drupal\commerce_paytrail\EventSubscriber\BillingInformationCollector
     tags:
       - { name: event_subscriber }
+
+  commerce_paytrail.paytrail_client_factory:
+    class: Drupal\commerce_paytrail\Http\PaytrailClientFactory
+    arguments:
+      - '@http_client_factory'

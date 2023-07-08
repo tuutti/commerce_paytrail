@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-namespace Drupal\Tests\commerce_paytrail\Kernel;
+namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
@@ -22,7 +22,7 @@ use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
  * @group commerce_paytrail
  * @coversDefaultClass \Drupal\commerce_paytrail\Commerce\Shipping\ShippingEventSubscriber
  */
-class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
+class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
 
   use ApiTestTrait;
   use OrderTestTrait;
@@ -100,7 +100,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
     ]);
     $shipping_method->save();
 
-    $order = $this->createOrder();
+    $order = $this->createOrder($this->createGatewayPlugin('test'));
 
     /** @var \Drupal\profile\Entity\ProfileInterface $shipping_profile */
     $shipping_profile = Profile::create([
