@@ -137,7 +137,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
   /**
    * @covers ::tokenCommit
    * @covers ::populatePaymentRequest
-   * @covers ::orderHasDiscounts
    * @covers ::createMitPaymentAction
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
@@ -170,7 +169,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::tokenMitAuthorize
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
-   * @covers ::orderHasDiscounts
    * @covers ::createMitPaymentAction
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
@@ -199,7 +197,6 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createTokenPaymentRequest
    * @covers ::populatePaymentRequest
    * @covers ::createMitPaymentAction
-   * @covers ::orderHasDiscounts
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
    */
   public function testTokenMitCharge() : void {
