@@ -130,7 +130,7 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
       static::assertEquals('http://localhost/checkout/1/payment/return', $plugin->getReturnUrl($order)->toString());
       static::assertEquals('http://localhost/checkout/1/payment/cancel', $plugin->getCancelUrl($order)->toString());
       static::assertEquals('http://localhost/payment/notify/' . $gateway->id(), $plugin->getNotifyUrl()->toString());
-      static::assertEquals('http://localhost/payment/notify/' . $gateway->id() . '?event=test', $plugin->getNotifyUrl('test')->toString());
+      static::assertEquals('http://localhost/payment/notify/' . $gateway->id() . '?event=test', $plugin->getNotifyUrl(['event' => 'test'])->toString());
     }
   }
 
