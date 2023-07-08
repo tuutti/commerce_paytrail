@@ -1,6 +1,6 @@
 # Commerce paytrail
 
-![CI](https://github.com/tuutti/commerce_paytrail/workflows/CI/badge.svg)
+![CI](https://github.com/tuutti/commerce_paytrail/workflows/CI/badge.svg) [![codecov](https://codecov.io/gh/tuutti/commerce_paytrail/branch/4.x/graph/badge.svg?token=32zwdww9JR)](https://codecov.io/gh/tuutti/commerce_paytrail)
 
 This module integrates [Paytrail](https://www.paytrail.com/en) payment method with Drupal Commerce.
 
@@ -30,8 +30,6 @@ information.
 
 ## Documentation
 
-@todo fill this.
-
 ### Alter Paytrail API requests/responses
 
 Create an event subscriber that responds to `\Drupal\commerce_paytrail\Event\ModelEvent::class` events:
@@ -49,7 +47,7 @@ class YourEventSubscriber implements \Symfony\Component\EventDispatcher\EventSub
   public function processEvent(ModelEvent $event): void {
     // See below for all available events.
     if ($event->event === \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT) {
-      // Do something based on event.
+      // Do something based on event name.
     }
   }
 
@@ -64,31 +62,12 @@ class YourEventSubscriber implements \Symfony\Component\EventDispatcher\EventSub
 }
 ```
 
-See https://www.drupal.org/docs/develop/creating-modules/subscribe-to-and-dispatch-events.
+See https://www.drupal.org/docs/develop/creating-modules/subscribe-to-and-dispatch-events for more information about events.
 
 ### Available events
-
-The event name in `\Drupal\commerce_paytrail\Event\ModelEvent`.
-
-#### Payment requests
-See [src/RequestBuilder/PaymentRequestBuilderInterface.php](src/RequestBuilder/PaymentRequestBuilderInterface.php).
-
-- `\Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT`: Respond to a successful `PaymentRequestBuilder::get` request
-- `\Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_CREATE_EVENT`: Allows payment create request to be altered. The request will return available payment methods show on Payment page
-- `\Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT`: Respond to a successful payment create request
-
-#### Refund requests
-See [src/RequestBuilder/RefundRequestBuilderInterface.php](src/RequestBuilder/RefundRequestBuilderInterface.php).
-
-- `\Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface::REFUND_CREATE`: Allows `RefundRequestBuilder::refund` request to be altered
-- `\Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface::REFUND_CREATE_RESPONSE`: Respond to a successful refund request
-
-#### Token payment requests
-
-See [src/RequestBuilder/TokenPaymentRequestBuilderInterface.php](src/RequestBuilder/TokenPaymentRequestBuilderInterface.php).
-
-@todo fill these
-
+- Payment requests: [src/RequestBuilder/PaymentRequestBuilderInterface.php](src/RequestBuilder/PaymentRequestBuilderInterface.php)
+- Refund requests: [src/RequestBuilder/RefundRequestBuilderInterface.php](src/RequestBuilder/RefundRequestBuilderInterface.php)
+- Token payment requests: [src/RequestBuilder/TokenRequestBuilderInterface.php](src/RequestBuilder/TokenRequestBuilderInterface.php)
 
 ### Prevent saved payment method from being deleted
 
