@@ -72,7 +72,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
       'account' => static::ACCOUNT,
       'secret' => static::SECRET,
       'payment_method_types' => ['paytrail'],
-      'order_discount_strategy' => NULL,
     ] + parent::defaultConfiguration();
   }
 
@@ -127,21 +126,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
         'EN' => $this->t('English'),
       ],
       '#default_value' => $this->configuration['language'],
-    ];
-
-    $form['order_discount_strategy'] = [
-      '#type' => 'radios',
-      '#title' => $this->t('Order discount strategy'),
-      // @todo Support splitting discount amount into order items.
-      '#options' => [
-        NULL => $this->t('<b>Do nothing</b>: The API request will fail if you have any order level discounts'),
-        static::STRATEGY_REMOVE_ITEMS => $this->t('<b>Remove order item information</b>: The order item data will not be included in the API request. See the link below for implications.'),
-      ],
-      '#default_value' => $this->configuration['order_discount_strategy'],
-      '#description' => $this->t('<p>Paytrail does not support order level discounts, such as gift cards. See <a href="@link">this link</a> for more information.</p><p>This setting <em>does not</em> affect most discounts applied by <code>commerce_promotion</code> module, since they are split across all order items.</p>',
-        [
-          '@link' => 'https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-',
-        ]),
     ];
 
     return $form;
@@ -202,13 +186,6 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
    */
   public function isLive() : bool {
     return $this->configuration['mode'] === 'live';
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function orderDiscountStrategy() : ? string {
-    return $this->configuration['order_discount_strategy'];
   }
 
   /**

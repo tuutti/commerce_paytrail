@@ -87,7 +87,6 @@ class AdminUiTest extends BrowserTestBase {
       "configuration[$plugin][account]" => $values['account'],
       "configuration[$plugin][secret]" => $values['secret'],
       "configuration[$plugin][language]" => $values['language'],
-      "configuration[$plugin][order_discount_strategy]" => $values['discountStrategy'],
     ];
 
     if ($callback) {
@@ -118,14 +117,12 @@ class AdminUiTest extends BrowserTestBase {
         'account' => PaytrailInterface::ACCOUNT,
         'secret' => PaytrailInterface::SECRET,
         'language' => 'automatic',
-        'discountStrategy' => '',
       ]);
       // Test that we can modify values.
       $this->assertFormValues($plugin, [
         'account' => '321',
         'secret' => '123',
         'language' => 'EN',
-        'discountStrategy' => PaytrailInterface::STRATEGY_REMOVE_ITEMS,
       ], fn (array $expected) => $this->submitForm($expected, 'Save'));
     }
   }

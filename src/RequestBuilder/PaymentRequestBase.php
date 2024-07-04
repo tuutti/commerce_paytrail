@@ -8,7 +8,6 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
@@ -48,26 +47,6 @@ abstract class PaymentRequestBase {
     protected MinorUnitsConverterInterface $converter,
     protected int $callbackDelay,
   ) {
-  }
-
-  /**
-   * Check if given order has any discounts applied.
-   *
-   * Note: This only applies to order level discounts, such as giftcards.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order to check.
-   *
-   * @return bool
-   *   TRUE if order has discounts.
-   */
-  private function orderHasDiscounts(OrderInterface $order) : bool {
-    foreach ($order->getAdjustments() as $adjustment) {
-      if ($adjustment->getAmount()->isNegative()) {
-        return TRUE;
-      }
-    }
-    return FALSE;
   }
 
   /**
@@ -122,13 +101,13 @@ abstract class PaymentRequestBase {
   protected function populatePaymentRequest(AbstractPaymentRequest $request, OrderInterface $order, string $event) : AbstractPaymentRequest {
     $plugin = $this->getPaymentPlugin($order);
 
+    $items = array_map(
+      fn (OrderItemInterface $item) => $this->createOrderLine($item),
+      $order->getItems()
+    );
     $request->setAmount($this->converter->toMinorUnits($order->getTotalPrice()))
       ->setStamp($this->uuidService->generate())
       ->setLanguage($plugin->getLanguage())
-      ->setItems(array_map(
-        fn (OrderItemInterface $item) => $this->createOrderLine($item),
-        $order->getItems()
-      ))
       // Only EUR is supported.
       ->setCurrency('EUR')
       ->setCallbackUrls((new CallbackUrl())
@@ -149,6 +128,19 @@ abstract class PaymentRequestBase {
 
     $request->setCustomer($customer);
 
+    // Add order level discounts as negative line item.
+    foreach ($order->getAdjustments() as $adjustment) {
+      if (!$adjustment->getAmount()->isNegative()) {
+        continue;
+      }
+      $items[] = (new Item())
+        ->setUnits(1)
+        ->setVatPercentage(0)
+        ->setProductCode('discount')
+        ->setUnitPrice($this->converter->toMinorUnits($adjustment->getAmount()));
+    }
+    $request->setItems($items);
+
     $this
       ->eventDispatcher
       ->dispatch(new ModelEvent(
@@ -156,16 +148,6 @@ abstract class PaymentRequestBase {
         order: $order,
         event: $event,
       ));
-
-    // Paytrail does not support order level discounts, such as giftcards.
-    // Remove order items if order has any discounts applied.
-    // See https://www.drupal.org/project/commerce_paytrail/issues/3339269.
-    if (
-      $plugin->orderDiscountStrategy() === PaytrailInterface::STRATEGY_REMOVE_ITEMS &&
-      $this->orderHasDiscounts($order)
-    ) {
-      $request->setItems(NULL);
-    }
     // We use the reference field to load the order. Make sure it cannot be
     // changed.
     $request->setReference($order->id());

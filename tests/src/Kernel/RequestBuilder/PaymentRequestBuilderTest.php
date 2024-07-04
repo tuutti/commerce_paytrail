@@ -93,9 +93,7 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
         json_encode([])),
     ]);
 
-    $order = $this->createOrder($this->createGatewayPlugin(configuration: [
-      'order_discount_strategy' => PaytrailInterface::STRATEGY_REMOVE_ITEMS,
-    ]));
+    $order = $this->createOrder($this->createGatewayPlugin());
     $response = $this->getSut()->create($order);
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);
