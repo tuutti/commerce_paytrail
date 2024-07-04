@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Traits;
 
@@ -86,7 +86,7 @@ trait ApiTestTrait {
   protected function createGatewayPlugin(
     string $id = 'paytrail',
     string $plugin = 'paytrail',
-    array $configuration = []
+    array $configuration = [],
   ) : PaymentGatewayInterface {
     $gateway = PaymentGateway::create([
       'id' => $id,

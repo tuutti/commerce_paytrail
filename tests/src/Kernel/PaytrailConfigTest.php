@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
@@ -50,21 +50,18 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getAccount
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::isLive
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::setConfiguration
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::orderDiscountStrategy
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::create
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::create
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::defaultConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getSecret
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::getAccount
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::orderDiscountStrategy
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::isLive
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail::setConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::defaultConfiguration
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getSecret
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::getAccount
-   * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::orderDiscountStrategy
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::isLive
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken::setConfiguration
    */
@@ -96,12 +93,10 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
         'account' => PaytrailInterface::ACCOUNT,
         'secret' => PaytrailInterface::SECRET,
         'mode' => 'test',
-        'order_discount_strategy' => NULL,
         'collect_billing_information' => TRUE,
       ], $plugin->getConfiguration());
 
       static::assertFalse($plugin->isLive());
-      static::assertNull($plugin->orderDiscountStrategy());
 
       static::assertEquals(PaytrailInterface::ACCOUNT, $plugin->getAccount());
       static::assertEquals(PaytrailInterface::SECRET, $plugin->getSecret());

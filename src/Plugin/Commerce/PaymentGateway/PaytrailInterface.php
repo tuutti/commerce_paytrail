@@ -49,29 +49,6 @@ interface PaytrailInterface extends PaymentGatewayInterface, SupportsRefundsInte
   public function isLive(): bool;
 
   /**
-   * Gets the order discount strategy.
-   *
-   * Paytrail does not support order level discounts (such as gift cards).
-   * This setting allows site owners to choose the strategy how to deal with
-   * them.
-   *
-   * NOTE: This only applies to ORDER level discounts.
-   *
-   * Available options:
-   *
-   * 'None': Do nothing. The API request *will* fail if order's total price
-   * does
-   * not match the total unit price.
-   * 'Remove order items': Removes order item information from the API request
-   * since it's not mandatory. See
-   * https://support.paytrail.com/hc/en-us/articles/6164376177937-New-Paytrail-How-should-discounts-or-gift-cards-be-handled-in-your-online-store-when-using-Paytrail-s-payment-service-.
-   *
-   * @return string|null
-   *   The discount calculation strategy.
-   */
-  public function orderDiscountStrategy(): ?string;
-
-  /**
    * Gets the return URL for given order.
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order

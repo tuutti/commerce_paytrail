@@ -5,7 +5,7 @@
  * Contains 'commerce_paytrail' update hooks.
  */
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 /**
  * Enable the 'use_ipn_to_capture_payments' setting.

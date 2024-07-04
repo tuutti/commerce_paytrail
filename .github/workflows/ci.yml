@@ -10,11 +10,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php-version: ['8.2']
-        core: ['10.1.x']
-        include:
-          - core: 9.5.x
-            php-version: '8.1'
+        php-version: ['8.3', '8.2']
+        core: ['10.3.x']
     container:
       image: ghcr.io/tuutti/drupal-php-docker:${{ matrix.php-version }}
 
@@ -53,7 +50,7 @@ jobs:
           composer config repositories.0 path $GITHUB_WORKSPACE
           composer require drupal/$MODULE_NAME -W
           composer require drupal/commerce_shipping
-          composer require "drush/drush ^11.0"
+          composer require drush/drush:^12 -W
           composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
           composer require --dev "drupal/coder"
           # We use COMPOSER_MIRROR_PATH_REPOS=1 to mirror local repository

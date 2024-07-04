@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
@@ -41,7 +41,7 @@ final class RefundRequestBuilder implements RefundRequestBuilderInterface {
     private UuidInterface $uuidService,
     private TimeInterface $time,
     private EventDispatcherInterface $eventDispatcher,
-    private MinorUnitsConverterInterface $converter
+    private MinorUnitsConverterInterface $converter,
   ) {
   }
 

@@ -1,11 +1,10 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use GuzzleHttp\Psr7\Response;
@@ -80,7 +79,6 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createPaymentRequest
    * @covers ::createOrderLine
    * @covers ::populatePaymentRequest
-   * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBase::orderHasDiscounts
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    * @covers \Drupal\commerce_paytrail\Http\PaytrailClientFactory::create
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid
@@ -93,9 +91,7 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
         json_encode([])),
     ]);
 
-    $order = $this->createOrder($this->createGatewayPlugin(configuration: [
-      'order_discount_strategy' => PaytrailInterface::STRATEGY_REMOVE_ITEMS,
-    ]));
+    $order = $this->createOrder($this->createGatewayPlugin());
     $response = $this->getSut()->create($order);
     static::assertCount(1, $this->requestHistory);
     $this->assertRequestHeaders($this->requestHistory[0]['request']);

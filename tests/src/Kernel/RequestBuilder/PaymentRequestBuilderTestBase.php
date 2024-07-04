@@ -1,12 +1,11 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_price\Price;
 use Drupal\profile\Entity\Profile;
 use Drupal\Tests\commerce_paytrail\Kernel\RequestBuilderKernelTestBase;
@@ -34,7 +33,7 @@ abstract class PaymentRequestBuilderTestBase extends RequestBuilderKernelTestBas
     AbstractPaymentRequest $request,
     int $expectedTotalPrice,
     int $expectedUnitPrice,
-    int $expectedVatPercentage
+    int $expectedVatPercentage,
   ) : void {
     $orderItem = $request->getItems()[0];
     static::assertEquals($expectedTotalPrice, $request->getAmount());
@@ -121,16 +120,10 @@ abstract class PaymentRequestBuilderTestBase extends RequestBuilderKernelTestBas
   }
 
   /**
-   * Make sure order level discounts remove items if configured so.
+   * Make sure order level discounts are working.
    */
   public function testOrderLevelDiscount() : void {
     $gateway = $this->createGatewayPlugin();
-    $gateway->getPlugin()->setConfiguration([
-      'order_discount_strategy' => PaytrailInterface::STRATEGY_REMOVE_ITEMS,
-    ]);
-    $gateway->save();
-    static::assertEquals(PaytrailInterface::STRATEGY_REMOVE_ITEMS, $gateway->getPlugin()->orderDiscountStrategy());
-
     $order = $this
       ->setPricesIncludeTax(TRUE, ['FI'])
       ->createOrder($gateway);
@@ -143,8 +136,9 @@ abstract class PaymentRequestBuilderTestBase extends RequestBuilderKernelTestBas
     $order->save();
 
     $request = $this->getRequest($order);
-    // Make sure order item level discounts remove order items.
-    static::assertNull($request->getItems());
+    $expectedItem = $request->getItems()[1];
+    static::assertEquals('discount', $expectedItem->getProductCode());
+    static::assertEquals(-500, $expectedItem->getUnitPrice());
     // Make sure discount is still applied to total price.
     static::assertEquals(1700, $request->getAmount());
   }
