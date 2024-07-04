@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Functional;
 
@@ -81,7 +81,7 @@ class AdminUiTest extends BrowserTestBase {
   private function assertFormValues(
     string $plugin,
     array $values,
-    ?callable $callback = NULL
+    ?callable $callback = NULL,
   ) : void {
     $expected = [
       "configuration[$plugin][account]" => $values['account'],

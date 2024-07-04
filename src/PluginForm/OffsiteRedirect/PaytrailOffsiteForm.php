@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
@@ -34,7 +34,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
   public function __construct(
     private PaymentRequestBuilderInterface $paymentRequest,
     private LoggerInterface $logger,
-    private MessengerInterface $messenger
+    private MessengerInterface $messenger,
   ) {
   }
 

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Http;
 
@@ -30,7 +30,7 @@ final class PaytrailClient extends Client {
     protected $http_client,
     int $merchantId,
     string $secretKey,
-    string $platformName
+    string $platformName,
   ) {
     $this->merchantId = $merchantId;
     $this->secretKey = $secretKey;

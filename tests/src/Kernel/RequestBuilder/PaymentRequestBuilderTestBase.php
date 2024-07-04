@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
@@ -33,7 +33,7 @@ abstract class PaymentRequestBuilderTestBase extends RequestBuilderKernelTestBas
     AbstractPaymentRequest $request,
     int $expectedTotalPrice,
     int $expectedUnitPrice,
-    int $expectedVatPercentage
+    int $expectedVatPercentage,
   ) : void {
     $orderItem = $request->getItems()[0];
     static::assertEquals($expectedTotalPrice, $request->getAmount());

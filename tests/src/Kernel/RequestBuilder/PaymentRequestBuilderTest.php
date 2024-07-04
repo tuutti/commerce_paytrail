@@ -1,11 +1,10 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use GuzzleHttp\Psr7\Response;

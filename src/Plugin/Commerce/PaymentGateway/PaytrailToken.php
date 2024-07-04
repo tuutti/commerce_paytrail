@@ -65,7 +65,7 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
     ContainerInterface $container,
     array $configuration,
     $plugin_id,
-    $plugin_definition
+    $plugin_definition,
   ): static {
     $instance = parent::create(
       $container,
@@ -306,7 +306,7 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
    */
   public function capturePayment(
     PaymentInterface $payment,
-    Price $amount = NULL
+    Price $amount = NULL,
   ) : void {
     $this->assertPaymentState($payment, ['authorization']);
     $amount = $amount ?: $payment->getAmount();
