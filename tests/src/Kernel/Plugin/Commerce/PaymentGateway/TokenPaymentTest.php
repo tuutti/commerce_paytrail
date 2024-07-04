@@ -225,13 +225,16 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
           ->setStatus('ok')
           ->setTransactionId('123')
       );
+    // Set expiration to one year from now so commerce_payment
+    // doesn't throw HardDeclineException due to expired card.
+    $date = new \DateTime('+1 year');
     $tokenResponse = new GetTokenResponse();
     $tokenResponse->setToken('123')
       ->setCard((new Card())
         ->setType('Visa')
         ->setPartialPan('123')
-        ->setExpireMonth('12')
-        ->setExpireYear('2023')
+        ->setExpireMonth($date->format('m'))
+        ->setExpireYear($date->format('Y'))
       );
     $tokenBuilder = $this->prophesize(TokenRequestBuilderInterface::class);
     $tokenBuilder->getCardForToken(Argument::any(), Argument::any())

@@ -79,7 +79,6 @@ class PaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    * @covers ::createPaymentRequest
    * @covers ::createOrderLine
    * @covers ::populatePaymentRequest
-   * @covers \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBase::orderHasDiscounts
    * @covers \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase::getClient
    * @covers \Drupal\commerce_paytrail\Http\PaytrailClientFactory::create
    * @covers \Drupal\commerce_paytrail\EventSubscriber\PaymentRequestSubscriberBase::isValid

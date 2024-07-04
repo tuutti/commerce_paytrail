@@ -97,7 +97,6 @@ class PaytrailConfigTest extends PaytrailKernelTestBase {
       ], $plugin->getConfiguration());
 
       static::assertFalse($plugin->isLive());
-      static::assertNull($plugin->orderDiscountStrategy());
 
       static::assertEquals(PaytrailInterface::ACCOUNT, $plugin->getAccount());
       static::assertEquals(PaytrailInterface::SECRET, $plugin->getSecret());
