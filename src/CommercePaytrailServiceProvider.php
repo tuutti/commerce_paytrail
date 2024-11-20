@@ -1,12 +1,12 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail;
 
-use Drupal\commerce_paytrail\Commerce\Shipping\ShippingEventSubscriber;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\DependencyInjection\ServiceProviderBase;
+use Drupal\commerce_paytrail\Commerce\Shipping\ShippingEventSubscriber;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**

@@ -1,18 +1,18 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RequestBuilderInterface;
-use Drupal\Tests\commerce_paytrail\Traits\EventSubscriberTestTrait;
-use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
-use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
 use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;

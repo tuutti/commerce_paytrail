@@ -1,9 +1,11 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Component\Uuid\UuidInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
@@ -11,8 +13,6 @@ use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
-use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Component\Uuid\UuidInterface;
 use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Api\PaymentsApi;
 use Paytrail\Payment\Model\Callbacks;
@@ -78,7 +78,7 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
     }
 
     if ($taxes = $orderItem->getAdjustments(['tax'])) {
-      $item->setVatPercentage((int) Calculator::multiply(
+      $item->setVatPercentage((float) Calculator::multiply(
         reset($taxes)->getPercentage(),
         '100'
       ));
@@ -101,14 +101,15 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->getPaymentByTransactionIdWithHttpInfo(
-        $transactionId,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $transactionId,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        transaction_id: $transactionId,
+        checkout_account: $configuration->getApiKey('account'),
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_transaction_id: $transactionId,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: 'drupal/commerce_paytrail',
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
         ),
@@ -127,13 +128,14 @@ final class PaymentRequestBuilder extends RequestBuilderBase implements PaymentR
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->createPaymentWithHttpInfo(
-        $request,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        payment_request: $request,
+        checkout_account: $configuration->getApiKey('account'),
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: 'drupal/commerce_paytrail',
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)

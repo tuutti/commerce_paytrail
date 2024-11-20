@@ -1,15 +1,15 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Plugin\QueueWorker;
 
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Queue\QueueWorkerBase;
 use Drupal\commerce_order\OrderStorage;
 use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
 use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Drupal\Core\Queue\QueueWorkerBase;
 use Paytrail\Payment\Model\Payment;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -58,7 +58,7 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
     array $plugin_definition,
     private OrderStorage $orderStorage,
     private PaymentRequestBuilderInterface $paymentRequest,
-    private LoggerInterface $logger
+    private LoggerInterface $logger,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
   }
@@ -70,7 +70,7 @@ final class NotificationWorker extends QueueWorkerBase implements ContainerFacto
     ContainerInterface $container,
     array $configuration,
     $plugin_id,
-    $plugin_definition
+    $plugin_definition,
   ) : self {
     return new self(
       $configuration,

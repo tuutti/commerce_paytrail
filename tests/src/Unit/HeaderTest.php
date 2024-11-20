@@ -1,11 +1,11 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Unit;
 
-use Drupal\commerce_paytrail\Header;
 use Drupal\Tests\UnitTestCase;
+use Drupal\commerce_paytrail\Header;
 
 /**
  * Tests header DTO.
@@ -28,7 +28,7 @@ class HeaderTest extends UnitTestCase {
     string $nonce,
     int $timestamp,
     ?string $transactionId,
-    ?string $platformName
+    ?string $platformName,
   ) : void {
     $sut = new Header(
       $account,

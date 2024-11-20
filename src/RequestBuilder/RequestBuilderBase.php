@@ -1,16 +1,16 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Component\Uuid\UuidInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\Header;
 use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
-use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Component\Uuid\UuidInterface;
 use Paytrail\Payment\Configuration;
 use Paytrail\Payment\Model\ModelInterface;
 
@@ -31,7 +31,7 @@ abstract class RequestBuilderBase implements RequestBuilderInterface {
    */
   public function __construct(
     protected UuidInterface $uuidService,
-    protected TimeInterface $time
+    protected TimeInterface $time,
   ) {
   }
 

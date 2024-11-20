@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Commerce\Shipping;
 
@@ -22,7 +22,7 @@ final class ShippingEventSubscriber extends PaymentRequestSubscriberBase {
    *   The minor unit converter.
    */
   public function __construct(
-    private MinorUnitsConverterInterface $converter
+    private MinorUnitsConverterInterface $converter,
   ) {
   }
 
@@ -53,7 +53,7 @@ final class ShippingEventSubscriber extends PaymentRequestSubscriberBase {
         ->setVatPercentage(0);
 
       if ($taxes = $shipment->getAdjustments(['tax'])) {
-        $item->setVatPercentage((int) Calculator::multiply(
+        $item->setVatPercentage((float) Calculator::multiply(
           reset($taxes)->getPercentage(),
           '100'
         ));

@@ -1,13 +1,13 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\Core\Queue\QueueInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Plugin\QueueWorker\NotificationWorker;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
-use Drupal\Core\Queue\QueueInterface;
 use Paytrail\Payment\Model\Payment;
 use Prophecy\Argument;
 

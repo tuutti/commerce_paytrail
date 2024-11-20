@@ -1,15 +1,15 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Component\Uuid\UuidInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_price\Price;
-use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Component\Uuid\UuidInterface;
 use GuzzleHttp\ClientInterface;
 use Paytrail\Payment\Api\PaymentsApi;
 use Paytrail\Payment\Model\Callbacks;
@@ -44,7 +44,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
     TimeInterface $time,
     private EventDispatcherInterface $eventDispatcher,
     private ClientInterface $client,
-    private MinorUnitsConverterInterface $converter
+    private MinorUnitsConverterInterface $converter,
   ) {
     parent::__construct($uuidService, $time);
   }
@@ -62,15 +62,16 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
 
     $response = (new PaymentsApi($this->client, $configuration))
       ->refundPaymentByTransactionIdWithHttpInfo(
-        $transactionId,
-        $request,
-        $configuration->getApiKey('account'),
-        $headers->hashAlgorithm,
-        $headers->method,
-        $transactionId,
-        $headers->timestamp,
-        $headers->nonce,
-        $this->signature(
+        transaction_id: $transactionId,
+        refund: $request,
+        checkout_account: $configuration->getApiKey('account'),
+        checkout_algorithm: $headers->hashAlgorithm,
+        checkout_method: $headers->method,
+        checkout_transaction_id: $transactionId,
+        checkout_timestamp: $headers->timestamp,
+        checkout_nonce: $headers->nonce,
+        platform_name: 'drupal/commerce_paytrail',
+        signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
           json_encode(ObjectSerializer::sanitizeForSerialization($request), JSON_THROW_ON_ERROR)
@@ -85,7 +86,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
   public function createRefundRequest(
     OrderInterface $order,
     Price $amount,
-    string $nonce
+    string $nonce,
   ) : Refund {
     $plugin = $this->getPaymentPlugin($order);
 

@@ -1,9 +1,13 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
+use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
@@ -11,10 +15,6 @@ use Drupal\commerce_price\Price;
 use Drupal\commerce_shipping\Entity\ShippingMethod;
 use Drupal\commerce_tax\Entity\TaxType;
 use Drupal\profile\Entity\Profile;
-use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
-use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
-use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
-use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
 
 /**
  * Tests Payment requests with shipping.

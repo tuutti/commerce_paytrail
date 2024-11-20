@@ -1,17 +1,17 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Functional;
 
+use Drupal\Tests\BrowserTestBase;
+use Drupal\Tests\commerce\Traits\CommerceBrowserTestTrait;
 use Drupal\commerce_payment\Entity\PaymentGateway;
 use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\Paytrail;
 use Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailBase;
 use Drupal\commerce_store\Entity\StoreInterface;
 use Drupal\commerce_store\StoreCreationTrait;
-use Drupal\Tests\BrowserTestBase;
-use Drupal\Tests\commerce\Traits\CommerceBrowserTestTrait;
 
 /**
  * Provides tests for admin ui.

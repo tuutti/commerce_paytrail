@@ -1,15 +1,15 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
-use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
-use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Paytrail\Payment\ApiException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -34,7 +34,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
   public function __construct(
     private PaymentRequestBuilderInterface $paymentRequest,
     private LoggerInterface $logger,
-    private MessengerInterface $messenger
+    private MessengerInterface $messenger,
   ) {
   }
 
