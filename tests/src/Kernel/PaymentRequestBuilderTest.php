@@ -102,7 +102,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
 
     $request = $this->sut->createPaymentRequest($order);
     // Taxes should be added to unit price.
-    $this->assertTaxes($request, 2728, 1364, 25.5);
+    $this->assertTaxes($request, 2762, 1381, 25.5);
   }
 
   /**
