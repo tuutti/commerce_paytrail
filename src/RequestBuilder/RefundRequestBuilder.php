@@ -70,7 +70,7 @@ final class RefundRequestBuilder extends RequestBuilderBase implements RefundReq
         checkout_transaction_id: $transactionId,
         checkout_timestamp: $headers->timestamp,
         checkout_nonce: $headers->nonce,
-        platform_name: 'drupal/commerce_paytrail',
+        platform_name: $headers->platformName,
         signature: $this->signature(
           $configuration->getApiKey('secret'),
           $headers->toArray(),
