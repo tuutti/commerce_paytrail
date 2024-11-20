@@ -1,9 +1,10 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
+use Drupal\Core\Url;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
@@ -13,7 +14,6 @@ use Drupal\commerce_paytrail\Exception\SecurityHashMismatchException;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface;
 use Drupal\commerce_price\Price;
-use Drupal\Core\Url;
 use Paytrail\Payment\ApiException;
 use Paytrail\Payment\Model\Payment;
 use Paytrail\Payment\Model\RefundResponse;
@@ -152,7 +152,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   /**
    * {@inheritdoc}
    */
-  public function getNotifyUrl(string $eventName = NULL) : Url {
+  public function getNotifyUrl(?string $eventName = NULL) : Url {
     $url = parent::getNotifyUrl();
 
     if ($eventName) {
@@ -234,7 +234,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    */
   public function createPayment(
     OrderInterface $order,
-    Payment $paymentResponse
+    Payment $paymentResponse,
   ) : void {
     /** @var \Drupal\commerce_payment\PaymentStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage('commerce_payment');
@@ -264,7 +264,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
   /**
    * {@inheritdoc}
    */
-  public function refundPayment(PaymentInterface $payment, Price $amount = NULL) : void {
+  public function refundPayment(PaymentInterface $payment, ?Price $amount = NULL) : void {
     $this->assertPaymentState($payment, ['completed', 'partially_refunded']);
     // If not specified, refund the entire amount.
     $amount = $amount ?: $payment->getAmount();

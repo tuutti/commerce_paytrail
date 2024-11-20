@@ -1,9 +1,13 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Kernel;
 
+use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
+use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
+use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
@@ -11,10 +15,6 @@ use Drupal\commerce_price\Price;
 use Drupal\commerce_shipping\Entity\ShippingMethod;
 use Drupal\commerce_tax\Entity\TaxType;
 use Drupal\profile\Entity\Profile;
-use Drupal\Tests\commerce_paytrail\Traits\ApiTestTrait;
-use Drupal\Tests\commerce_paytrail\Traits\OrderTestTrait;
-use Drupal\Tests\commerce_paytrail\Traits\TaxTestTrait;
-use Drupal\Tests\commerce_shipping\Kernel\ShippingKernelTestBase;
 
 /**
  * Tests Payment requests with shipping.
@@ -160,7 +160,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
-    static::assertEquals(24, $shippingItem->getVatPercentage());
+    static::assertEquals(25.5, $shippingItem->getVatPercentage());
     static::assertEquals(1000, $shippingItem->getUnitPrice());
     static::assertEquals('flat_rate', $shippingItem->getProductCode());
   }
@@ -181,7 +181,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
-    static::assertEquals(24, $shippingItem->getVatPercentage());
+    static::assertEquals(25.5, $shippingItem->getVatPercentage());
     // @todo commerce_shipping doesn't respect store's tax setting at the moment.
     // Fix the unit price if this is ever fixed.
     // @see https://www.drupal.org/project/commerce_shipping/issues/3189727

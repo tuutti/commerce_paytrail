@@ -1,12 +1,12 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Event;
 
+use Drupal\Component\EventDispatcher\Event;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_paytrail\Header;
-use Drupal\Component\EventDispatcher\Event;
 use Paytrail\Payment\Model\ModelInterface;
 
 /**
@@ -27,7 +27,7 @@ final class ModelEvent extends Event {
   public function __construct(
     public ModelInterface $model,
     public ?Header $headers = NULL,
-    public ?OrderInterface $order = NULL
+    public ?OrderInterface $order = NULL,
   ) {
   }
 

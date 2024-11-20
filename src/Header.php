@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail;
 
@@ -34,7 +34,7 @@ final class Header {
     public string $nonce,
     public int|string $timestamp,
     public ?string $transactionId = NULL,
-    public ?string $platformName = NULL
+    public ?string $platformName = NULL,
   ) {
   }
 

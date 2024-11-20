@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\commerce_paytrail\Traits;
 
-use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
+use Drupal\commerce_paytrail\Event\ModelEvent;
 
 /**
  * Provides a trait to test event subscribers.

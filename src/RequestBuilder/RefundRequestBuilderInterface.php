@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\RequestBuilder;
 
@@ -45,7 +45,7 @@ interface RefundRequestBuilderInterface extends RequestBuilderInterface {
   public function createRefundRequest(
     OrderInterface $order,
     Price $amount,
-    string $nonce
+    string $nonce,
   ) : Refund;
 
 }
