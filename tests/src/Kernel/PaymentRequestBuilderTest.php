@@ -44,14 +44,14 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
    *   The expected total price.
    * @param int $expectedUnitPrice
    *   The expected unit price.
-   * @param int $expectedVatPercentage
+   * @param float $expectedVatPercentage
    *   The expected vat percentage.
    */
   private function assertTaxes(
     PaymentRequest $request,
     int $expectedTotalPrice,
     int $expectedUnitPrice,
-    int $expectedVatPercentage,
+    float $expectedVatPercentage,
   ) : void {
     $orderItem = $request->getItems()[0];
     static::assertEquals($expectedTotalPrice, $request->getAmount());
@@ -89,7 +89,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
 
     $request = $this->sut->createPaymentRequest($order);
     // Order should have prices included in unit prices.
-    $this->assertTaxes($request, 2200, 1100, 24);
+    $this->assertTaxes($request, 2200, 1100, 25.5);
   }
 
   /**
@@ -102,7 +102,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
 
     $request = $this->sut->createPaymentRequest($order);
     // Taxes should be added to unit price.
-    $this->assertTaxes($request, 2728, 1364, 24);
+    $this->assertTaxes($request, 2728, 1364, 25.5);
   }
 
   /**
@@ -122,7 +122,7 @@ class PaymentRequestBuilderTest extends RequestBuilderKernelTestBase {
     // Make sure order items are not removed.
     $this->assertNotNull($request->getItems());
 
-    $this->assertTaxes($request, 1700, 850, 24);
+    $this->assertTaxes($request, 1700, 850, 25.5);
   }
 
   /**

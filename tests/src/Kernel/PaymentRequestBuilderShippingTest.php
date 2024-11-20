@@ -160,7 +160,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
-    static::assertEquals(24, $shippingItem->getVatPercentage());
+    static::assertEquals(25.5, $shippingItem->getVatPercentage());
     static::assertEquals(1000, $shippingItem->getUnitPrice());
     static::assertEquals('flat_rate', $shippingItem->getProductCode());
   }
@@ -181,7 +181,7 @@ class PaymentRequestBuilderShippingTest extends ShippingKernelTestBase {
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
-    static::assertEquals(24, $shippingItem->getVatPercentage());
+    static::assertEquals(25.5, $shippingItem->getVatPercentage());
     // @todo commerce_shipping doesn't respect store's tax setting at the moment.
     // Fix the unit price if this is ever fixed.
     // @see https://www.drupal.org/project/commerce_shipping/issues/3189727
