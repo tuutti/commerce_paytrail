@@ -38,7 +38,7 @@ final class PaytrailTokenForm extends PaymentOffsiteForm implements ContainerInj
     $form['payment_details'] = [];
 
     ['uri' => $uri, 'data' => $data] = $this->tokenRequestBuilder
-      ->createAddCardFormForOrder($this->entity->getOrder());
+      ->createAddCardFormForOrder($this->entity->getOrder(), $form['#capture']);
 
     return $this->buildRedirectForm($form, $form_state, $uri, $data, self::REDIRECT_POST);
   }

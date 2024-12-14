@@ -73,7 +73,7 @@ class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
    * @return \Drupal\commerce_order\Entity\OrderInterface
    *   The order.
    */
-  private function createShippingOrder() : OrderInterface {
+  protected function createShippingOrder() : OrderInterface {
     TaxType::create([
       'id' => 'shipping',
       'label' => 'Shipping',

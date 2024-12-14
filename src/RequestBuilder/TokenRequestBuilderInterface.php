@@ -34,11 +34,15 @@ interface TokenRequestBuilderInterface {
    *
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   The order to create a form for.
+   * @param bool $capture
+   *   The transaction mode. Set to TRUE to capture the order immediately
+   *   on return. This setting should be mirrored from 'Transaction mode' of
+   *   your checkout flow.
    *
    * @return array
    *   The add card form.
    */
-  public function createAddCardFormForOrder(OrderInterface $order) : array;
+  public function createAddCardFormForOrder(OrderInterface $order, bool $capture) : array;
 
   /**
    * Gets the card for given token.

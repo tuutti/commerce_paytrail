@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway;
 
-use Drupal\commerce_checkout\Entity\CheckoutFlowInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\commerce_payment\Exception\PaymentGatewayException;
 use Drupal\commerce_payment\PaymentMethodStorageInterface;
-use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsAuthorizationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPaymentMethodsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsVoidsInterface;
@@ -26,7 +24,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Provides the Paytrail payment gateway.
+ * Provides stored Paytrail payment method.
  *
  * @CommercePaymentGateway(
  *   id = "paytrail_token",
@@ -42,7 +40,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   requires_billing_information = FALSE,
  * )
  */
-class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterface, SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
+class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
 
   /**
    * The token payment request builder.
@@ -84,41 +82,7 @@ class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterfa
   public function defaultConfiguration() : array {
     return [
       'payment_method_types' => ['paytrail_token'],
-      'capture' => TRUE,
     ] + parent::defaultConfiguration();
-  }
-
-  /**
-   * Whether to capture the payment automatically on return.
-   *
-   * @return bool
-   *   TRUE if payment should be captured on return.
-   */
-  public function autoCaptureEnabled(OrderInterface $order) : bool {
-    $captureSetting = (bool) $this->configuration['capture'];
-
-    if ($captureSetting === FALSE) {
-      return FALSE;
-    }
-
-    // Attempt to mirror 'Transaction mode' setting in checkout flow.
-    if (!$order->hasField('checkout_flow')) {
-      return TRUE;
-    }
-    $checkoutFlow = $order->get('checkout_flow')?->entity;
-
-    if (!$checkoutFlow instanceof CheckoutFlowInterface) {
-      return TRUE;
-    }
-
-    $configuration = $checkoutFlow->getPlugin()
-      ?->getPane('payment_process')
-      ?->getConfiguration();
-
-    if (isset($configuration['capture'])) {
-      return (bool) $configuration['capture'];
-    }
-    return TRUE;
   }
 
   /**
@@ -135,7 +99,13 @@ class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterfa
         throw new PaymentGatewayException('Order not found.');
       }
       $this->validateResponse($order, $request);
-      $this->handlePayment($order, $request->query->get('checkout-tokenization-id'));
+
+      [
+        'checkout-tokenization-id' => $token,
+        'capture' => $capture,
+      ] = $request->query->all();
+
+      $this->handlePayment($order, $token, (bool) $capture);
     }
     catch (SecurityHashMismatchException | PaymentGatewayException $e) {
       return new Response($e->getMessage(), Response::HTTP_FORBIDDEN);
@@ -149,7 +119,13 @@ class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterfa
   public function onReturn(OrderInterface $order, Request $request) : void {
     try {
       $this->validateResponse($order, $request);
-      $this->handlePayment($order, $request->query->get('checkout-tokenization-id'));
+
+      [
+        'checkout-tokenization-id' => $token,
+        'capture' => $capture,
+      ] = $request->query->all();
+
+      $this->handlePayment($order, $token, $capture);
     }
     catch (SecurityHashMismatchException | RequestException $e) {
       ExceptionHelper::handle($e);
@@ -188,8 +164,10 @@ class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterfa
    *   The order.
    * @param string $token
    *   The tokenization token.
+   * @param bool $capture
+   *   Whether to capture the payment or not.
    */
-  protected function handlePayment(OrderInterface $order, string $token) : void {
+  protected function handlePayment(OrderInterface $order, string $token, bool $capture) : void {
     $paymentMethodStorage = $this->entityTypeManager->getStorage('commerce_payment_method');
     assert($paymentMethodStorage instanceof PaymentMethodStorageInterface);
 
@@ -213,7 +191,7 @@ class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterfa
       'test' => !$this->isLive(),
       'payment_method' => $paymentMethod,
     ]);
-    $this->createPayment($payment, $this->autoCaptureEnabled($order));
+    $this->createPayment($payment, $capture);
     $paymentMethod->save();
   }
 

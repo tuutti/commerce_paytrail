@@ -29,7 +29,7 @@ class TokenRequestBuilder extends PaymentRequestBase implements TokenRequestBuil
   /**
    * {@inheritdoc}
    */
-  public function createAddCardFormForOrder(OrderInterface $order) : array {
+  public function createAddCardFormForOrder(OrderInterface $order, bool $capture) : array {
     $plugin = $this->getPaymentPlugin($order);
     // Tokenization return/notify URL has no unique value that is used as a
     // part of the hash calculation. Store a unique stamp in order's data field
