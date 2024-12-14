@@ -36,7 +36,7 @@ class TokenRequestBuilder extends PaymentRequestBase implements TokenRequestBuil
     // to make sure a valid return URL cannot be reused.
     $query = [
       'commerce_paytrail_stamp' => $this->uuidService->generate(),
-      'capture' => $capture,
+      'capture' => (int) $capture,
     ];
     $notifyUrl = $plugin->getNotifyUrl($query + ['commerce_order' => $order->id()])
       ->toString();

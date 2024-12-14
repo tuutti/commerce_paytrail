@@ -125,7 +125,7 @@ class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentMethods
         'capture' => $capture,
       ] = $request->query->all();
 
-      $this->handlePayment($order, $token, $capture);
+      $this->handlePayment($order, $token, (bool) $capture);
     }
     catch (SecurityHashMismatchException | RequestException $e) {
       ExceptionHelper::handle($e);
@@ -143,8 +143,15 @@ class PaytrailToken extends PaytrailBase implements SupportsStoredPaymentMethods
    * @throws \Drupal\commerce_paytrail\Exception\SecurityHashMismatchException
    */
   protected function validateResponse(OrderInterface $order, Request $request) : void {
-    if (!$request->query->get('checkout-tokenization-id')) {
-      throw new SecurityHashMismatchException('Tokenization ID not set.');
+    $required = [
+      'checkout-tokenization-id',
+      'capture',
+    ];
+
+    foreach ($required as $field) {
+      if (!$request->query->get($field)) {
+        throw new SecurityHashMismatchException("Missing '{$field}' parameter.");
+      }
     }
     $stamp = (string) $request->query->get('commerce_paytrail_stamp');
     $orderStamp = (string) $order->getData(TokenRequestBuilderInterface::TOKEN_STAMP_KEY);

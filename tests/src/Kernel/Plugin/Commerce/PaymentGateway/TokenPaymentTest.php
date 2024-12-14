@@ -112,6 +112,7 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
       'commerce_order' => $order->id(),
       'commerce_paytrail_stamp' => $order->getData(TokenRequestBuilderInterface::TOKEN_STAMP_KEY),
       'checkout-tokenization-id' => '123',
+      'capture' => 1,
     ]);
     $request->query->set('signature', '123');
 
@@ -126,29 +127,56 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
   }
 
   /**
+   * Asserts missing query parameters.
+   *
+   * @param array $query
+   *   The query to run.
+   * @param string $expectedMessage
+   *   The expected error message.
+   */
+  private function assertValidateResponseQueryParameters(array $query, string $expectedMessage) {
+    $gateway = $this->createGatewayPlugin($this->randomMachineName(), 'paytrail_token');
+    $order = $this->createOrder($gateway);
+    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken $sut */
+    $sut = $gateway->getPlugin();
+
+    $query = $query + [
+      'commerce_order' => $order->id(),
+    ];
+    $request = $this->createRequest($sut, $query);
+
+    $response = $sut
+      ->onNotify($request);
+    static::assertEquals(403, $response->getStatusCode());
+    static::assertEquals($expectedMessage, $response->getContent());
+
+    $caught = FALSE;
+    try {
+      $sut->onReturn($order, $request);
+    }
+    catch (PaymentGatewayException $e) {
+      $caught = TRUE;
+      static::assertEquals($expectedMessage, $e->getMessage());
+    }
+    static::assertTrue($caught);
+  }
+
+  /**
    * @covers ::onReturn
    * @covers ::onNotify
    * @covers ::onNotifySuccess
    * @covers ::validateResponse
    */
-  public function testTokenizationIdNotSetException() : void {
-    $gateway = $this->createGatewayPlugin('paytrail_token', 'paytrail_token');
-    $order = $this->createOrder($gateway);
-    /** @var \Drupal\commerce_paytrail\Plugin\Commerce\PaymentGateway\PaytrailToken $sut */
-    $sut = $gateway->getPlugin();
-    $request = $this->createRequest($sut, [
-      'commerce_order' => $order->id(),
+  public function testRequiredQueryParameters() : void {
+    $this->assertValidateResponseQueryParameters([
       'checkout-tokenization-id' => NULL,
-    ]);
+      'capture' => NULL,
+    ], "Missing 'checkout-tokenization-id' parameter.");
 
-    $response = $sut
-      ->onNotify($request);
-    static::assertEquals(403, $response->getStatusCode());
-    static::assertEquals('Tokenization ID not set.', $response->getContent());
-
-    $this->expectException(PaymentGatewayException::class);
-    $this->expectExceptionMessage('Tokenization ID not set.');
-    $sut->onReturn($order, $request);
+    $this->assertValidateResponseQueryParameters([
+      'checkout-tokenization-id' => '123',
+      'capture' => NULL,
+    ], "Missing 'capture' parameter.");
   }
 
   /**
@@ -194,6 +222,7 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
       'commerce_order' => $order->id(),
       'checkout-tokenization-id' => '123',
       'commerce_paytrail_stamp' => $stamp,
+      'capture' => 1,
     ]);
 
     $order->setData(TokenRequestBuilderInterface::TOKEN_STAMP_KEY, $orderStamp)
@@ -259,6 +288,7 @@ class TokenPaymentTest extends RequestBuilderKernelTestBase {
       'commerce_order' => $order->id(),
       'checkout-tokenization-id' => '123',
       'commerce_paytrail_stamp' => '123',
+      'capture' => 1,
     ]);
 
     $order->setData(TokenRequestBuilderInterface::TOKEN_STAMP_KEY, '123')

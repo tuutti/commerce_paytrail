@@ -30,13 +30,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    *   The system under testing.
    */
   private function getSut() : TokenRequestBuilder {
-    return new TokenRequestBuilder(
-      $this->container->get('uuid'),
-      $this->container->get('datetime.time'),
-      $this->container->get('event_dispatcher'),
-      $this->container->get('commerce_price.minor_units_converter'),
-      123,
-    );
+    return $this->container->get(TokenRequestBuilderInterface::class);
   }
 
   /**
@@ -52,7 +46,7 @@ class TokenPaymentRequestBuilderTest extends PaymentRequestBuilderTestBase {
    */
   public function testCreateAddCardFormForOrder() : void {
     $response = $this->getSut()
-      ->createAddCardFormForOrder($this->createOrder($this->createGatewayPlugin('paytrail_token', 'paytrail_token')));
+      ->createAddCardFormForOrder($this->createOrder($this->createGatewayPlugin('paytrail_token', 'paytrail_token')), TRUE);
 
     static::assertArrayHasKey('uri', $response);
     static::assertArrayHasKey('data', $response);
