@@ -19,3 +19,5 @@ services:
   Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface: '@Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder'
 
   Drupal\commerce_paytrail\Http\PaytrailClientFactory: ~
+
+  Drupal\commerce_paytrail\EventSubscriber\BillingInformationCollector: ~

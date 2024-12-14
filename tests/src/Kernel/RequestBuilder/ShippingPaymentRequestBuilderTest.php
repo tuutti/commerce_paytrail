@@ -7,6 +7,7 @@ namespace Drupal\Tests\commerce_paytrail\Kernel\RequestBuilder;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentGatewayInterface;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder;
+use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_shipping\Entity\ShippingMethod;
 use Drupal\commerce_tax\Entity\TaxType;
@@ -31,9 +32,9 @@ class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
   /**
    * The payment request builder.
    *
-   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
+   * @var \Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface
    */
-  protected ?PaymentRequestBuilder $sut;
+  protected ?PaymentRequestBuilderInterface $sut;
 
   /**
    * The payment gateway.
@@ -64,7 +65,7 @@ class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
     $this->setupTaxes();
     $this->store = $this->createStore(country: 'FI', currency: 'EUR');
     $this->gateway = $this->createGatewayPlugin();
-    $this->sut = $this->container->get('commerce_paytrail.payment_request');
+    $this->sut = $this->container->get(PaymentRequestBuilderInterface::class);
   }
 
   /**
@@ -160,7 +161,7 @@ class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
-    static::assertEquals(24, $shippingItem->getVatPercentage());
+    static::assertEquals(25.5, $shippingItem->getVatPercentage());
     static::assertEquals(1000, $shippingItem->getUnitPrice());
     static::assertEquals('flat_rate', $shippingItem->getProductCode());
   }
@@ -181,7 +182,7 @@ class ShippingPaymentRequestBuilderTest extends ShippingKernelTestBase {
 
     /** @var \Paytrail\Payment\Model\Item $shippingItem */
     $shippingItem = end($items);
-    static::assertEquals(24, $shippingItem->getVatPercentage());
+    static::assertEquals(25.5, $shippingItem->getVatPercentage());
     // @todo commerce_shipping doesn't respect store's tax setting at the moment.
     // Fix the unit price if this is ever fixed.
     // @see https://www.drupal.org/project/commerce_shipping/issues/3189727

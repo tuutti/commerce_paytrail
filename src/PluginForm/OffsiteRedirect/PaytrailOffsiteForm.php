@@ -13,6 +13,7 @@ use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Provides the Paytrail payment off-site form.
@@ -34,7 +35,7 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
    */
   public function __construct(
     private PaymentRequestBuilderInterface $paymentRequest,
-    private LoggerInterface $logger,
+    #[Autowire('@logger.channel.commerce_paytrail')] private LoggerInterface $logger,
     private MessengerInterface $messenger,
   ) {
   }

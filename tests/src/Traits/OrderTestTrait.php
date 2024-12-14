@@ -66,7 +66,7 @@ trait OrderTestTrait {
     $order = Order::create([
       'type' => 'default',
       'store_id' => $this->store,
-      'uid' => $this->createUser(['mail' => 'admin@example.com']),
+      'uid' => $this->createUser(values: ['mail' => 'admin@example.com']),
       'payment_gateway' => $gateway,
       'mail' => 'admin@example.com',
     ]);
