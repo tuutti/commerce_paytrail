@@ -14,14 +14,15 @@ use Drupal\Component\Uuid\UuidInterface;
 use Paytrail\SDK\Model\CallbackUrl;
 use Paytrail\SDK\Request\RefundRequest;
 use Paytrail\SDK\Response\RefundResponse;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * The refund request builder.
  *
  * @internal
  */
-final class RefundRequestBuilder implements RefundRequestBuilderInterface {
+class RefundRequestBuilder implements RefundRequestBuilderInterface {
 
   use PaymentGatewayPluginTrait;
 
@@ -32,7 +33,7 @@ final class RefundRequestBuilder implements RefundRequestBuilderInterface {
    *   The uuid service.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   * @param \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $eventDispatcher
    *   The event dispatcher.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
    *   The minor unit converter.
@@ -41,7 +42,7 @@ final class RefundRequestBuilder implements RefundRequestBuilderInterface {
     private UuidInterface $uuidService,
     private TimeInterface $time,
     private EventDispatcherInterface $eventDispatcher,
-    private MinorUnitsConverterInterface $converter,
+    #[Autowire(value: '@commerce_price.minor_units_converter')] protected MinorUnitsConverterInterface $converter,
   ) {
   }
 
@@ -77,12 +78,21 @@ final class RefundRequestBuilder implements RefundRequestBuilderInterface {
 
     $request = $this->createRefundRequest($order, $amount);
     $this->eventDispatcher
-      ->dispatch(new ModelEvent($request, $order, RefundRequestBuilderInterface::REFUND_CREATE));
+      ->dispatch(new ModelEvent(
+        $request,
+        $order,
+        RefundRequestBuilderInterface::REFUND_CREATE
+      ));
 
     $response = $plugin->getClient()
       ->refund($request, $transactionId);
 
-    $this->eventDispatcher->dispatch(new ModelEvent($response, $order, RefundRequestBuilderInterface::REFUND_CREATE_RESPONSE));
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent(
+        $response,
+        $order,
+        RefundRequestBuilderInterface::REFUND_CREATE_RESPONSE
+      ));
 
     return $response;
   }

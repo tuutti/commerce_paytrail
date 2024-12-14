@@ -17,7 +17,8 @@ use Paytrail\SDK\Model\CallbackUrl;
 use Paytrail\SDK\Model\Customer;
 use Paytrail\SDK\Model\Item;
 use Paytrail\SDK\Request\AbstractPaymentRequest;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * A base class for payment requests.
@@ -33,7 +34,7 @@ abstract class PaymentRequestBase {
    *   The uuid service.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   * @param \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $eventDispatcher
    *   The event dispatcher.
    * @param \Drupal\commerce_price\MinorUnitsConverterInterface $converter
    *   The minor unit converter.
@@ -44,8 +45,8 @@ abstract class PaymentRequestBase {
     protected UuidInterface $uuidService,
     protected TimeInterface $time,
     protected EventDispatcherInterface $eventDispatcher,
-    protected MinorUnitsConverterInterface $converter,
-    protected int $callbackDelay,
+    #[Autowire(value: '@commerce_price.minor_units_converter')] protected MinorUnitsConverterInterface $converter,
+    #[Autowire(value: '%commerce_paytrail.callback_delay%')] protected int $callbackDelay,
   ) {
   }
 
@@ -69,7 +70,7 @@ abstract class PaymentRequestBase {
     }
 
     if ($taxes = $orderItem->getAdjustments(['tax'])) {
-      $item->setVatPercentage((int) Calculator::multiply(
+      $item->setVatPercentage((float) Calculator::multiply(
         reset($taxes)->getPercentage(),
         '100'
       ));
@@ -143,11 +144,7 @@ abstract class PaymentRequestBase {
 
     $this
       ->eventDispatcher
-      ->dispatch(new ModelEvent(
-        $request,
-        order: $order,
-        event: $event,
-      ));
+      ->dispatch(new ModelEvent($request, $order, $event));
     // We use the reference field to load the order. Make sure it cannot be
     // changed.
     $request->setReference($order->id());

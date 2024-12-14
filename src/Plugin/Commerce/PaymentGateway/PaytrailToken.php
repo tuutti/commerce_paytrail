@@ -42,7 +42,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   requires_billing_information = FALSE,
  * )
  */
-final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterface, SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
+class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayInterface, SupportsStoredPaymentMethodsInterface, SupportsVoidsInterface, SupportsAuthorizationsInterface {
 
   /**
    * The token payment request builder.
@@ -73,8 +73,8 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
       $plugin_id,
       $plugin_definition
     );
-    $instance->paymentTokenRequest = $container->get('commerce_paytrail.token_payment_request');
-    $instance->paymentRequestBuilder = $container->get('commerce_paytrail.payment_request');
+    $instance->paymentTokenRequest = $container->get(TokenRequestBuilderInterface::class);
+    $instance->paymentRequestBuilder = $container->get(PaymentRequestBuilderInterface::class);
     return $instance;
   }
 
@@ -232,16 +232,14 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
     $response = $this->paymentTokenRequest->getCardForToken($this, $token);
     $card = $response->getCard();
 
-    $paymentMethod->card_type = strtolower($card->getType());
-    $paymentMethod->card_number = $card->getPartialPan();
-    $paymentMethod->card_exp_month = $card->getExpireMonth();
-    $paymentMethod->card_exp_year = $card->getExpireYear();
+    $paymentMethod->set('card_type', strtolower($card->getType()));
+    $paymentMethod->set('card_number', $card->getPartialPan());
+    $paymentMethod->set('card_exp_month', $card->getExpireMonth());
+    $paymentMethod->set('card_exp_year', $card->getExpireYear());
 
-    $expires = CreditCard::calculateExpirationTimestamp(
-      $paymentMethod->card_exp_month->value,
-      $paymentMethod->card_exp_year->value,
-    );
-    $paymentMethod->setExpiresTime($expires)
+    $expires = CreditCard::calculateExpirationTimestamp($card->getExpireMonth(), $card->getExpireYear());
+    $paymentMethod
+      ->setExpiresTime($expires)
       ->setRemoteId($response->getToken());
 
     return $paymentMethod;
@@ -306,7 +304,7 @@ final class PaytrailToken extends PaytrailBase implements OffsitePaymentGatewayI
    */
   public function capturePayment(
     PaymentInterface $payment,
-    Price $amount = NULL,
+    ?Price $amount = NULL,
   ) : void {
     $this->assertPaymentState($payment, ['authorization']);
     $amount = $amount ?: $payment->getAmount();

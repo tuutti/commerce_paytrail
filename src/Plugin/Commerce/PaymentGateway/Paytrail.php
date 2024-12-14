@@ -29,7 +29,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   requires_billing_information = FALSE,
  * )
  */
-final class Paytrail extends PaytrailBase implements SupportsNotificationsInterface, OffsitePaymentGatewayInterface {
+class Paytrail extends PaytrailBase implements SupportsNotificationsInterface, OffsitePaymentGatewayInterface {
 
   /**
    * The payment request builder.
@@ -43,7 +43,7 @@ final class Paytrail extends PaytrailBase implements SupportsNotificationsInterf
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
-    $instance->paymentRequest = $container->get('commerce_paytrail.payment_request');
+    $instance->paymentRequest = $container->get(PaymentRequestBuilderInterface::class);
 
     return $instance;
   }

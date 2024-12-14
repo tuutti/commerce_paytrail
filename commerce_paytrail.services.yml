@@ -1,42 +1,21 @@
 parameters:
   commerce_paytrail.callback_delay: 120
 services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+
   logger.channel.commerce_paytrail:
     parent: logger.channel_base
     arguments: ['commerce_paytrail']
 
-  commerce_paytrail.refund_request:
-    class: Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder
-    arguments:
-      - '@uuid'
-      - '@datetime.time'
-      - '@event_dispatcher'
-      - '@commerce_price.minor_units_converter'
+  Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder: ~
+  Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilderInterface: '@Drupal\commerce_paytrail\RequestBuilder\RefundRequestBuilder'
 
-  commerce_paytrail.payment_request:
-    class: Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder
-    arguments:
-      - '@uuid'
-      - '@datetime.time'
-      - '@event_dispatcher'
-      - '@commerce_price.minor_units_converter'
-      - '%commerce_paytrail.callback_delay%'
+  Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder: ~
+  Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface: '@Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilder'
 
-  commerce_paytrail.token_payment_request:
-    class: Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder
-    arguments:
-      - '@uuid'
-      - '@datetime.time'
-      - '@event_dispatcher'
-      - '@commerce_price.minor_units_converter'
-      - '%commerce_paytrail.callback_delay%'
+  Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder: ~
+  Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface: '@Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilder'
 
-  commerce_paytrail.billing_information_collector:
-    class: Drupal\commerce_paytrail\EventSubscriber\BillingInformationCollector
-    tags:
-      - { name: event_subscriber }
-
-  commerce_paytrail.paytrail_client_factory:
-    class: Drupal\commerce_paytrail\Http\PaytrailClientFactory
-    arguments:
-      - '@http_client_factory'
+  Drupal\commerce_paytrail\Http\PaytrailClientFactory: ~

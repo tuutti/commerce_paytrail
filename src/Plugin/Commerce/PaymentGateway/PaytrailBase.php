@@ -56,9 +56,9 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : static {
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
-    $instance->languageManager = $container->get('language_manager');
-    $instance->refundRequest = $container->get('commerce_paytrail.refund_request');
-    $instance->clientFactory = $container->get('commerce_paytrail.paytrail_client_factory');
+    $instance->languageManager = $container->get(LanguageManagerInterface::class);
+    $instance->refundRequest = $container->get(RefundRequestBuilderInterface::class);
+    $instance->clientFactory = $container->get(PaytrailClientFactory::class);
 
     return $instance;
   }
@@ -273,7 +273,7 @@ abstract class PaytrailBase extends OffsitePaymentGatewayBase implements Paytrai
   /**
    * {@inheritdoc}
    */
-  public function refundPayment(PaymentInterface $payment, Price $amount = NULL) : void {
+  public function refundPayment(PaymentInterface $payment, ?Price $amount = NULL) : void {
     $this->assertPaymentState($payment, ['completed', 'partially_refunded']);
     // If not specified, refund the entire amount.
     $amount = $amount ?: $payment->getAmount();

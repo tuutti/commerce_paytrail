@@ -6,10 +6,10 @@ namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
 use Drupal\commerce_paytrail\RequestBuilder\TokenRequestBuilderInterface;
+use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides the Paytrail token off-site form.
@@ -17,6 +17,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 final class PaytrailTokenForm extends PaymentOffsiteForm implements ContainerInjectionInterface {
 
   use StringTranslationTrait;
+  use AutowireTrait;
 
   /**
    * Constructs a new instance.
@@ -27,15 +28,6 @@ final class PaytrailTokenForm extends PaymentOffsiteForm implements ContainerInj
   public function __construct(
     private TokenRequestBuilderInterface $tokenRequestBuilder,
   ) {
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container) : self {
-    return new self(
-      $container->get('commerce_paytrail.token_payment_request')
-    );
   }
 
   /**

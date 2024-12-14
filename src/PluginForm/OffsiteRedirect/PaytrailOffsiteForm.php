@@ -6,6 +6,7 @@ namespace Drupal\commerce_paytrail\PluginForm\OffsiteRedirect;
 
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
 use Drupal\commerce_paytrail\RequestBuilder\PaymentRequestBuilderInterface;
+use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
@@ -20,6 +21,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerInjectionInterface {
 
   use StringTranslationTrait;
+  use AutowireTrait;
 
   /**
    * Constructs a new instance.
@@ -36,17 +38,6 @@ final class PaytrailOffsiteForm extends PaymentOffsiteForm implements ContainerI
     private LoggerInterface $logger,
     private MessengerInterface $messenger,
   ) {
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container) : self {
-    return new self(
-      $container->get('commerce_paytrail.payment_request'),
-      $container->get('logger.channel.commerce_paytrail'),
-      $container->get('messenger')
-    );
   }
 
   /**

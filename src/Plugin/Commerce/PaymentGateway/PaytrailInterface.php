@@ -17,7 +17,6 @@ interface PaytrailInterface extends PaymentGatewayInterface, SupportsRefundsInte
 
   public const ACCOUNT = '375917';
   public const SECRET = 'SAIPPUAKAUPPIAS';
-  public const STRATEGY_REMOVE_ITEMS = 'remove_items';
 
   /**
    * Gets the merchant account.

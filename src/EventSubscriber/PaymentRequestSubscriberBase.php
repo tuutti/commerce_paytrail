@@ -7,7 +7,7 @@ namespace Drupal\commerce_paytrail\EventSubscriber;
 use Drupal\commerce_paytrail\Event\ModelEvent;
 use Drupal\commerce_paytrail\Exception\PaytrailPluginException;
 use Drupal\commerce_paytrail\PaymentGatewayPluginTrait;
-use Paytrail\SDK\Request\AbstractPaymentRequest;
+use Paytrail\SDK\Interfaces\PaymentRequestInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -27,7 +27,7 @@ abstract class PaymentRequestSubscriberBase implements EventSubscriberInterface 
    *   TRUE if event is valid.
    */
   protected function isValid(ModelEvent $event) : bool {
-    if (!$event->model instanceof AbstractPaymentRequest) {
+    if (!$event->model instanceof PaymentRequestInterface) {
       return FALSE;
     }
 

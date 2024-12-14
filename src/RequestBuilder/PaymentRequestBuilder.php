@@ -16,7 +16,7 @@ use Paytrail\SDK\Response\PaymentStatusResponse;
  *
  * @internal
  */
-final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentRequestBuilderInterface {
+class PaymentRequestBuilder extends PaymentRequestBase implements PaymentRequestBuilderInterface {
 
   /**
    * {@inheritdoc}
@@ -31,11 +31,12 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
     $response = $plugin->getClient()
       ->getPaymentStatus($request);
 
-    $this->eventDispatcher->dispatch(new ModelEvent(
-      $response,
-      $order,
-      PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT
-    ));
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent(
+        $response,
+        $order,
+        PaymentRequestBuilderInterface::PAYMENT_GET_RESPONSE_EVENT
+      ));
     return $response;
   }
 
@@ -65,11 +66,13 @@ final class PaymentRequestBuilder extends PaymentRequestBase implements PaymentR
     $response = $this->getPaymentPlugin($order)
       ->getClient()
       ->createPayment($request);
-    $this->eventDispatcher->dispatch(new ModelEvent(
-      $response,
-      $order,
-      PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT
-    ));
+
+    $this->eventDispatcher
+      ->dispatch(new ModelEvent(
+        $response,
+        $order,
+        PaymentRequestBuilderInterface::PAYMENT_CREATE_RESPONSE_EVENT
+      ));
     return $response;
   }
 

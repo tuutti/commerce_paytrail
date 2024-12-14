@@ -23,7 +23,7 @@ class CommercePaytrailServiceProvider extends ServiceProviderBase {
     $modules = $container->getParameter('container.modules');
 
     if (isset($modules['commerce_shipping'])) {
-      $container->register('commerce_paytrail.shipping_subscriber', ShippingEventSubscriber::class)
+      $container->register(ShippingEventSubscriber::class, ShippingEventSubscriber::class)
         ->addTag('event_subscriber')
         ->addArgument(new Reference('commerce_price.minor_units_converter'));
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\commerce_paytrail\Http;
 
+use GuzzleHttp\ClientInterface;
 use Paytrail\SDK\Client;
 
 /**
@@ -17,7 +18,7 @@ final class PaytrailClient extends Client {
   /**
    * Constructs a new instance.
    *
-   * @param \GuzzleHttp\ClientInterface $http_client
+   * @param \GuzzleHttp\ClientInterface $client
    *   The HTTP client.
    * @param int $merchantId
    *   The merchant id.
@@ -27,11 +28,12 @@ final class PaytrailClient extends Client {
    *   The platform name.
    */
   public function __construct(
-    protected $http_client,
+    ClientInterface $client,
     int $merchantId,
     string $secretKey,
     string $platformName,
   ) {
+    $this->http_client = $client;
     $this->merchantId = $merchantId;
     $this->secretKey = $secretKey;
     $this->platformName = $platformName;

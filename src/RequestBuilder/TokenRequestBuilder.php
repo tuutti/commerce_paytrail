@@ -24,7 +24,7 @@ use Paytrail\SDK\Util\Signature;
  *
  * @internal
  */
-final class TokenRequestBuilder extends PaymentRequestBase implements TokenRequestBuilderInterface {
+class TokenRequestBuilder extends PaymentRequestBase implements TokenRequestBuilderInterface {
 
   /**
    * {@inheritdoc}
@@ -203,7 +203,7 @@ final class TokenRequestBuilder extends PaymentRequestBase implements TokenReque
    * @return \Paytrail\SDK\Response\MitPaymentResponse
    *   The payment response.
    */
-  private function createMitPaymentAction(OrderInterface $order, string $token, string $requestEvent, string $responseEvent, callable $responseCallback) : MitPaymentResponse {
+  protected function createMitPaymentAction(OrderInterface $order, string $token, string $requestEvent, string $responseEvent, callable $responseCallback) : MitPaymentResponse {
     $plugin = $this
       ->getPaymentPlugin($order);
 

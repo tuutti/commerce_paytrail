@@ -53,7 +53,7 @@ final class ShippingEventSubscriber extends PaymentRequestSubscriberBase {
         ->setVatPercentage(0);
 
       if ($taxes = $shipment->getAdjustments(['tax'])) {
-        $item->setVatPercentage((int) Calculator::multiply(
+        $item->setVatPercentage((float) Calculator::multiply(
           reset($taxes)->getPercentage(),
           '100'
         ));
