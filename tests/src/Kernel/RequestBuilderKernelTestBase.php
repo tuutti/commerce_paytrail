@@ -71,19 +71,19 @@ abstract class RequestBuilderKernelTestBase extends PaytrailKernelTestBase imple
    *   The payment gateway.
    */
   protected function mockPaymentGateway(
-    PaymentRequestBuilderInterface $paymentRequestBuilder = NULL,
-    RefundRequestBuilderInterface $refundRequestBuilder = NULL,
-    TokenRequestBuilderInterface $tokenPaymentRequestBuilder = NULL,
+    ?PaymentRequestBuilderInterface $paymentRequestBuilder = NULL,
+    ?RefundRequestBuilderInterface $refundRequestBuilder = NULL,
+    ?TokenRequestBuilderInterface $tokenPaymentRequestBuilder = NULL,
     string $plugin = 'paytrail',
   ) : PaymentGatewayInterface {
     if ($paymentRequestBuilder) {
-      $this->container->set('commerce_paytrail.payment_request', $paymentRequestBuilder);
+      $this->container->set(PaymentRequestBuilderInterface::class, $paymentRequestBuilder);
     }
     if ($refundRequestBuilder) {
-      $this->container->set('commerce_paytrail.refund_request', $refundRequestBuilder);
+      $this->container->set(RefundRequestBuilderInterface::class, $refundRequestBuilder);
     }
     if ($tokenPaymentRequestBuilder) {
-      $this->container->set('commerce_paytrail.token_payment_request', $tokenPaymentRequestBuilder);
+      $this->container->set(TokenRequestBuilderInterface::class, $tokenPaymentRequestBuilder);
     }
     $this->refreshServices();
 
